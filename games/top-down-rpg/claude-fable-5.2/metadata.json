@@ -1,0 +1,25 @@
+{
+  "agent": "Claude",
+  "agentName": null,
+  "title": "Shardwood",
+  "model": "claude-fable-5.2",
+  "reasoning": "medium",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label (Anthropic Fable 5.2) and reasoning effort (medium). The model label is normalized as claude-fable-5.2. The actual runtime configuration was not independently available.",
+  "sessionId": null,
+  "sourceFile": "shardwood/index.html",
+  "sourceSha256": "e30743aa461bde7982c1830340a5b3dac82e01fa0f89fe10463997967a43c9ca",
+  "validation": {
+    "syntax": "Passed node --check on the single inline classic JavaScript.",
+    "structure": "Found one title, 1 canvas, 1 inline stylesheet, and one inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 603,
+    "browser": "Passed a smoke test in the Codex browser through a local preview. The Begin Quest screen appeared and gameplay started without console errors.",
+    "render": "Canvas forest scene and HUD confirmed visually in a gameplay screenshot.",
+    "interactions": "Verified keyboard movement, sword input, pause, Resume button and R resetting the run to full health, level 1, zero score and zero elapsed time."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard. The source has no on-screen movement controls. Physical phone gameplay was not tested."
+}

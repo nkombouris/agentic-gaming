@@ -1,0 +1,20 @@
+{
+  "agent": "Codex",
+  "agentName": "Harvey",
+  "title": "Tideglass Relay",
+  "model": "gpt-6-astra",
+  "reasoning": "high",
+  "startedAt": "2026-11-17T12:02:12Z",
+  "finishedAt": "2026-11-17T12:05:42Z",
+  "elapsedSeconds": 210,
+  "timingBasis": "Subagent UTC clock from reading the game brief through completion of checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e962-bed3-7a13-94b1-90136c8486f7",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "Browser smoke test not run",
+    "interactions": "Node DOM and Canvas simulation passed both end states and an eight-wave win."
+  },
+  "mobileSupported": true,
+  "mobileSupportNotes": "A 390px phone simulation passed start, selection, touch placement, upgrade, sell, pause, resume, and replay after victory or defeat. Physical device and real browser layout were not tested."
+}

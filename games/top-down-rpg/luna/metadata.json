@@ -1,0 +1,19 @@
+{
+  "agent": "Codex",
+  "agentName": "Pasteur",
+  "title": "Ashen Vale",
+  "model": "gpt-6-luna",
+  "reasoning": "medium",
+  "startedAt": "2026-11-17T09:25:34Z",
+  "finishedAt": "2026-11-17T09:27:11Z",
+  "elapsedSeconds": 97,
+  "timingBasis": "Subagent UTC clock from reading the shared game brief through completion of game checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e8d3-5a00-75b2-bf1f-e96441552a0d",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "No browser smoke test; built-in browser blocks local file URLs"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard. The game has no on-screen movement controls."
+}

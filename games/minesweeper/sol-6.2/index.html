@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Silt Signal</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --water: #0b171a;
+      --panel: #102126;
+      --edge: #29434a;
+      --text: #edf4ee;
+      --muted: #a0b8b9;
+      --teal: #91deca;
+      --yellow: #f1cd81;
+      --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 46% -20%, #24404a 0%, transparent 63%),
+        radial-gradient(circle, #48666d35 0.75px, transparent 1px) 0 0 / 18px 18px,
+        var(--water);
+    }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
+    .shell { width: min(1080px, calc(100% - 56px)); margin: auto; padding: clamp(21px, 5vh, 44px) 0 22px; }
+    .masthead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 23px; }
+    .brand { display: flex; align-items: center; gap: 17px; }
+    .compass {
+      width: 56px; height: 56px; flex: 0 0 auto; border: 1px solid #518079; border-radius: 50%;
+      position: relative; display: grid; place-items: center; color: var(--teal);
+      background: repeating-radial-gradient(circle, transparent 0 6px, #8cd7cb27 7px 8px, transparent 9px 11px);
+    }
+    .compass::before { content: ""; width: 38px; height: 1px; background: #8cd7cb78; transform: rotate(-43deg); }
+    .compass::after { content: ""; position: absolute; width: 9px; height: 9px; rotate: 45deg; background: currentColor; border: 2px solid #1f3439; }
+    h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(37px, 5.3vw, 64px); line-height: .94; letter-spacing: -.065em; }
+    .tagline { color: var(--muted); margin: 9px 0 0; font-size: 13px; }
+    .restart {
+      padding: 9px 12px; white-space: nowrap; color: var(--text); background: #14282e;
+      border: 1px solid #38545a; border-radius: 6px; font-size: 12px; font-weight: 650;
+    }
+    .restart:hover { background: #1e3c43; }
+    .restart:disabled { cursor: default; opacity: .5; background: #14282e; }
+    kbd {
+      display: inline-block; min-width: 18px; padding: 2px 5px; text-align: center; border: 1px solid #446067;
+      border-radius: 4px; font: 10px/1.2 var(--mono); color: #bdd1d0; background: #0d1c20;
+    }
+    .restart kbd { margin-left: 6px; }
+    .hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; margin: 0 0 12px; }
+    .metric {
+      position: relative; display: flex; justify-content: space-between; align-items: center;
+      gap: 8px; min-height: 62px; overflow: hidden; padding: 11px 15px 14px;
+      border: 1px solid var(--edge); border-radius: 8px; background: #11252bc9;
+    }
+    .metric dt, .subtitle, .panel-label {
+      font: 600 10px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    }
+    .metric dd { margin: 0; font: 650 clamp(17px, 2.8vw, 26px)/1 var(--mono); color: var(--teal); }
+    .metric:nth-child(2) dd { color: var(--yellow); }
+    .tide-track { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #233c43; }
+    .tide-fill { display: block; height: 100%; background: var(--teal); transform-origin: left; transition: transform .25s linear; }
+    .tide[data-pressure="high"] dd { color: var(--yellow); }
+    .tide[data-pressure="high"] .tide-fill { background: var(--yellow); }
+    .tide[data-pressure="critical"] dd { color: #ff9983; }
+    .tide[data-pressure="critical"] .tide-fill { background: #ff9983; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: 12px; }
+    .deck, .note { background: var(--panel); border: 1px solid var(--edge); border-radius: 9px; }
+    .deck { padding: 10px; min-width: 0; }
+    .deck-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 5px 9px; }
+    .deck-head span { font-size: 11px; }
+    .status { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+    .status::before { content: ""; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+    .status[data-phase="lost"]::before { background: #ff9983; }
+    .status[data-phase="paused"]::before { background: var(--yellow); }
+    .field {
+      position: relative; isolation: isolate; width: 100%; height: clamp(328px, calc(100vh - 255px), 554px);
+      background: #0b1a1f; overflow: hidden; border: 1px solid #2a444b; border-radius: 5px;
+    }
+    .field:focus { outline: none; }
+    .field:focus-visible { outline: 2px solid #91decad0; outline-offset: -2px; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .overlay {
+      position: absolute; inset: 0; display: grid; place-items: center; padding: 12px;
+      background: radial-gradient(ellipse at center, #0d1f24a6, #0b181d67 70%, #0b191c15);
+    }
+    .overlay[hidden] { display: none; }
+    .modal {
+      width: min(100%, 367px); padding: 24px 25px; text-align: center;
+      background: linear-gradient(165deg, #203c43, #102327 75%);
+      border: 1px solid #68998d; border-radius: 10px;
+      box-shadow: 0 12px 34px #0009, inset 0 1px #d0f5d21a;
+    }
+    .modal .panel-label { margin: 0; color: var(--teal); }
+    .modal h2 { font: 400 clamp(29px, 4vw, 39px)/1.03 Georgia, serif; letter-spacing: -.04em; margin: 8px 0 10px; }
+    .modal-copy { margin: 0; color: #b7ccca; font-size: 13px; line-height: 1.55; }
+    .modal-controls { margin: 14px 0 0; color: #c3d8d5; font-size: 11px; line-height: 1.65; }
+    .modal-controls b { color: var(--text); }
+    .start {
+      display: inline-flex; justify-content: center; align-items: center; gap: 18px; padding: 10px 16px; margin-top: 16px;
+      background: #a6e5cd; border: 1px solid #baefd9; color: #102c29; border-radius: 5px;
+      font-weight: 760; font-size: 13px; min-height: 42px;
+    }
+    .start:hover { background: #c5f4e2; }
+    .start::after { content: "→"; font-size: 16px; line-height: 1; }
+    .sidebar { display: grid; gap: 12px; align-content: start; }
+    .note { padding: 15px 14px; }
+    .note h2 { font: 400 22px/1.2 Georgia, serif; letter-spacing: -.02em; margin: 0 0 12px; }
+    .guide { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+    .guide li { display: grid; grid-template-columns: 26px 1fr; align-items: start; gap: 9px; }
+    .guide-icon {
+      display: grid; place-items: center; color: var(--teal); background: #20383e; border: 1px solid #476367;
+      border-radius: 4px; font: 700 13px/1 var(--mono); height: 24px; width: 26px;
+    }
+    .guide-icon.flag { color: var(--yellow); background: #3b3330; border-color: #7b664d; }
+    .guide strong { display: block; font-size: 12px; line-height: 1.15; }
+    .guide p, .record p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .keyboard { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #284149; color: var(--muted); font-size: 10px; }
+    .keyboard span { margin-right: 4px; }
+    .record { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .record h2 { font-size: 17px; margin: 0; }
+    .record output { font: 650 17px var(--mono); color: var(--teal); white-space: nowrap; }
+    .sr-only { clip-path: inset(50%); width: 1px; height: 1px; position: absolute; overflow: hidden; white-space: nowrap; }
+    @media (max-width: 800px) {
+      .shell { width: calc(100% - 30px); }
+      .layout { grid-template-columns: minmax(0, 1fr) 183px; }
+    }
+    @media (max-width: 670px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .sidebar { grid-template-columns: minmax(0, 1fr) auto; }
+      .metric { flex-direction: column; align-items: flex-start; padding: 9px 11px; gap: 4px; }
+      .field { height: clamp(300px, 72vw, 470px); }
+    }
+    @media (max-width: 380px) {
+      .compass { display: none; }
+      .sidebar { grid-template-columns: 1fr; }
+      .modal { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="compass" aria-hidden="true"></div>
+        <div>
+          <h1>Silt Signal</h1>
+          <p class="tagline">Chart the shallows before the tide comes in.</p>
+        </div>
+      </div>
+      <button class="restart" id="restart-survey" type="button" disabled>Restart <kbd>R</kbd></button>
+    </header>
+
+    <dl class="hud" aria-label="Survey statistics">
+      <div class="metric"><dt>Safe cells left</dt><dd id="safe-left">128</dd></div>
+      <div class="metric"><dt>Flags left</dt><dd id="flags-left">26</dd></div>
+      <div class="metric tide" id="tide">
+        <dt>Tide arrives in</dt><dd id="time-left">3:00</dd>
+        <span class="tide-track" aria-hidden="true"><span class="tide-fill" id="tide-fill"></span></span>
+      </div>
+    </dl>
+
+    <div class="layout">
+      <section class="deck" aria-label="Survey">
+        <div class="deck-head">
+          <span class="subtitle">14 × 11 grid · 26 mines</span>
+          <span class="status" id="status" data-phase="ready">Awaiting survey</span>
+        </div>
+        <div class="field" id="survey-field" tabindex="0" aria-label="Survey grid. Arrow keys move the cursor, Space reveals, and F places or removes a flag.">
+          <canvas id="board" aria-hidden="true"></canvas>
+          <div class="overlay" id="overlay">
+            <div class="modal">
+              <p class="panel-label" id="overlay-label">Low tide survey</p>
+              <h2 id="overlay-title">Read the shallows</h2>
+              <p class="modal-copy" id="overlay-copy">Reveal every safe cell in three minutes. Your first reveal opens a safe patch.</p>
+              <p class="modal-controls" id="overlay-controls">
+                <b>Click</b> to reveal · <b>Right-click</b> to flag<br>
+                <b>Arrows</b> to move · <b>Space</b> to reveal · <b>F</b> to flag
+              </p>
+              <button class="start" id="start-survey" type="button">Start survey</button>
+            </div>
+          </div>
+        </div>
+        <p class="sr-only" id="announcement" aria-live="polite"></p>
+      </section>
+
+      <aside class="sidebar" aria-label="Help and best time">
+        <section class="note">
+          <h2>Field guide</h2>
+          <ul class="guide">
+            <li><span class="guide-icon" aria-hidden="true">2</span><div><strong>Read the clues</strong><p>A number counts mines in the eight surrounding cells.</p></div></li>
+            <li><span class="guide-icon flag" aria-hidden="true">⚑</span><div><strong>Mark a mine</strong><p>Right-click a covered cell to place or remove a flag.</p></div></li>
+            <li><span class="guide-icon" aria-hidden="true">✦</span><div><strong>Clear the neighbors</strong><p>Click a clue again once the number of nearby flags matches it.</p></div></li>
+          </ul>
+          <div class="keyboard"><kbd>↑ ↓ ← →</kbd><span>Move</span><kbd>Space</kbd><span>Reveal</span><kbd>F</kbd><span>Flag</span></div>
+        </section>
+        <section class="note record">
+          <div><h2>Best time</h2><p>Fastest survey</p></div>
+          <output id="best-time">—</output>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+
+    const columns = 14;
+    const rows = 11;
+    const cellCount = columns * rows;
+    const mineCount = 26;
+    const safeCount = cellCount - mineCount;
+    const tideLimit = 180;
+    const covered = 0;
+    const open = 1;
+    const flagged = 2;
+    const mine = -1;
+    const bestTimeKey = "silt-signal.best-time";
+    const letters = "ABCDEFGHIJKLMN";
+    const clueColors = ["", "#a4e9de", "#c0e797", "#f5cc80", "#a8bafa", "#ffab94", "#dcb8ff", "#f3a8c9", "#edf4ee"];
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const field = document.getElementById("survey-field");
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const overlayLabel = document.getElementById("overlay-label");
+    const overlayTitle = document.getElementById("overlay-title");
+    const overlayCopy = document.getElementById("overlay-copy");
+    const overlayControls = document.getElementById("overlay-controls");
+    const announcement = document.getElementById("announcement");
+    const startButton = document.getElementById("start-survey");
+    const restartButton = document.getElementById("restart-survey");
+    const status = document.getElementById("status");
+    const safeLeft = document.getElementById("safe-left");
+    const flagsLeft = document.getElementById("flags-left");
+    const tide = document.getElementById("tide");
+    const timeLeft = document.getElementById("time-left");
+    const tideFill = document.getElementById("tide-fill");
+    const bestTimeDisplay = document.getElementById("best-time");
+
+    const neighbors = Array.from({ length: cellCount }, (_, index) => {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      const result = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = column + dx;
+          const y = row + dy;
+          if ((dx || dy) && x >= 0 && x < columns && y >= 0 && y < rows) result.push(y * columns + x);
+        }
+      }
+      return result;
+    });
+
+    let board = null;
+    let cells = new Uint8Array(cellCount);
+    let phase = "ready";
+    let paused = false;
+    let elapsed = 0;
+    let flags = 0;
+    let revealed = 0;
+    let selected = 0;
+    let hover = -1;
+    let detonated = -1;
+    let keyboardActive = false;
+    let displayedSeconds = -1;
+    let bestTime = null;
+    let lastTime = performance.now();
+    let layout = { width: 0, height: 0, x: 0, y: 0, size: 0 };
+    let dirty = true;
+    let shake = 0;
+    let particles = [];
+
+    try {
+      const saved = Number(localStorage.getItem(bestTimeKey));
+      if (saved > 0 && saved <= tideLimit) bestTime = saved;
+    } catch {}
+
+    function formatTime(seconds) {
+      return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+    }
+
+    function updateClock() {
+      const remaining = Math.max(0, Math.ceil(tideLimit - elapsed));
+      if (displayedSeconds === remaining) return;
+      displayedSeconds = remaining;
+      timeLeft.textContent = formatTime(remaining);
+      tideFill.style.transform = "scaleX(" + remaining / tideLimit + ")";
+      tide.dataset.pressure = remaining <= 20 ? "critical" : remaining <= 45 ? "high" : "normal";
+    }
+
+    function updateScore() {
+      safeLeft.textContent = safeCount - revealed;
+      flagsLeft.textContent = mineCount - flags;
+      bestTimeDisplay.textContent = bestTime === null ? "—" : formatTime(Math.ceil(bestTime));
+    }
+
+    function setStatus(name, text) {
+      status.dataset.phase = name;
+      status.textContent = text;
+    }
+
+    function reset() {
+      board = null;
+      cells = new Uint8Array(cellCount);
+      phase = "playing";
+      paused = document.hidden;
+      elapsed = 0;
+      flags = 0;
+      revealed = 0;
+      selected = Math.floor(rows / 2) * columns + Math.floor(columns / 2);
+      hover = -1;
+      detonated = -1;
+      keyboardActive = false;
+      shake = 0;
+      particles = [];
+      lastTime = performance.now();
+      overlay.hidden = true;
+      restartButton.disabled = false;
+      updateClock();
+      updateScore();
+      setStatus("playing", "Make your first reveal");
+      field.focus({ preventScroll: true });
+      dirty = true;
+    }
+
+    function coordinates(index) {
+      return letters[index % columns] + (1 + Math.floor(index / columns));
+    }
+
+    function announceCell(index) {
+      let description = "Covered";
+      if (cells[index] === flagged) description = "Flagged";
+      if (cells[index] === open) description = board[index] ? board[index] + " adjacent mines" : "Clear";
+      announcement.textContent = coordinates(index) + ". " + description + ".";
+    }
+
+    function uncover(clues, visible, index) {
+      const opened = [];
+      const queue = [index];
+      for (let pointer = 0; pointer < queue.length; pointer++) {
+        const current = queue[pointer];
+        if (visible[current] !== covered || clues[current] === mine) continue;
+        visible[current] = open;
+        opened.push(current);
+        if (clues[current] === 0) queue.push(...neighbors[current]);
+      }
+      return opened;
+    }
+
+    function countDeducible(clues, first) {
+      const known = new Uint8Array(cellCount);
+      let solved = uncover(clues, known, first).length;
+      let progress = true;
+      while (progress && solved < safeCount) {
+        progress = false;
+        for (let index = 0; index < cellCount; index++) {
+          if (known[index] !== open || clues[index] <= 0) continue;
+          const unknown = [];
+          let marks = 0;
+          for (const neighbor of neighbors[index]) {
+            if (known[neighbor] === covered) unknown.push(neighbor);
+            if (known[neighbor] === flagged) marks++;
+          }
+          if (!unknown.length) continue;
+          if (clues[index] === marks) {
+            for (const neighbor of unknown) solved += uncover(clues, known, neighbor).length;
+            progress = true;
+          } else if (clues[index] === marks + unknown.length) {
+            for (const neighbor of unknown) known[neighbor] = flagged;
+            progress = true;
+          }
+        }
+      }
+      return solved;
+    }
+
+    function generateBoard(first) {
+      const protectedCells = new Set([first, ...neighbors[first]]);
+      const candidates = Array.from({ length: cellCount }, (_, index) => index).filter(index => !protectedCells.has(index));
+      let bestBoard = null;
+      let highestDeducible = -1;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const clues = new Int8Array(cellCount);
+        const ranked = candidates.map(index => {
+          const depth = Math.floor(index / columns) / (rows - 1);
+          const weight = 0.78 + 0.55 * depth;
+          return { index, rank: -Math.log(Math.max(Number.MIN_VALUE, Math.random())) / weight };
+        }).sort((a, b) => a.rank - b.rank);
+        for (let position = 0; position < mineCount; position++) clues[ranked[position].index] = mine;
+        for (let index = 0; index < cellCount; index++) {
+          if (clues[index] === mine) continue;
+          for (const neighbor of neighbors[index]) if (clues[neighbor] === mine) clues[index]++;
+        }
+        const deducible = countDeducible(clues, first);
+        if (deducible === safeCount) return clues;
+        if (deducible > highestDeducible) {
+          highestDeducible = deducible;
+          bestBoard = clues;
+        }
+      }
+      return bestBoard;
+    }
+
+    function placeFlag(index) {
+      if (phase !== "playing" || cells[index] === open) return;
+      if (cells[index] === covered) {
+        if (flags === mineCount) {
+          announcement.textContent = "All flags are in use.";
+          return;
+        }
+        cells[index] = flagged;
+        flags++;
+        burst(index, "#f1cd81", 6);
+      } else {
+        cells[index] = covered;
+        flags--;
+      }
+      updateScore();
+      announceCell(index);
+      dirty = true;
+    }
+
+    function finish(won, hit) {
+      phase = won ? "won" : "lost";
+      detonated = hit;
+      let message;
+      if (won) {
+        const result = Math.max(1, elapsed);
+        const newRecord = bestTime === null || result < bestTime;
+        if (newRecord) {
+          bestTime = result;
+          try { localStorage.setItem(bestTimeKey, String(bestTime)); } catch {}
+        }
+        for (let index = 0; index < cellCount; index++) if (board[index] === mine) cells[index] = flagged;
+        flags = mineCount;
+        message = "You cleared all " + safeCount + " safe cells in " + formatTime(Math.ceil(result)) + "." +
+          (newRecord ? " New best time." : "");
+        setStatus("won", "Survey complete");
+      } else {
+        shake = reducedMotion ? 0 : 0.32;
+        if (hit >= 0) burst(hit, "#ffa389", 24);
+        message = hit >= 0 ? "A mine was uncovered at " + coordinates(hit) + "." : "The tide reached the grid before the survey was complete.";
+        setStatus("lost", hit >= 0 ? "Mine struck" : "Tide in");
+      }
+      updateScore();
+      updateClock();
+      announcement.textContent = message;
+      overlayLabel.textContent = won ? "Survey complete" : "Survey ended";
+      overlayTitle.textContent = won ? "Shallows cleared" : hit >= 0 ? "Signal lost" : "Tide rolled in";
+      overlayCopy.textContent = message;
+      overlayControls.hidden = true;
+      startButton.textContent = "New survey";
+      overlay.hidden = false;
+      if (document.activeElement === field) startButton.focus({ preventScroll: true });
+      dirty = true;
+    }
+
+    function reveal(index) {
+      if (phase !== "playing" || cells[index] === flagged) return;
+      if (!board) {
+        board = generateBoard(index);
+        lastTime = performance.now();
+        setStatus("playing", "Survey in progress");
+      }
+      let targets = [index];
+      if (cells[index] === open) {
+        if (!board[index]) return;
+        const around = neighbors[index];
+        if (around.filter(neighbor => cells[neighbor] === flagged).length !== board[index]) return;
+        targets = around.filter(neighbor => cells[neighbor] === covered);
+      }
+      for (const target of targets) {
+        if (board[target] === mine) {
+          finish(false, target);
+          return;
+        }
+        const opened = uncover(board, cells, target);
+        revealed += opened.length;
+        for (const cell of opened.slice(0, 12)) burst(cell, "#86dac9", 3);
+      }
+      updateScore();
+      announceCell(index);
+      if (revealed === safeCount) finish(true, -1);
+      dirty = true;
+    }
+
+    function resizeBoard() {
+      const { width, height } = canvas.getBoundingClientRect();
+      if (!width || !height) return;
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
+      const padding = width < 490 ? 26 : 36;
+      const trailing = 11;
+      const size = Math.min((width - padding - trailing) / columns, (height - padding - trailing) / rows);
+      layout = {
+        width, height, size,
+        x: (width - columns * size + padding - trailing) / 2,
+        y: (height - rows * size + padding - trailing) / 2
+      };
+      particles = [];
+      dirty = true;
+    }
+
+    function burst(index, color, amount) {
+      if (reducedMotion) return;
+      const x = layout.x + (index % columns + 0.5) * layout.size;
+      const y = layout.y + (Math.floor(index / columns) + 0.5) * layout.size;
+      for (let i = 0; i < amount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 15 + Math.random() * 90;
+        const lifetime = .25 + Math.random() * .38;
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color, lifetime, remaining: lifetime });
+      }
+    }
+
+    function drawContours(width, height) {
+      ctx.lineWidth = 1;
+      for (let lane = 0; lane < 10; lane++) {
+        ctx.strokeStyle = lane % 3 === 0 ? "#294951" : "#203a42";
+        ctx.beginPath();
+        for (let x = 0; x <= width + 12; x += 12) {
+          const y = height * (lane / 9) + 17 * Math.sin(x / 82 + lane / 3) + 7 * Math.cos(x / 31 + lane);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function drawFlag(x, y, size) {
+      ctx.strokeStyle = "#f3cc7b";
+      ctx.lineWidth = Math.max(1.4, size * .043);
+      ctx.beginPath();
+      ctx.moveTo(x - size * .13, y + size * .20);
+      ctx.lineTo(x - size * .13, y - size * .23);
+      ctx.stroke();
+      ctx.fillStyle = "#f3cc7b";
+      ctx.beginPath();
+      ctx.moveTo(x - size * .13, y - size * .23);
+      ctx.lineTo(x + size * .22, y - size * .12);
+      ctx.lineTo(x - size * .13, y - size * .02);
+      ctx.fill();
+    }
+
+    function drawMine(x, y, size, hit) {
+      ctx.fillStyle = hit ? "#ffd0ae" : "#f4927c";
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = Math.max(1.25, size * .044);
+      ctx.beginPath();
+      for (let ray = 0; ray < 8; ray++) {
+        const angle = ray * Math.PI / 4;
+        ctx.moveTo(x + Math.cos(angle) * size * .125, y + Math.sin(angle) * size * .125);
+        ctx.lineTo(x + Math.cos(angle) * size * .258, y + Math.sin(angle) * size * .258);
+      }
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, size * .145, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function draw() {
+      const { width, height, x, y, size } = layout;
+      if (!size) return;
+      const gridWidth = columns * size;
+      const gridHeight = rows * size;
+
+      const background = ctx.createLinearGradient(0, 0, width * .62, height);
+      background.addColorStop(0, "#10272d");
+      background.addColorStop(1, "#0a181d");
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, width, height);
+      drawContours(width, height);
+      ctx.save();
+      if (shake > 0) {
+        const offset = shake * 15;
+        ctx.translate(Math.sin(shake * 94) * offset, Math.cos(shake * 61) * offset * .55);
+      }
+
+      ctx.fillStyle = "#0b1a20";
+      ctx.fillRect(x - 2, y - 2, gridWidth + 4, gridHeight + 4);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "600 " + Math.max(9, size * .26) + "px monospace";
+      ctx.fillStyle = "#8bacaf";
+      for (let column = 0; column < columns; column++) ctx.fillText(letters[column], x + (column + .5) * size, y - 10);
+      for (let row = 0; row < rows; row++) ctx.fillText(String(row + 1), x - 11, y + (row + .5) * size);
+
+      const gap = size < 24 ? 1 : 2;
+      for (let index = 0; index < cellCount; index++) {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        const left = x + column * size;
+        const top = y + row * size;
+        const centerX = left + size / 2;
+        const centerY = top + size / 2;
+        const tile = cells[index];
+        const hitsMine = phase === "lost" && board[index] === mine;
+        const badFlag = phase === "lost" && tile === flagged && !hitsMine;
+        const highlighted = phase === "playing" && (hover === index || (keyboardActive && selected === index));
+        const deep = row >= Math.ceil(rows * .56);
+        const alternate = (row + column) % 2;
+        let tileColor = deep ? (alternate ? "#1f3a42" : "#213e47") : (alternate ? "#28454b" : "#2b4950");
+        if (tile === open) tileColor = board[index] ? "#142c32" : "#10252b";
+        if (tile === flagged) tileColor = "#3b3530";
+        if (hitsMine && tile !== flagged) tileColor = index === detonated ? "#9b4d3f" : "#4c302e";
+        if (highlighted && tile === covered) tileColor = "#3b6470";
+        ctx.fillStyle = tileColor;
+        ctx.fillRect(left + gap / 2, top + gap / 2, size - gap, size - gap);
+
+        if (tile === covered && !hitsMine) {
+          ctx.fillStyle = deep ? "#82aab641" : "#a1c9c34f";
+          ctx.fillRect(left + gap, top + gap, size - gap * 2, 1);
+          ctx.fillStyle = "#a3d8d738";
+          ctx.fillRect(centerX - 1, centerY - 1, 2, 2);
+        }
+        if (hitsMine && tile !== flagged) {
+          drawMine(centerX, centerY, size, index === detonated);
+        } else if (tile === flagged) {
+          drawFlag(centerX, centerY, size);
+        } else if (tile === open && board[index] > 0) {
+          ctx.font = "700 " + Math.max(12, size * .46) + "px monospace";
+          ctx.fillStyle = clueColors[board[index]];
+          ctx.fillText(board[index], centerX, centerY + 1);
+        }
+        if (badFlag) {
+          ctx.strokeStyle = "#ff9c89";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(left + size * .20, top + size * .76);
+          ctx.lineTo(left + size * .78, top + size * .23);
+          ctx.stroke();
+        }
+        if (highlighted) {
+          ctx.strokeStyle = keyboardActive && selected === index ? "#f1cd81" : "#a6e2d4";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(left + 1.5, top + 1.5, size - 3, size - 3);
+        }
+      }
+
+      for (const particle of particles) {
+        ctx.globalAlpha = particle.remaining / particle.lifetime;
+        ctx.fillStyle = particle.color;
+        ctx.fillRect(particle.x, particle.y, 3, 3);
+      }
+      ctx.restore();
+      dirty = false;
+    }
+
+    function step(now) {
+      const dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+      lastTime = now;
+      if (!paused) {
+        if (phase === "playing" && board) {
+          elapsed = Math.min(tideLimit, elapsed + dt);
+          updateClock();
+          if (elapsed === tideLimit) finish(false, -1);
+        }
+        if (particles.length || shake > 0) {
+          shake = Math.max(0, shake - dt);
+          for (const particle of particles) {
+            particle.x += particle.vx * dt;
+            particle.y += particle.vy * dt;
+            particle.vy += 110 * dt;
+            particle.remaining -= dt;
+          }
+          particles = particles.filter(particle => particle.remaining > 0);
+          dirty = true;
+        }
+      }
+      if (dirty) draw();
+      requestAnimationFrame(step);
+    }
+
+    function cellAt(event) {
+      const bounds = canvas.getBoundingClientRect();
+      const column = Math.floor((event.clientX - bounds.left - layout.x) / layout.size);
+      const row = Math.floor((event.clientY - bounds.top - layout.y) / layout.size);
+      if (column < 0 || column >= columns || row < 0 || row >= rows) return -1;
+      return row * columns + column;
+    }
+
+    canvas.addEventListener("pointermove", event => {
+      if (event.pointerType === "touch") return;
+      const next = cellAt(event);
+      if (hover === next && !keyboardActive) return;
+      hover = next;
+      keyboardActive = false;
+      dirty = true;
+    });
+    canvas.addEventListener("pointerleave", () => {
+      hover = -1;
+      dirty = true;
+    });
+    canvas.addEventListener("click", event => {
+      if (event.pointerType === "touch") return;
+      const index = cellAt(event);
+      if (index < 0) return;
+      selected = index;
+      keyboardActive = false;
+      reveal(index);
+    });
+    canvas.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      if (event.pointerType === "touch") return;
+      const index = cellAt(event);
+      if (index < 0) return;
+      selected = index;
+      keyboardActive = false;
+      placeFlag(index);
+    });
+
+    const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    field.addEventListener("keydown", event => {
+      if (event.target !== field || phase !== "playing") return;
+      const direction = directions[event.key];
+      const key = event.key.toLowerCase();
+      if (!direction && key !== " " && key !== "f" && key !== "enter") return;
+      event.preventDefault();
+      keyboardActive = true;
+      hover = -1;
+      if (direction) {
+        const column = Math.min(columns - 1, Math.max(0, selected % columns + direction[0]));
+        const row = Math.min(rows - 1, Math.max(0, Math.floor(selected / columns) + direction[1]));
+        selected = row * columns + column;
+        announceCell(selected);
+      } else if (!event.repeat) {
+        if (key === "f") placeFlag(selected);
+        else reveal(selected);
+      }
+      dirty = true;
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key.toLowerCase() !== "r" || event.repeat || event.ctrlKey || event.metaKey || event.altKey || phase === "ready") return;
+      event.preventDefault();
+      reset();
+    });
+
+    function setPaused(value) {
+      paused = value;
+      hover = -1;
+      keyboardActive = false;
+      lastTime = performance.now();
+      if (phase === "playing") {
+        if (paused) setStatus("paused", "Survey paused");
+        else setStatus("playing", board ? "Survey in progress" : "Make your first reveal");
+      }
+      dirty = true;
+    }
+
+    startButton.addEventListener("click", reset);
+    restartButton.addEventListener("click", reset);
+    window.addEventListener("blur", () => setPaused(true));
+    window.addEventListener("focus", () => setPaused(document.hidden));
+    document.addEventListener("visibilitychange", () => setPaused(document.hidden || !document.hasFocus()));
+    window.addEventListener("resize", resizeBoard);
+    new ResizeObserver(resizeBoard).observe(canvas);
+    if (!ctx) {
+      overlayTitle.textContent = "Canvas unavailable";
+      overlayCopy.textContent = "Open this file in a browser with Canvas 2D support.";
+      overlayControls.hidden = true;
+      startButton.disabled = true;
+    } else {
+      updateScore();
+      resizeBoard();
+      requestAnimationFrame(step);
+    }
+  </script>
+</body>
+</html>

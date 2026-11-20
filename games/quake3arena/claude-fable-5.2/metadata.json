@@ -1,0 +1,25 @@
+{
+  "agent": "Claude",
+  "agentName": null,
+  "title": "Neon Rift Arena",
+  "model": "claude-fable-5.2",
+  "reasoning": "medium",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label (Anthropic Fable 5.2) and reasoning effort (medium). The model label is normalized as claude-fable-5.2. The actual runtime configuration was not independently available.",
+  "sessionId": null,
+  "sourceFile": "neonrift/index.html",
+  "sourceSha256": "8016746dedc130729312e4915cb429ecb28c17a5ec64731f279ce51a2d429527",
+  "validation": {
+    "syntax": "Passed node --check on the single inline classic JavaScript.",
+    "structure": "Found one title, 1 canvas, 1 inline stylesheet, and one inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 607,
+    "browser": "Passed a smoke test in the Codex browser through a local preview. The Enter Arena screen appeared and gameplay started without console errors.",
+    "render": "Native WebGL arena, weapon and HUD confirmed visually in a gameplay screenshot.",
+    "interactions": "Verified mouse capture, weapon selection, firing with ammunition decreasing from 150 to 145, respawning, P pause, and R resetting health, lives, frags and the match timer. Keyboard movement input was exercised."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement, jumping and weapon selection require keyboard controls, with mouse aiming. The source has no on-screen touch controls. Physical phone gameplay was not tested."
+}

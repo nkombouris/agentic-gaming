@@ -1,0 +1,19 @@
+{
+  "agent": "Codex",
+  "agentName": "Newton",
+  "title": "Fenwake",
+  "model": "gpt-6.1-sol",
+  "reasoning": "max",
+  "startedAt": "2026-11-17T09:25:44Z",
+  "finishedAt": "2026-11-17T09:34:35Z",
+  "elapsedSeconds": 531,
+  "timingBasis": "Subagent UTC clock from reading the shared game brief through completion of game checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e8d3-7a04-7080-989f-9c6d32fe0a80",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "No browser smoke test; built-in browser blocks local file URLs"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard. The game has no on-screen movement controls."
+}

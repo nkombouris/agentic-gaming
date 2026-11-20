@@ -1,0 +1,21 @@
+{
+  "agent": null,
+  "agentName": null,
+  "title": "Aetherblade: Shrine of Echoes",
+  "model": "gemini-hydrogen",
+  "reasoning": "medium",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label and reasoning effort",
+  "sessionId": null,
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript",
+    "structure": "Found one title, one canvas, inline CSS, and one inline classic script. No external assets were found in HTML resource attributes or CSS.",
+    "lineCount": 2437,
+    "browser": "Browser smoke test not run"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard. The game has no on-screen movement controls."
+}

@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glasshouse Vigil</title>
+<style>
+:root{color-scheme:dark;--ink:#111e1a;--panel:#192822;--line:#405247;--white:#f1eeda;--dim:#adc0a9;--lime:#d2e899;--orange:#ff976e}
+*{box-sizing:border-box}
+body{margin:0;min-width:540px;height:100vh;overflow:hidden;background:radial-gradient(ellipse at 20% 35%,#24372d,#101a17 80%);color:var(--white);font:14px/1.45 'Trebuchet MS',Arial,sans-serif}
+button{font:inherit;cursor:pointer;color:inherit}
+#shell{height:100%;max-width:1600px;margin:auto;display:flex;flex-direction:column;padding:clamp(12px,2.6vh,32px) clamp(14px,3.3vw,54px) 12px}
+header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:0 0 14px}
+.brand{display:flex;align-items:center;gap:13px}
+.mark{width:40px;height:40px;border:1px solid #879b74;transform:rotate(45deg);display:grid;place-items:center;color:var(--lime);margin:0 7px}
+.mark span{transform:rotate(-45deg);font:30px Georgia}
+h1,h2,h3,p{margin:0}
+h1{font:normal clamp(24px,3.2vw,47px)/.98 Georgia,serif;letter-spacing:-1.8px}
+.micro,.tag,kbd,.boardhead,.foot,.status{font:10px/1.35 'Courier New',monospace;letter-spacing:1.45px;text-transform:uppercase}
+.brand .micro{margin-top:8px;color:var(--dim)}
+.status{display:flex;gap:10px;align-items:center;letter-spacing:1px}
+.lamp{width:7px;height:7px;background:var(--lime);border-radius:50%;box-shadow:0 0 9px #c4e49a80}
+main{display:grid;grid-template-columns:minmax(0,1fr) clamp(189px,21vw,275px);gap:clamp(14px,2.2vw,34px);flex:1;min-height:0;padding:18px 0 8px}
+.field{min-height:0;display:flex;flex-direction:column}
+.boardhead,.foot{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--dim)}
+.boardhead{padding:0 1px 9px}
+.viewport{flex:1;min-height:0;position:relative;overflow:hidden;border:1px solid #506355;background:#14241d}
+canvas{width:100%;height:100%;display:block}
+.foot{padding:8px 0;font-size:9px;letter-spacing:.6px}
+.sidebar{min-height:0;display:flex;flex-direction:column;gap:13px;padding-top:23px;overflow:auto}
+.box{border-top:1px solid var(--line);padding-top:13px}
+.sidebar .micro{color:var(--dim)}
+.sidebar h2{font:normal 28px/1.1 Georgia;margin:5px 0 12px}
+.healthrow,.actionrow{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.healthrow{margin-bottom:8px}
+#hp,#ap{display:flex;gap:4px}
+#hp i{height:9px;width:12px;border:1px solid #778976}
+#hp i.on{background:var(--lime);border-color:var(--lime)}
+#ap i{width:9px;height:9px;transform:rotate(45deg);border:1px solid #778976;margin:0 2px}
+#ap i.on{background:#f0cd80;border-color:#f0cd80}
+.objective{display:flex;align-items:baseline;justify-content:space-between}
+.objective strong{color:var(--lime);font:21px Georgia}
+.sidebar p{color:#cfd5c3;font-size:13px}
+.commands{display:grid;gap:6px;margin-top:10px}
+.cmd{border:1px solid #41564a;background:#20332a;padding:8px 10px;text-align:left;display:flex;justify-content:space-between;align-items:center}
+.cmd:hover,.cmd:focus-visible{background:#324b39;border-color:#a7be89}
+.cmd.selected{border-color:#bace92;background:#334535;color:#e4f0b7}
+.cmd:disabled{opacity:.48;cursor:default}
+kbd{letter-spacing:0;color:#b9c8ac}
+#end{margin-top:3px;color:#243023;background:#d1dfa5;border-color:#d1dfa5;font-weight:bold}
+#end kbd{color:#47583b}
+#log{line-height:1.5;color:#e0cf9e}
+#overlay{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(115deg,#101f19e6,#0d1c16b3);padding:18px;backdrop-filter:blur(2px)}
+#overlay.hidden{display:none}
+.card{width:min(372px,96%);background:linear-gradient(130deg,#283c30,#1b2d23);border:1px solid #8b9e74;box-shadow:0 16px 58px #07100988;padding:clamp(18px,3vw,35px);position:relative}
+.card:before,.card:after{content:'✦';position:absolute;color:#a9bc83;top:6px;right:9px;font-size:12px}
+.card:after{top:auto;right:auto;bottom:6px;left:9px}
+.tag{color:var(--lime);letter-spacing:2px}
+.card h2{font:normal clamp(32px,4vw,55px)/1 Georgia;letter-spacing:-2px;margin:11px 0}
+.card p{color:#d7ddc9}
+#guide{border-block:1px solid #52624e;margin:18px 0;padding:10px 0;color:#c4ceba;font-size:12px;line-height:1.6}
+#start{background:var(--lime);color:#1c2b1c;border:0;padding:11px 18px;font-weight:bold}
+#start:hover{background:#e8fab8}
+@media(max-height:620px){#shell{padding-top:8px}header{padding-bottom:7px}.sidebar{gap:7px}.box{padding-top:7px}.sidebar h2{margin:2px 0 6px;font-size:23px}.cmd{padding:4px 8px}main{padding-top:8px}.card{padding:16px 22px}#guide{margin:10px 0}}
+</style>
+</head>
+<body>
+<div id="shell">
+<header><div class="brand"><div class="mark" aria-hidden="true"><span>❧</span></div><div><h1>Glasshouse Vigil</h1><div class="micro">Conservatory field operations</div></div></div><div class="status"><i class="lamp"></i><span id="turn">Round 01</span></div></header>
+<main><section class="field"><div class="boardhead"><span>West conservatory</span><span>Plan · G/04</span></div><div class="viewport"><canvas id="board" aria-label="Tactical map of the conservatory"></canvas>
+<div id="overlay"><section class="card"><div class="tag" id="eyebrow">Field assignment</div><h2 id="headline">The night watch</h2><p id="brief">Three vents are leaking amber spores. Seal them before the brass beetles overwhelm the glasshouse.</p><div id="guide">Click a marked tile to move, a visible beetle to fire, or an adjacent vent to seal it. Each action costs one of your two points. Space ends your turn.</div><button id="start">Enter the glasshouse →</button></section></div>
+</div><div class="foot"><span id="hoverInfo">Survey the conservatory</span><span>R · Restart</span></div></section>
+<aside class="sidebar"><section class="box"><div class="micro">Active unit</div><h2>Night keeper</h2><div class="healthrow"><span>Integrity</span><span id="hp"></span></div><div class="actionrow"><span>Action points</span><span id="ap"></span></div></section>
+<section class="box"><div class="objective"><div class="micro">Vents sealed</div><strong id="count">0 / 3</strong></div><p>Reach each amber vent and seal it from a neighboring tile.</p></section>
+<section class="box"><div class="micro">Commands</div><div class="commands"><button class="cmd" id="move">Move or interact <kbd>1</kbd></button><button class="cmd" id="aim">Sight lines <kbd>2</kbd></button><button class="cmd" id="end">End turn <kbd>Space</kbd></button></div></section>
+<section class="box"><div class="micro">Field report</div><p id="log" aria-live="polite">Awaiting keeper.</p></section></aside></main></div>
+<script>
+'use strict';
+const get=id=>document.getElementById(id);
+const board=get('board'),ctx=board.getContext('2d');
+const W=13,H=9;
+const plan=[
+'.............',
+'..##...##....',
+'.....#....#..',
+'.##..#....#..',
+'.......##....',
+'...##......#.',
+'.#....##...#.',
+'.#.......#...',
+'.............'
+];
+const ventsInit=[[2,1],[10,1],[10,7]];
+// Each raised growing bed occupies a square and blocks movement and sight.
+const walls=new Set();
+plan.forEach((row,y)=>[...row].forEach((v,x)=>{if(v==='#')walls.add(x+','+y)}));
+// The northwest vent has its own grate in the end of the planting bed.
+walls.delete('2,1');
+const dist=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+const sep=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const key=p=>p.x+','+p.y;
+const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+const near=p=>dirs.map(([x,y])=>({x:p.x+x,y:p.y+y})).filter(p=>p.x>=0&&p.y>=0&&p.x<W&&p.y<H);
+const blocked=p=>walls.has(key(p));
+const noise=(x,y,i=0)=>{const s=Math.sin(x*64.129+y*19.739+i*42.373)*43758.543;return s-Math.floor(s)};
+let phase='intro',prior='play',player,bugs,vents,turn,ap,orders,mode,reachable,hover=null;
+let elapsed=0,last=0,delay=0,enemyIndex=0,shake=0,flashes=[],trails=[],particles=[],fields=[];
+let bw=1,bh=1,tile=1,ox=0,oy=0,ratio=1;
+function reset(){
+ player={x:1,y:7,hp:6};
+ // Start in the aisle beside the southwest growing bed.
+ player.x=2;bugs=[{x:4,y:2,hp:2},{x:9,y:3,hp:2},{x:10,y:6,hp:2}];
+ vents=ventsInit.map(([x,y])=>({x,y,sealed:false}));
+ turn=1;ap=2;orders=0;mode='move';trails=[];particles=[];flashes=[];fields=[];hover=null;shake=0;delay=0;enemyIndex=0;reachable=walk(player,3);
+}
+function walk(start,limit){
+ const seen=new Map([[key(start),0]]),q=[start];
+ for(let i=0;i<q.length;i++){
+  const p=q[i],n=seen.get(key(p))+1;if(n>limit)continue;
+  for(const a of near(p)){
+   if(seen.has(key(a))||blocked(a)||bugs.some(b=>b!==start&&dist(b,a)===0)||dist(player,a)===0)continue;
+   seen.set(key(a),n);q.push(a);
+  }
+ }
+ return seen;
+}
+function sight(a,b){
+ // Test each solid square against the center-to-center segment.
+ const dx=b.x-a.x,dy=b.y-a.y;
+ for(const cell of walls){
+  const [x,y]=cell.split(',').map(Number);
+  let lo=0,hi=1;
+  for(const [origin,delta,mid] of [[a.x,dx,x],[a.y,dy,y]]){
+   if(delta===0){if(Math.abs(origin-mid)>.499){lo=2;break}}
+   else{
+    const u=(mid-.499-origin)/delta,v=(mid+.499-origin)/delta;
+    lo=Math.max(lo,Math.min(u,v));hi=Math.min(hi,Math.max(u,v));
+   }
+  }
+  if(lo<=hi)return false;
+ }
+ return true;
+}
+const canHit=(a,b,range)=>sep(a,b)<=range&&sight(a,b);
+function hud(msg){
+ get('turn').textContent='Round '+String(turn).padStart(2,'0')+(phase==='enemy'?' · Beetles':'');
+ get('hp').innerHTML=Array.from({length:6},(_,i)=>'<i class="'+(i<player.hp?'on':'')+'"></i>').join('');
+ get('hp').setAttribute('aria-label',player.hp+' of 6');
+ get('ap').innerHTML=Array.from({length:2},(_,i)=>'<i class="'+(i<ap?'on':'')+'"></i>').join('');
+ get('ap').setAttribute('aria-label',ap+' of 2');
+ get('count').textContent=vents.filter(v=>v.sealed).length+' / 3';
+ get('move').classList.toggle('selected',mode==='move');get('aim').classList.toggle('selected',mode==='aim');
+ for(const id of ['move','aim','end'])get(id).disabled=phase!=='play';
+ if(msg)get('log').textContent=msg;
+}
+function show(tag,title,body,guide,button){
+ get('eyebrow').textContent=tag;get('headline').textContent=title;get('brief').textContent=body;get('guide').textContent=guide;get('start').textContent=button;get('overlay').classList.remove('hidden');
+}
+function start(){
+ if(phase==='pause'){phase=prior;get('overlay').classList.add('hidden');hud();return}
+ reset();phase='play';get('overlay').classList.add('hidden');hud('Two actions ready. The northwest vent lies beyond the fern beds.');
+}
+function pause(){
+ if(phase!=='play'&&phase!=='enemy')return;
+ prior=phase;phase='pause';hover=null;show('Watch suspended','On standby','The conservatory will hold until you return.','Click below or press Enter to resume.','Resume watch →');hud();
+}
+function finish(win){
+ phase=win?'win':'lose';
+ let record=null;try{record=Number(localStorage.getItem('glasshouseVigilRecord'))||null;if(win&&(!record||turn<record)){record=turn;localStorage.setItem('glasshouseVigilRecord',String(record))}}catch{}
+ show('Field report',win?'Glasshouse secure':'Watch ended',win?'All three vents are sealed. The spore haze lifts from the conservatory.':'The keeper’s suit has lost integrity. The vents are still leaking.', 'Round '+turn+' · '+orders+' actions'+(record?' · Best watch '+record+' rounds':''),'Start a new watch →');
+ hud(win?'All seals verified.':'Keeper offline.');
+}
+function spend(msg){
+ ap--;orders++;reachable=walk(player,3);hud(msg+(ap===0?' End your turn.':''));
+}
+function spark(p,color,count){
+ for(let i=0;i<count;i++){const angle=Math.random()*Math.PI*2,s=.2+Math.random()*1.3;particles.push({x:p.x+.5,y:p.y+.5,vx:Math.cos(angle)*s,vy:Math.sin(angle)*s,life:.32+Math.random()*.29,c:color})}
+}
+function beam(a,b,c){trails.push({a:{...a},b:{...b},c,life:.32});spark(b,c,13)}
+function interact(p){
+ if(phase!=='play'||!p)return;
+ if(!ap){hud('No actions left. Press Space to end the turn.');return}
+ const b=bugs.find(e=>dist(e,p)===0),v=vents.find(e=>dist(e,p)===0&&!e.sealed);
+ if(b){
+  if(!canHit(player,b,5)){hud('Shot blocked or beyond the five-tile range.');return}
+  beam(player,b,'#f3eea3');b.hp--;if(!b.hp)bugs=bugs.filter(a=>a!==b);
+  spend(b.hp?'Direct hit. One more shot will disable this beetle.':'Beetle disabled.');return;
+ }
+ if(v&&dist(v,player)<=1){v.sealed=true;player.hp=Math.min(6,player.hp+1);spark(v,'#d0f59d',24);spend('Vent sealed. Suit integrity restored by one.');if(vents.every(e=>e.sealed))finish(true);return}
+ if(mode==='aim'){hud('Select a beetle on a visible tile to fire.');return}
+ if(reachable.has(key(p))&&dist(p,player)>0){
+  flashes.push({x:player.x,y:player.y,life:.4});player.x=p.x;player.y=p.y;spark(p,'#a1c59a',5);spend('Keeper in position.');return
+ }
+ hud(v?'Move within one tile of this vent to seal it.':'Choose a marked floor tile within three steps.');
+}
+function endTurn(){
+ if(phase!=='play')return;ap=0;phase='enemy';enemyIndex=0;delay=.35;hud('Brass beetles are searching the aisles.');
+}
+function enemyStep(){
+ if(enemyIndex>=bugs.length){
+  turn++;
+  if(turn%3===0&&bugs.length<5){
+   const gate=[{x:12,y:0},{x:12,y:8},{x:0,y:0}].find(g=>dist(g,player)>2&&!bugs.some(b=>dist(b,g)===0));
+   if(gate){bugs.push({...gate,hp:2});spark(gate,'#ffad74',12);fields=['A beetle entered through the service gate.']}
+  }
+  phase='play';ap=2;reachable=walk(player,3);hud(fields.pop()||'Your watch. Two actions ready.');return;
+ }
+ const b=bugs[enemyIndex++];
+ if(canHit(b,player,3.2)){
+  beam(b,player,'#ff986e');shake=.19;player.hp--;hud('Spore bolt struck the keeper.');if(player.hp<=0){finish(false);return}
+ }else{
+  // Distance from the keeper follows aisles around the solid benches.
+  const scores=new Map([[key(player),0]]),queue=[player];
+  for(let i=0;i<queue.length;i++){const p=queue[i];for(const n of near(p)){if(scores.has(key(n))||blocked(n))continue;scores.set(key(n),scores.get(key(p))+1);queue.push(n)}}
+  const ends=[...walk(b,2).keys()].map(k=>{const [x,y]=k.split(',').map(Number);return{x,y}});
+  const rank=n=>(scores.get(key(n))??100)-(canHit(n,player,3.2)?2:0);
+  ends.sort((a,c)=>rank(a)-rank(c));if(ends.length){b.x=ends[0].x;b.y=ends[0].y}
+  spark(b,'#c99968',4);
+ }
+ delay=.35;
+}
+function resize(){
+ const r=board.getBoundingClientRect();bw=r.width;bh=r.height;ratio=Math.min(devicePixelRatio||1,2);board.width=Math.round(bw*ratio);board.height=Math.round(bh*ratio);
+ tile=Math.min(bw/(W+1.1),bh/(H+1.05));ox=(bw-W*tile)/2;oy=(bh-H*tile)/2;
+}
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h)}
+function line(ax,ay,bx,by,c,w=.018){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.stroke()}
+function ellipse(x,y,rx,ry,c,r=0){ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x,y,rx,ry,r,0,Math.PI*2);ctx.fill()}
+function poly(points,c){
+ ctx.fillStyle=c;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill()
+}
+function ring(x,y,r,c,w=.025){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.stroke()}
+function bed(x,y){
+ ctx.save();ctx.translate(x,y);
+ poly([[.09,.26],[.89,.2],[1.14,.99],[.26,1.12]],'#14272266');
+ rect(.055,.14,.89,.77,'#38473a');rect(.055,.085,.89,.73,'#bbad82');rect(.095,.122,.81,.63,'#514f38');
+ rect(.09,.79,.82,.056,'#958768');line(.05,.095,.93,.095,'#dbcba5',.023);
+ for(let j=0;j<13;j++){
+  const cx=.16+noise(x,y,j*3)*.68,cy=.19+noise(x,y,j*3+1)*.48;
+  const hue=noise(x,y,j*3+2);
+  for(let n=0;n<6;n++){
+   const a=n*1.048+hue*6,dx=Math.cos(a),dy=Math.sin(a),size=.09+hue*.055;
+   const colors=['#406849','#5a8051','#799858','#88a569','#aec080','#587d5a'];
+   ellipse(cx+dx*size*.54,cy+dy*size*.54,size,.035+hue*.012,colors[(n+j)%6],a);
+   if(n%2===0)line(cx,cy,cx+dx*size*1.17,cy+dy*size*1.17,'#bbce8b77',.009);
+  }
+  ellipse(cx,cy,.027,.026,hue>.72?'#ecd092':'#a3b778');
+ }
+ ctx.restore();
+}
+function vent(v){
+ const {x,y,sealed}=v,c=sealed?'#addcb5':'#f2bb68',t=elapsed;
+ ctx.save();ctx.translate(x+.5,y+.5);poly([[0,-.4],[.36,-.19],[.36,.23],[0,.42],[-.36,.23],[-.36,-.19]],'#26392f');
+ ring(0,0,.29,'#9a916d',.07);ring(0,0,.23,c,.026);
+ ctx.save();ctx.rotate(sealed?0:t*.22);
+ for(let i=0;i<5;i++){ctx.rotate(Math.PI*2/5);poly([[0,-.02],[.05,-.2],[.16,-.11],[.13,.005]],sealed?'#78a78d':'#c49656')}
+ ctx.restore();ellipse(0,0,.065,.065,c);
+ if(!sealed){for(let i=0;i<4;i++){const n=(t*.28+i*.25)%1;ctx.globalAlpha=(1-n)*.8;ellipse(Math.sin(n*4+i)*.16,-.1-n*.48,.014+n*.011,.014+n*.011,c)}ctx.globalAlpha=1}
+ ctx.restore();
+}
+function beetle(b){
+ ctx.save();ctx.translate(b.x+.5,b.y+.51);const a=Math.atan2(player.y-b.y,player.x-b.x)+Math.PI*.5;ctx.rotate(a);
+ ellipse(.055,.065,.3,.22,'#17251d66');
+ for(const s of [-1,1])for(let k=0;k<3;k++){
+  const y=-.15+k*.15;line(s*.1,y,s*.26,y-.07,'#53392c',.054);line(s*.26,y-.07,s*.31,y+.01,'#ca845d',.033)
+ }
+ ellipse(0,-.2,.128,.135,'#4a3e30');ellipse(0,-.24,.065,.045,'#ffbd76');
+ ellipse(0,.03,.194,.236,'#4e4332');ellipse(-.087,.025,.095,.215,'#db8560',-.13);ellipse(.083,.025,.096,.215,'#bb694c',.13);
+ line(-.115,-.11,-.15,.01,'#ffc69a',.022);line(.015,-.14,.015,.21,'#734f39',.016);ellipse(0,.02,.042,.067,'#f1b57b');ctx.restore();
+ for(let i=0;i<2;i++)rect(b.x+.35+i*.16,b.y+.85,.135,.045,i<b.hp?'#f6a67c':'#4e4c3c');
+}
+function keeper(){
+ const x=player.x+.5,y=player.y+.49;
+ ring(x,y+.09,.36,'#c2e7b3',.023);ellipse(x+.045,y+.09,.23,.21,'#1d302755');
+ ctx.save();ctx.translate(x,y);
+ const target=hover||bugs[0]||{x:player.x,y:player.y-1};
+ ctx.rotate(Math.atan2(target.y-player.y,target.x-player.x)+Math.PI/2);
+ rect(-.16,.05,.11,.22,'#253b34');rect(.055,.05,.11,.22,'#253b34');
+ poly([[-.18,-.1],[.12,-.15],[.21,.06],[.11,.20],[-.18,.14],[-.23,.04]],'#c8d8ad');
+ rect(-.205,-.1,.09,.18,'#a59969');rect(.13,-.28,.075,.26,'#394e45');rect(.14,-.3,.05,.1,'#d8c698');
+ ellipse(0,-.045,.145,.164,'#738b75');ellipse(-.022,-.08,.138,.14,'#e1e3c0');ellipse(.006,-.123,.098,.058,'#365b53');line(-.052,-.14,.042,-.15,'#8ec6b8',.023);
+ ctx.restore();
+}
+function highlight(x,y,c){rect(x+.027,y+.027,.946,.946,c)}
+function draw(){
+ ctx.setTransform(ratio,0,0,ratio,0,0);rect(0,0,bw,bh,'#192c23');
+ ctx.save();ctx.translate(ox+(shake?Math.sin(elapsed*103)*3:0),oy);ctx.scale(tile,tile);
+ // Inset brass edging and coordinate marks around the greenhouse floor.
+ rect(-.13,-.13,W+.26,H+.26,'#8b8869');rect(-.09,-.09,W+.18,H+.18,'#344b3f');
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  const seed=noise(x,y),pal=['#adbba0','#b2bfa3','#a7b69b','#b9c4a8','#afbd9f'];
+  rect(x,y,1,1,pal[Math.floor(seed*5)]);rect(x,y,1,.018,'#75876f');rect(x,y,.018,1,'#7e9078');
+  line(x+.04,y+.04,x+.94,y+.04,'#d3d9b944');line(x+.04,y+.04,x+.04,y+.94,'#d3d9b944');
+  for(let i=0;i<7;i++){const nx=x+noise(x,y,11+i)*.9,ny=y+noise(x,y,22+i)*.95;line(nx,ny,nx+.02+noise(x,y,33+i)*.06,ny-.01,'#708a7035',.01)}
+  if((x+y)%5===0){line(x+.17,y+.25,x+.26,y+.33,'#72876b55',.014);line(x+.26,y+.33,x+.39,y+.31,'#72876b55',.014)}
+ }
+ // Slanting cast shadows from the roof trusses.
+ ctx.save();ctx.beginPath();ctx.rect(0,0,W,H);ctx.clip();
+ for(let i=-6;i<W;i+=4){poly([[i,0],[i+.09,0],[i+4.15,H],[i+4.04,H]],'#344f4523');poly([[i+.17,0],[i+.21,0],[i+4.26,H],[i+4.2,H]],'#344f4519')}
+ ctx.restore();
+ if(phase==='play'&&ap>0){
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+   if(blocked({x,y}))continue;
+   if(mode==='aim'&&canHit(player,{x,y},5))highlight(x,y,'#e9d37b57');
+   else if(mode==='move'&&reachable.has(x+','+y)){
+    highlight(x,y,'#538a7960');const c='#def1c590';
+    line(x+.09,y+.09,x+.21,y+.09,c,.018);line(x+.09,y+.09,x+.09,y+.21,c,.018);
+   }
+  }
+ }
+ for(const v of vents)vent(v);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(walls.has(x+','+y))bed(x,y);
+ for(const b of bugs)beetle(b);keeper();
+ if(hover&&phase==='play'){
+  const b=bugs.find(n=>dist(n,hover)===0);
+  if(b){ctx.setLineDash([.09,.08]);line(player.x+.5,player.y+.5,b.x+.5,b.y+.5,canHit(player,b,5)?'#ffedaf':'#833f35',.033);ctx.setLineDash([])}
+  ctx.strokeStyle='#fff2c4';ctx.lineWidth=.045;ctx.strokeRect(hover.x+.045,hover.y+.045,.91,.91);
+ }
+ for(const f of flashes){ctx.globalAlpha=f.life;ring(f.x+.5,f.y+.55,.31,'#e9f0ce');ctx.globalAlpha=1}
+ for(const tr of trails){ctx.globalAlpha=tr.life/.32;line(tr.a.x+.5,tr.a.y+.5,tr.b.x+.5,tr.b.y+.5,tr.c,.055);ctx.globalAlpha=1}
+ for(const p of particles){ctx.globalAlpha=Math.min(1,p.life*3);ellipse(p.x,p.y,.023,.023,p.c);ctx.globalAlpha=1}
+ ctx.font='.16px monospace';ctx.textAlign='center';ctx.fillStyle='#a9b79b';
+ for(let x=0;x<W;x++)ctx.fillText(String.fromCharCode(65+x),x+.5,-.22);
+ for(let y=0;y<H;y++)ctx.fillText(String(y+1),-.28,y+.55);
+ ctx.restore();
+}
+function frame(now){
+ const dt=Math.min(.05,(now-(last||now))/1000);last=now;
+ if(phase!=='pause'){
+  elapsed+=dt;shake=Math.max(0,shake-dt);
+  for(const a of particles){a.life-=dt;a.x+=a.vx*dt;a.y+=a.vy*dt}
+  for(const a of [...flashes,...trails])a.life-=dt;
+  particles=particles.filter(a=>a.life>0);flashes=flashes.filter(a=>a.life>0);trails=trails.filter(a=>a.life>0);
+  if(phase==='enemy'){delay-=dt;if(delay<=0)enemyStep()}
+ }
+ draw();requestAnimationFrame(frame);
+}
+function point(ev){
+ const r=board.getBoundingClientRect(),x=Math.floor((ev.clientX-r.left-ox)/tile),y=Math.floor((ev.clientY-r.top-oy)/tile);
+ return x>=0&&y>=0&&x<W&&y<H?{x,y}:null;
+}
+function info(){
+ let label='Survey the conservatory';
+ if(hover&&phase==='play'){
+  const p=hover,v=vents.find(e=>dist(p,e)===0),b=bugs.find(e=>dist(p,e)===0);
+  label=String.fromCharCode(65+p.x)+(p.y+1)+' · '+(b?'Brass beetle · '+b.hp+' integrity · '+(canHit(player,b,5)?'Clear shot':'Out of sight or range'):v?(v.sealed?'Sealed vent':dist(player,v)<=1?'Seal vent · 1 AP':'Leaking vent'):blocked(p)?'Growing bed · Blocks sight':dist(player,p)===0?'Night keeper':reachable.has(key(p))?'Move · 1 AP':'Floor');
+ }
+ get('hoverInfo').textContent=label;
+}
+get('start').onclick=start;get('end').onclick=endTurn;
+function setMode(v){if(phase==='play'){mode=v;hud(v==='aim'?'Highlighted tiles are within your five-tile firing range and line of sight.':'Move up to three tiles per action.');}}
+get('move').onclick=()=>setMode('move');get('aim').onclick=()=>setMode('aim');
+board.addEventListener('mousemove',e=>{hover=point(e);info()});board.addEventListener('mouseleave',()=>{hover=null;info()});board.addEventListener('click',e=>{interact(point(e));info()});
+window.addEventListener('keydown',e=>{
+ const k=e.key.toLowerCase();
+ if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+ if(e.repeat)return;
+ if(k==='r'){phase='intro';start()}else if(k===' '&&phase==='play')endTurn();else if(k==='1')setMode('move');else if(k==='2')setMode('aim');else if(k==='enter'&&phase!=='play'&&phase!=='enemy'){e.preventDefault();start()}
+});
+window.addEventListener('blur',pause);document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});window.addEventListener('resize',resize);
+reset();resize();hud();requestAnimationFrame(frame);
+</script>
+</body></html>

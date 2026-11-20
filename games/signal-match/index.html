@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, follow" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Signal Match — Agentic Games</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./game.js" defer></script>
+  </head>
+  <body>
+    <main class="game">
+      <div class="game-top">
+        <span>✳ SIGNAL MATCH</span
+        ><button id="restart" type="button" data-text="restart">
+          New game
+        </button>
+      </div>
+      <h1 data-text="title">Find your signal.</h1>
+      <p class="intro" data-text="intro">
+        Find the six matching pairs. Take your time.
+      </p>
+      <div class="scoreboard">
+        <div>
+          <span data-text="moves">MOVES</span><strong id="moves">00</strong>
+        </div>
+        <div>
+          <span data-text="pairs">PAIRS</span
+          ><strong id="pairs">00 / 06</strong>
+        </div>
+        <span class="score-decoration" aria-hidden="true">↗</span>
+      </div>
+      <div
+        id="board"
+        class="board"
+        role="group"
+        aria-label="Signal Match"
+      ></div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <p class="tip" data-text="tip">
+        Tap two cards. Match their symbols. Repeat.
+      </p>
+      <p class="keyboard-tip" data-text="keyboard">
+        Keyboard: Tab to a card, Enter or Space to reveal it.
+      </p>
+      <noscript
+        >Enable JavaScript to play Signal Match. / Aktiviere JavaScript, um
+        Signal Match zu spielen.</noscript
+      >
+    </main>
+  </body>
+</html>

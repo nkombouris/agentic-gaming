@@ -1,0 +1,122 @@
+[
+  {
+    "id": "blacksite-zero-protocol",
+    "directory": "gemini-argon",
+    "en": {
+      "description": "Guide a lone operative through three enemy waves using cover, flanking, and overwatch.",
+      "instructions": "Click a reachable tile to move or an enemy to target it. Press 2 for overwatch or Space to end the turn."
+    },
+    "de": {
+      "description": "Führe einen einzelnen Agenten durch drei Gegnerwellen und nutze Deckung, Flanken und Reaktionsfeuer.",
+      "instructions": "Klicke auf ein erreichbares Feld zum Bewegen oder auf einen Gegner zum Anvisieren. Drücke 2 für Reaktionsfeuer oder die Leertaste zum Beenden des Zuges."
+    }
+  },
+  {
+    "id": "shadow-sector",
+    "directory": "gemini-hydrogen",
+    "en": {
+      "description": "Infiltrate a foggy facility and survive three waves through careful positioning and overwatch.",
+      "instructions": "Click a tile to move or place a target. Use 1–4 to choose an action and Space to end the turn."
+    },
+    "de": {
+      "description": "Infiltriere eine neblige Anlage und überstehe drei Wellen mit guter Positionierung und Reaktionsfeuer.",
+      "instructions": "Klicke zum Bewegen oder Zielen auf ein Feld. Wähle mit 1–4 eine Aktion und beende den Zug mit der Leertaste."
+    }
+  },
+  {
+    "id": "last-signal",
+    "directory": "astra",
+    "en": {
+      "description": "Send a lone operative to recover a relay payload and return to the extraction pad. Use full walls to break line of sight.",
+      "instructions": "Click a tile to move or a visible hostile to fire. Press F to interact, Q for overwatch, or Space to end the turn."
+    },
+    "de": {
+      "description": "Berge als einzelner Agent Daten aus dem Relais und kehre zum Evakuierungspunkt zurück. Wände blockieren die Sichtlinie.",
+      "instructions": "Klicke zum Bewegen auf ein Feld oder zum Feuern auf einen sichtbaren Gegner. Interagiere mit F, aktiviere mit Q Reaktionsfeuer oder beende den Zug mit der Leertaste."
+    }
+  },
+  {
+    "id": "blackout-relay",
+    "directory": "sol",
+    "en": {
+      "description": "Restore a relay and reach extraction while using walls and cover to evade the facility's drones.",
+      "instructions": "Tap or click a tile to move or a visible drone to fire. Use the Link Relay and End Turn buttons, or press F and Space."
+    },
+    "de": {
+      "description": "Stelle das Relais wieder her und erreiche den Evakuierungspunkt. Nutze Wände und Deckung, um den Drohnen zu entgehen.",
+      "instructions": "Tippe oder klicke zum Bewegen auf ein Feld oder zum Feuern auf eine sichtbare Drohne. Nutze die Schaltflächen Link Relay und End Turn oder die Tasten F und Leertaste."
+    }
+  },
+  {
+    "id": "signal-break",
+    "directory": "luna",
+    "en": {
+      "description": "Clear the rooftop and reach the extraction beacon. Use walls and crates to get out of enemy sightlines.",
+      "instructions": "Click a tile to move or a visible hostile to fire. Press Space to end the turn or R to restart."
+    },
+    "de": {
+      "description": "Schalte die Gegner auf dem Dach aus und erreiche das Evakuierungssignal. Wände und Kisten blockieren ihre Sicht.",
+      "instructions": "Klicke zum Bewegen auf ein Feld oder zum Feuern auf einen sichtbaren Gegner. Beende den Zug mit der Leertaste oder starte mit R neu."
+    }
+  },
+  {
+    "id": "glasshouse-vigil-astra-6-2",
+    "directory": "astra-6.2",
+    "title": "Glasshouse Vigil",
+    "model": "gpt-6.2-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Guard an overgrown conservatory in a turn-based skirmish. Raised fern beds block sight, and more brass beetles arrive as the watch wears on.",
+      "instructions": "Seal all three amber vents. Each turn gives you two actions. Click a marked tile to move up to three steps, a visible beetle within five tiles to shoot, or a vent within one step to seal it and restore one integrity. Press 2 to see firing range, 1 to return to movement, Space to end your turn, or R to restart."
+    },
+    "de": {
+      "description": "Bewache ein überwuchertes Gewächshaus in einem rundenbasierten Gefecht. Hochbeete voller Farne versperren die Sicht, und im Laufe der Nacht dringen weitere Messingkäfer ein.",
+      "instructions": "Verschließe alle drei bernsteinfarbenen Lüftungsöffnungen. Pro Runde hast du zwei Aktionen. Klicke auf ein markiertes Feld, um bis zu drei Schritte zu gehen, oder auf einen sichtbaren Käfer in bis zu fünf Feldern Entfernung, um zu schießen. Klicke auf eine Öffnung in höchstens einem Schritt Entfernung, um sie zu verschließen und einen Trefferpunkt zurückzugewinnen. 2 zeigt die Schussreichweite, 1 wechselt zur Bewegung, die Leertaste beendet die Runde und R startet neu."
+    }
+  },
+  {
+    "id": "relay-under-glass-sol-6-2",
+    "directory": "sol-6.2",
+    "title": "Relay Under Glass",
+    "model": "gpt-6.2-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Reclaim a dark transit hub with one operator. Use directional cover and clear firing lanes to disable five drones before your integrity runs out.",
+      "instructions": "Spend two actions per turn. Click a highlighted tile to move or a drone to fire. Q selects Move, E selects Aim, and B braces. Space ends the turn and R restarts. Arrow keys select tiles and Enter acts."
+    },
+    "de": {
+      "description": "Erobere mit einer einzigen Einsatzkraft einen verlassenen Verkehrsknotenpunkt zurück. Nutze Deckung und freie Schusslinien, um fünf Drohnen auszuschalten.",
+      "instructions": "Du hast zwei Aktionen pro Runde. Klicke auf ein markiertes Feld, um dich zu bewegen, oder auf eine Drohne, um zu feuern. Q wählt Bewegung, E wählt Zielen und B verbessert deine Deckung. Die Leertaste beendet die Runde, R startet neu. Wähle Felder alternativ mit den Pfeiltasten und bestätige mit Enter."
+    }
+  },
+  {
+    "id": "blackline-tactics",
+    "directory": "claude-opus-5.5",
+    "title": "Blackline Tactics",
+    "model": "claude-opus-5.5",
+    "reasoning": "high",
+    "en": {
+      "description": "Lead one operative through five waves using line of sight, cover, grenades, and overwatch.",
+      "instructions": "Click a blue tile to move or an enemy to fire. Use E to reload, G for grenades, O for overwatch, H to hunker, Space to end the turn, and R to restart."
+    },
+    "de": {
+      "description": "Überstehe mit einer einzelnen Einsatzkraft fünf Wellen und nutze Sichtlinien, Deckung, Granaten und Reaktionsfeuer.",
+      "instructions": "Klicke zum Bewegen auf ein blaues Feld oder zum Feuern auf einen Gegner. E lädt nach, G wählt Granaten, O aktiviert Reaktionsfeuer und H verstärkt die Deckung. Die Leertaste beendet den Zug und R startet neu."
+    }
+  },
+  {
+    "id": "last-signal-fable-5-2",
+    "directory": "claude-fable-5.2",
+    "title": "Last Signal",
+    "model": "claude-fable-5.2",
+    "reasoning": "medium",
+    "en": {
+      "description": "Recover three data cores from a relay station and return to the evacuation pad as enemy reinforcements arrive.",
+      "instructions": "Click tiles to move and visible enemies to shoot. Use the buttons or O for overwatch, G for grenades, H for a medkit, and Space to end the turn. Press R to restart."
+    },
+    "de": {
+      "description": "Berge drei Datenkerne aus einer Relaisstation und kehre zum Evakuierungspunkt zurück, während feindliche Verstärkung eintrifft.",
+      "instructions": "Klicke auf Felder zum Bewegen oder auf sichtbare Gegner zum Feuern. Nutze die Schaltflächen oder O für Reaktionsfeuer, G für Granaten, H für ein Medikit und die Leertaste zum Beenden des Zuges. R startet neu."
+    }
+  }
+]

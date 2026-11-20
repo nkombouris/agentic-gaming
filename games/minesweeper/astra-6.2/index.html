@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shoal Signal</title>
+<style>
+:root{--paper:#eee6d2;--ink:#163f43;--dim:#576b63;--line:#b1b3a0;--red:#b64129;--dark:#163f43;--mono:"Courier Prime","Courier New",monospace;--serif:"Baskervville",Georgia,serif}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;color:var(--ink);background:#e6dfca}
+body{background-image:repeating-linear-gradient(105deg,transparent 0 6px,rgba(42,55,36,.015) 6px 7px);font:14px system-ui,sans-serif}
+main{width:min(1040px,94vw);margin:auto;padding:clamp(14px,3vh,34px) 0 20px}
+header{display:flex;align-items:center;justify-content:space-between;border-top:4px double var(--ink);border-bottom:1px solid var(--ink);padding:9px 0}
+.small,.readout label,.coords,.key,.caption{font:700 10px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.brand{display:flex;align-items:center;gap:10px}
+.anchor{display:inline-grid;place-items:center;background:var(--ink);color:var(--paper);width:27px;height:27px;font:22px Georgia}
+.mast{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:18px 0 16px}
+h1,h2,p{margin:0}
+h1{font:normal clamp(44px,6vw,76px)/.94 var(--serif);letter-spacing:-.065em}
+h1 em{font-weight:normal}
+.mast .small{padding-bottom:4px;color:var(--dim)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(202px, .34fr);gap:16px}
+.chart,.panel{border:1px solid var(--ink);background:var(--paper)}
+.chart{display:flex;flex-direction:column;min-width:0}
+.bar{display:flex;align-items:center;justify-content:space-between;background:var(--ink);color:var(--paper);padding:9px 13px}
+.light{display:inline-block;width:7px;height:7px;background:#f5c674;border-radius:100%;margin-right:7px}
+.boardwrap{position:relative;flex:auto;display:grid;place-items:center;background:#e1ddc7;padding:9px}
+#sea{display:block;width:100%;max-height:64vh;aspect-ratio:1.295;outline:none;user-select:none}
+.legend{padding:10px 13px;border-top:1px solid var(--ink);display:flex;gap:16px;align-items:center;flex-wrap:wrap;font:12px var(--mono)}
+.legend b{color:var(--red)}
+.panel{display:flex;flex-direction:column}
+.art{background:var(--ink);color:var(--paper);padding:12px 13px 7px;position:relative}
+#coast{width:100%;height:clamp(100px,20vh,175px);display:block}
+.caption{display:flex;justify-content:space-between;color:#d2c9a9;border-top:1px solid #668080;padding-top:6px;font-size:9px}
+.readout{margin:0 15px;padding:12px 0;border-bottom:1px solid var(--line)}
+.readout label{display:block;color:var(--dim);margin-bottom:4px}
+.readout output{font:normal clamp(24px,3vw,38px)/1 var(--serif);font-variant-numeric:tabular-nums}
+.readout .denom{font:14px var(--mono);color:var(--dim)}
+.track{height:4px;background:#d2d1bc;margin-top:6px}
+.track span{display:block;height:100%;width:0;background:var(--ink)}
+.panelFoot{padding:14px 15px;margin-top:auto}
+button{cursor:pointer;font:700 11px var(--mono);letter-spacing:.05em}
+.reset{color:var(--ink);background:transparent;border:1px solid var(--ink);width:100%;padding:9px 4px}
+.reset:hover{background:#d9ddc9}
+button:focus-visible{outline:3px solid #da6c3b;outline-offset:2px}
+.sheetShade{position:absolute;inset:0;background:rgba(21,51,50,.30);display:grid;place-items:center;padding:12px}
+.sheetShade[hidden]{display:none}
+.sheet{width:min(345px,92%);position:relative;background:#f4ecd8;border:1px solid var(--ink);box-shadow:4px 5px 0 rgba(16,48,46,.4);padding:22px}
+.sheet:before{content:"";display:block;border-top:4px double var(--ink);margin-bottom:15px}
+.sheet h2{font:normal clamp(30px,4vw,43px)/1.03 var(--serif);letter-spacing:-.05em;margin:8px 0 10px}
+.sheet p{color:#3e5752;font:15px/1.45 var(--serif)}
+.sheet dl{margin:14px 0 16px;border-block:1px solid var(--line);padding:7px 0;font:12px/1.65 var(--mono);display:grid;grid-template-columns:1fr auto;gap:0 5px}
+.sheet dd{margin:0;text-align:right}
+.start{display:flex;justify-content:space-between;align-items:center;background:var(--red);color:#fff2dd;border:0;width:100%;padding:12px 14px}
+.start:hover{background:#973a26}
+footer{display:flex;justify-content:space-between;gap:10px;margin-top:12px;padding-top:8px;border-top:1px solid var(--ink);color:var(--dim)}
+@media(max-width:720px){
+ .mast{padding:14px 0}.mast .small{display:none}.layout{grid-template-columns:1fr;gap:8px}.panel{display:grid;grid-template-columns:repeat(3,1fr) auto;align-items:center}
+ .art{display:none}.readout{margin:0 6px;border:0;padding:9px 0}.readout label{font-size:8px}.readout output{font-size:22px}.panelFoot{padding:5px}.panelFoot button{font-size:9px}.track{display:none}
+ .sheet{padding:14px}.legend{font-size:10px;gap:8px}footer{font-size:8px}.boardwrap{min-height:290px}
+}
+@media(max-height:680px) and (min-width:721px){main{max-width:870px;padding-top:10px}.mast{padding:10px 0}h1{font-size:48px}.readout{padding:8px 0}.art{padding-top:3px}}
+</style>
+</head>
+<body><main>
+<header><div class="brand"><span aria-hidden="true" class="anchor">⚓</span><span class="small">Coastal Survey Office</span></div><span class="small">North Sound &nbsp;/&nbsp; Sheet 04</span></header>
+<div class="mast"><h1>Shoal <em>Signal</em></h1><span class="small">Hydrographic mine survey</span></div>
+<div class="layout">
+<section class="chart" aria-label="Mine survey chart">
+<div class="bar small"><span><i class="light"></i>Blackfin Reach</span><span id="status" aria-live="polite">Awaiting survey</span></div>
+<div class="boardwrap">
+<canvas id="sea" tabindex="0" aria-label="Survey grid, 12 columns by 9 rows. Arrow keys select, space reveals, F flags."></canvas>
+<div class="sheetShade" id="shade">
+<div class="sheet"><div id="stamp" class="small">Survey order &nbsp; / &nbsp; 04</div>
+<h2 id="headline">Sound the shoal.</h2>
+<p id="message">Chart the clear water around Blackfin Light. Each sounding counts mines in the eight surrounding squares.</p>
+<dl><dt>Reveal water</dt><dd>Left click</dd><dt>Flag a mine</dt><dd>Right click</dd><dt>Restart chart</dt><dd>R</dd></dl>
+<button id="start" class="start"><span id="action">Begin survey</span><span aria-hidden="true">→</span></button>
+</div></div></div>
+<div class="legend"><span><b>⚑</b> Marked mine</span><span><b>1–8</b> Adjacent mines</span><span id="location" style="margin-left:auto">Fix · G5</span></div>
+</section>
+<aside class="panel" aria-label="Survey log">
+<div class="art"><canvas id="coast" aria-label="Engraving of Blackfin Lighthouse on a rocky headland"></canvas><div class="caption"><span>Blackfin Light</span><span>Fig. 04</span></div></div>
+<div class="readout"><label>Unmarked mines</label><output id="remaining">18</output><span class="denom"> / 18</span></div>
+<div class="readout"><label>Clear water charted</label><output id="progress">0</output><span class="denom"> / 90</span><div class="track"><span id="fill"></span></div></div>
+<div class="readout"><label>Survey time</label><output id="timer">00:00</output></div>
+<div class="panelFoot"><button class="reset" id="reset">↻ Restart survey</button></div>
+</aside></div>
+<footer class="small"><span>North Sound Hydrographic Service</span><span id="best">Fastest survey · —</span></footer>
+</main><script>
+"use strict";
+const element = id => document.getElementById(id);
+const canvas = element("sea"), ctx = canvas.getContext("2d");
+const coast = element("coast"), art = coast.getContext("2d");
+const cols = 12, rows = 9, total = cols * rows, mines = 18;
+const tones = ["","#245778","#478053","#b34730","#564876","#964c36","#226867","#393f43","#473b35"];
+let cells = [], state = "ready", opened = 0, flags = 0, elapsed = 0, last = 0;
+let chosen = 54, hover = -1, keyboard = false, impact = -1, burst = [];
+let originX = 0, originY = 0, side = 0, w = 0, h = 0, needsPaint = true;
+let best = null;
+try { const saved = Number(localStorage.getItem("shoalSignalRecord")); if (saved > 0) best = saved; } catch {}
+function timeText(seconds) {
+  const sec = Math.floor(seconds);
+  return String(Math.floor(sec / 60)).padStart(2,"0") + ":" + String(sec % 60).padStart(2,"0");
+}
+function neighbors(index) {
+  const x = index % cols, y = Math.floor(index / cols), out = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if ((dx || dy) && x + dx >= 0 && x + dx < cols && y + dy >= 0 && y + dy < rows) out.push((y + dy) * cols + x + dx);
+  }
+  return out;
+}
+function updateHud() {
+  element("remaining").textContent = String(mines - flags).padStart(2,"0");
+  element("progress").textContent = opened;
+  element("fill").style.width = (100 * opened / (total - mines)) + "%";
+  element("timer").textContent = timeText(elapsed);
+  element("best").textContent = "Fastest survey · " + (best === null ? "—" : timeText(best));
+  const at = hover >= 0 ? hover : chosen;
+  element("location").textContent = "Fix · " + String.fromCharCode(65 + at % cols) + (Math.floor(at / cols) + 1);
+}
+function newChart(preview = false) {
+  chosen = 4 * cols + 6; hover = -1; impact = -1; burst = []; flags = 0; opened = 0; elapsed = 0;
+  cells = Array.from({length:total},() => ({mine:false,flag:false,open:false,n:0,pulse:0}));
+  const safe = new Set([chosen,...neighbors(chosen)]);
+  const possible = cells.map((_,i) => i).filter(i => !safe.has(i));
+  for (let i = 0; i < mines; i++) {
+    const j = i + Math.floor(Math.random() * (possible.length - i));
+    [possible[i],possible[j]] = [possible[j],possible[i]];
+    cells[possible[i]].mine = true;
+  }
+  cells.forEach((c,i) => { c.n = neighbors(i).reduce((sum,n) => sum + Number(cells[n].mine),0); });
+  state = preview ? "ready" : "playing";
+  flood(chosen);
+  element("status").textContent = preview ? "Awaiting survey" : "Survey under way";
+  element("shade").hidden = !preview;
+  if (!preview) canvas.focus({preventScroll:true});
+  updateHud(); needsPaint = true;
+}
+function flood(start) {
+  const queue = [start];
+  while (queue.length) {
+    const i = queue.pop(), c = cells[i];
+    if (c.open || c.mine || c.flag) continue;
+    c.open = true; c.pulse = .25; opened++;
+    if (!c.n) queue.push(...neighbors(i));
+  }
+}
+function showSheet(stamp,title,body,action) {
+  element("stamp").textContent = stamp; element("headline").textContent = title;
+  element("message").textContent = body; element("action").textContent = action;
+  element("shade").hidden = false; element("start").focus({preventScroll:true});
+}
+function finish(won) {
+  state = won ? "won" : "lost";
+  if (won && (best === null || elapsed < best)) {
+    best = Math.max(.01,elapsed);
+    try { localStorage.setItem("shoalSignalRecord",String(best)); } catch {}
+  }
+  element("status").textContent = won ? "All clear" : "Mine struck";
+  showSheet(won ? "Survey report / Clear" : "Survey report / Hazard",won ? "Passage clear." : "Mine struck.",
+    won ? "All 90 safe squares are charted. Passage secured in " + timeText(elapsed) + "." :
+    "The survey ended at " + String.fromCharCode(65 + impact % cols) + (1 + Math.floor(impact / cols)) + ". You charted " + opened + " safe squares.",
+    "Chart new waters");
+  needsPaint = true; updateHud();
+}
+function reveal(i) {
+  if (state !== "playing" || i < 0 || cells[i].flag) return;
+  let group = [i];
+  if (cells[i].open) {
+    const around = neighbors(i);
+    if (!cells[i].n || around.filter(j => cells[j].flag).length !== cells[i].n) return;
+    group = around.filter(j => !cells[j].flag && !cells[j].open);
+  }
+  for (const j of group) {
+    if (cells[j].mine) {
+      impact = j;
+      burst = Array.from({length:24},() => ({x:0,y:0,a:Math.random()*Math.PI*2,s:.5+Math.random()*2,life:.7}));
+      finish(false); return;
+    }
+    flood(j);
+  }
+  if (opened === total - mines) finish(true);
+  needsPaint = true; updateHud();
+}
+function toggle(i) {
+  if (state !== "playing" || i < 0 || cells[i].open) return;
+  if (!cells[i].flag && flags === mines) return;
+  cells[i].flag = !cells[i].flag; flags += cells[i].flag ? 1 : -1;
+  needsPaint = true; updateHud();
+}
+function sizeCanvas(c,g) {
+  const r = c.getBoundingClientRect(), ratio = Math.min(window.devicePixelRatio || 1,2.5);
+  c.width = Math.max(1,Math.round(r.width*ratio)); c.height = Math.max(1,Math.round(r.height*ratio));
+  g.setTransform(ratio,0,0,ratio,0,0); return r;
+}
+function resize() {
+  const rect = sizeCanvas(canvas,ctx); w = rect.width; h = rect.height;
+  side = Math.min((w - 34) / cols,(h - 31) / rows);
+  originX = Math.floor((w - side * cols)/2 + 5); originY = Math.floor((h - side * rows)/2 + 4);
+  sizeCanvas(coast,art); drawCoast(); needsPaint = true;
+}
+function stroke(g,x1,y1,x2,y2,color,width=1) {
+  g.strokeStyle=color;g.lineWidth=width;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();
+}
+function polygon(g,points,color) {
+  g.fillStyle=color;g.beginPath();points.forEach(([x,y],i) => i ? g.lineTo(x,y) : g.moveTo(x,y));g.closePath();g.fill();
+}
+function drawCoast() {
+  const rect = coast.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const g = art; g.save();g.scale(rect.width/220,rect.height/158);
+  g.fillStyle="#163f43";g.fillRect(0,0,220,158);
+  const cream="#e2d8b9", sea="#83a29a";
+  for(let i=0;i<40;i++){
+    const x=(i*67+9)%218,y=9+(i*37)%80;
+    g.fillStyle=i%5 ? "#6c9490" : cream;g.fillRect(x,y,i%5 ? .8 : 1.5,1);
+  }
+  polygon(g,[[125,43],[7,23],[0,39],[125,47]],"#315651");
+  polygon(g,[[138,44],[215,33],[219,43],[138,47]],"#315651");
+  for(let i=0;i<15;i++){
+    const y=101+i*4;
+    for(let j=0;j<6;j++){
+      const x=(i*17+j*39)%208,len=7+((i*7+j*11)%22);
+      stroke(g,x,y,x+len,y+Math.sin(i+j)*.9,i%3 ? "#537a75" : sea,.7);
+    }
+  }
+  const cliff=[[7,112],[28,106],[46,105],[54,98],[73,98],[86,89],[106,90],[116,83],[129,82],[147,78],[163,83],[175,81],[186,92],[206,96],[219,104],[207,111],[174,120],[142,119],[114,128],[78,121],[55,126],[35,119]];
+  polygon(g,cliff,"#abaf95");
+  g.save();g.clip();
+  for(let i=0;i<55;i++){
+    const x=i*4;stroke(g,x,105+7*Math.sin(i*.36),x-10-i%8,133,"#385a53",1.1);
+    stroke(g,x,84+9*Math.cos(i*.52),x+2,90+8*Math.cos(i*.52),"#627c6d",.9);
+  }
+  g.restore();
+  polygon(g,[[117,83],[123,48],[135,48],[141,82]],cream);
+  polygon(g,[[120.5,64],[137,60],[138,67],[119,71]],"#bb6547");
+  polygon(g,[[131,50],[135,48],[141,82],[135,81]],"#9d9c80");
+  g.fillStyle=cream;g.fillRect(121,37,15,12);
+  g.fillStyle="#395a54";g.fillRect(123,39,3,7);g.fillRect(131,39,3,7);
+  stroke(g,119,48,139,48,cream,2);
+  polygon(g,[[119,37],[128,29],[138,37]],"#d27753");stroke(g,128,30,128,25,cream);
+  g.fillStyle="#395a54"; g.fillRect(128,72,3,9);
+  polygon(g,[[144,78],[144,69],[154,65],[164,69],[164,82]],cream);
+  polygon(g,[[141,69],[154,63],[168,69],[165,71],[153,67],[144,72]],"#bf6c48");
+  g.fillStyle="#375751";g.fillRect(152,73,4,6);g.restore();
+}
+function wave(g,x,y,s,color) {
+  g.strokeStyle=color;g.lineWidth=Math.max(.7,s*.030);g.beginPath();g.moveTo(x-s*.21,y);
+  g.quadraticCurveTo(x-s*.15,y-s*.085,x-s*.07,y);
+  g.quadraticCurveTo(x,y+s*.07,x+s*.07,y);
+  g.quadraticCurveTo(x+s*.14,y-s*.08,x+s*.21,y);g.stroke();
+}
+function flag(g,x,y,s) {
+  stroke(g,x-s*.13,y-s*.24,x-s*.13,y+s*.25,"#eee2bb",s*.047);
+  polygon(g,[[x-s*.11,y-s*.24],[x+s*.25,y-s*.13],[x-s*.11,y+.015*s]],"#eb8057");
+  stroke(g,x-s*.23,y+s*.25,x-s*.02,y+s*.25,"#eee2bb",s*.035);
+}
+function drawMine(g,x,y,s,color) {
+  g.fillStyle=color;g.beginPath();g.arc(x,y,s*.14,0,Math.PI*2);g.fill();
+  for(let k=0;k<8;k++){
+    const a=k*Math.PI/4;stroke(g,x+Math.cos(a)*s*.1,y+Math.sin(a)*s*.1,x+Math.cos(a)*s*.23,y+Math.sin(a)*s*.23,color,s*.044);
+  }
+}
+function drawBoard() {
+  const g=ctx;
+  g.clearRect(0,0,w,h);g.fillStyle="#e1ddc7";g.fillRect(0,0,w,h);
+  g.textAlign="center";g.textBaseline="middle";g.font="bold "+Math.max(8,side*.22)+"px monospace";g.fillStyle="#5c7166";
+  for(let x=0;x<cols;x++)g.fillText(String.fromCharCode(65+x),originX+(x+.5)*side,originY-9);
+  for(let y=0;y<rows;y++)g.fillText(String(y+1),originX-10,originY+(y+.5)*side);
+  for(let i=0;i<total;i++){
+    const c=cells[i],col=i%cols,row=Math.floor(i/cols),left=originX+col*side,top=originY+row*side;
+    const x=left+side/2,y=top+side/2,noise=(col*17+row*13)%5;
+    const focus=state==="playing" && (keyboard ? chosen===i : hover===i);
+    g.fillStyle=c.open ? ["#e7e2ca","#e9e3cc","#e7dfc6","#eae4cd","#e8e1c8"][noise] :
+      ["#386b6a","#396e6c","#3a6c6b","#356766","#376a69"][noise];
+    if (focus && !c.open) g.fillStyle="#538883";
+    if (i===impact) g.fillStyle="#c65b3d";
+    g.fillRect(left,top,side+.1,side+.1);
+    g.strokeStyle=c.open ? "#b4b9a1" : "#204e50";g.lineWidth=1;g.strokeRect(left+.5,top+.5,side-1,side-1);
+    if (!c.open) {
+      stroke(g,left+2,top+2,left+side-2,top+2,"#6a9590",.7);
+      stroke(g,left+2,top+2,left+2,top+side-2,"#648f87",.7);
+      if(state==="lost" && c.mine)drawMine(g,x,y,side,"#f1dfbd");
+      else if(c.flag)flag(g,x,y,side);
+      else wave(g,x,y,side,"#80a097");
+    } else if(c.n) {
+      g.fillStyle=tones[c.n];g.font="bold "+Math.floor(side*.55)+"px Georgia";g.fillText(String(c.n),x,y+side*.035);
+    } else {
+      g.fillStyle="#a8b09b";g.beginPath();g.arc(x,y,Math.max(.65,side*.025),0,Math.PI*2);g.fill();
+    }
+    if(c.pulse>0 && state!=="ready"){
+      g.fillStyle="rgba(255,248,206,"+(c.pulse*.80)+")";g.fillRect(left+1,top+1,side-2,side-2);
+    }
+    if(focus){g.strokeStyle="#ffc886";g.lineWidth=2;g.strokeRect(left+2.5,top+2.5,side-5,side-5);}
+  }
+  g.strokeStyle="#204849";g.lineWidth=1.4;g.strokeRect(originX,originY,side*cols,side*rows);
+  if(impact>=0){
+    const mx=originX+(impact%cols+.5)*side,my=originY+(Math.floor(impact/cols)+.5)*side;
+    for(const p of burst){g.fillStyle="rgba(219,113,66,"+p.life+")";g.fillRect(mx+p.x*side,my+p.y*side,2.5,2.5);}
+  }
+}
+function atPointer(e) {
+  const r=canvas.getBoundingClientRect(), x=Math.floor((e.clientX-r.left-originX)/side),y=Math.floor((e.clientY-r.top-originY)/side);
+  return x>=0&&y>=0&&x<cols&&y<rows ? y*cols+x : -1;
+}
+canvas.addEventListener("mousemove",e => {
+  const i=atPointer(e); if(i===hover&&!keyboard)return;
+  hover=i;keyboard=false;canvas.style.cursor=i>=0?"crosshair":"default";needsPaint=true;updateHud();
+});
+canvas.addEventListener("mouseleave",() => { hover=-1;needsPaint=true;updateHud(); });
+canvas.addEventListener("click",e => { const i=atPointer(e);if(i>=0){chosen=i;reveal(i);} });
+canvas.addEventListener("contextmenu",e => { e.preventDefault();const i=atPointer(e);if(i>=0){chosen=i;toggle(i);} });
+element("start").addEventListener("click",() => {
+  if(state==="paused"){state="playing";element("shade").hidden=true;element("status").textContent="Survey under way";canvas.focus({preventScroll:true});last=0;}
+  else newChart();
+});
+element("reset").addEventListener("click",() => newChart());
+document.addEventListener("keydown",e => {
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const key=e.key.toLowerCase();
+  if(key==="r"){e.preventDefault();if(!e.repeat)newChart();return;}
+  if(state!=="playing")return;
+  if(!["arrowleft","arrowright","arrowup","arrowdown"," ","f","enter"].includes(key))return;
+  if(document.activeElement===element("reset") && (key===" "||key==="enter"))return;
+  e.preventDefault();keyboard=true;hover=-1;
+  if(key==="arrowleft" && chosen%cols>0)chosen--;
+  if(key==="arrowright" && chosen%cols<cols-1)chosen++;
+  if(key==="arrowup" && chosen>=cols)chosen-=cols;
+  if(key==="arrowdown" && chosen<total-cols)chosen+=cols;
+  if(!e.repeat && (key===" "||key==="enter"))reveal(chosen);
+  if(!e.repeat && key==="f")toggle(chosen);
+  updateHud();needsPaint=true;
+});
+function pause() {
+  if(state!=="playing")return;
+  state="paused";hover=-1;last=0;
+  element("status").textContent="Survey paused";
+  showSheet("Survey log / Paused","Holding station.","Your survey clock is paused. Resume when you are ready to return to the chart.","Resume survey");
+}
+window.addEventListener("blur",pause);
+document.addEventListener("visibilitychange",() => { if(document.hidden)pause(); });
+window.addEventListener("resize",resize);
+function frame(now) {
+  const dt=last?Math.min(.05,Math.max(0,(now-last)/1000)):0;last=now;
+  if(state==="playing"){
+    const prev=Math.floor(elapsed);elapsed+=dt;
+    if(prev!==Math.floor(elapsed))element("timer").textContent=timeText(elapsed);
+  }
+  if(state==="playing"||state==="lost"){
+    for(const c of cells){if(c.pulse>0){c.pulse=Math.max(0,c.pulse-dt);needsPaint=true;}}
+    for(const p of burst){p.x+=Math.cos(p.a)*p.s*dt;p.y+=Math.sin(p.a)*p.s*dt;p.life-=dt;}
+    if(burst.length){burst=burst.filter(p=>p.life>0);needsPaint=true;}
+  }
+  if(needsPaint){drawBoard();needsPaint=false;}
+  requestAnimationFrame(frame);
+}
+newChart(true);resize();requestAnimationFrame(frame);
+</script></body></html>

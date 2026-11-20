@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rift Kiln</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ivory: #fff3dc;
+    --muted: #c9b6a8;
+    --rust: #ff9b5f;
+    --teal: #93eed6;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    --display: "Barlow Condensed", "Arial Narrow", Impact, Haettenschweiler, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #1d1622; }
+  body { color: var(--ivory); font: 15px/1.45 "Inter", Arial, sans-serif; user-select: none; }
+  #arena, #vignette, #hud, .screen { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #arena { display: block; }
+  #vignette {
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 44%, #110d19 137%),
+      linear-gradient(0deg, #100d17ba, transparent 22%, transparent 84%, #100d176b);
+  }
+  #hud { pointer-events: none; font-family: var(--mono); text-shadow: 0 2px 8px #0c0912; }
+  .top { position: absolute; top: 25px; left: 32px; right: 32px; display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: start; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .data-label, .eyebrow { color: var(--muted); text-transform: uppercase; font: 700 10px/1.3 var(--mono); letter-spacing: .19em; }
+  .data-number { display: block; font-size: 25px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  #time { color: var(--ivory); font-size: 31px; letter-spacing: -.06em; }
+  #time.urgent { color: var(--rust); }
+  .waves { display: flex; gap: 5px; justify-content: center; margin-top: 8px; }
+  .waves span { display: block; width: 12px; height: 3px; background: #b5a39755; }
+  .waves span.lit { background: var(--rust); box-shadow: 0 0 8px #fd8a5677; }
+  .bottom { position: absolute; bottom: 26px; left: 32px; right: 32px; display: flex; justify-content: space-between; align-items: end; }
+  .readout { min-width: 152px; }
+  .readout strong { display: block; margin: 2px 0 6px; font-size: 33px; font-weight: 800; line-height: 1; letter-spacing: -.06em; }
+  .meter { height: 4px; width: 100%; background: #fff0d633; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--teal); }
+  #arcBar { background: var(--rust); }
+  #arcStatus { color: var(--rust); font-size: 16px; letter-spacing: .01em; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 27px; height: 27px; transform: translate(-50%,-50%); color: #fff4dd; }
+  #crosshair i { background: currentColor; position: absolute; box-shadow: 0 0 3px #131018; }
+  #crosshair i:nth-child(1), #crosshair i:nth-child(2) { width: 6px; height: 1px; top: 13px; }
+  #crosshair i:nth-child(1) { left: 0; }
+  #crosshair i:nth-child(2) { right: 0; }
+  #crosshair i:nth-child(3), #crosshair i:nth-child(4) { height: 6px; width: 1px; left: 13px; }
+  #crosshair i:nth-child(3) { top: 0; }
+  #crosshair i:nth-child(4) { bottom: 0; }
+  #crosshair i:nth-child(5) { width: 2px; height: 2px; left: 12.5px; top: 12.5px; border-radius: 50%; }
+  #crosshair.hit { color: #a3ffe3; transform: translate(-50%,-50%) rotate(45deg); }
+  #damage { pointer-events: none; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 20%, #c72713f0 128%); opacity: 0; }
+  #callout, #chain {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    line-height: 1.25;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  #callout { top: 19%; width: min(95%, 490px); opacity: 0; font-size: 15px; }
+  #chain { top: calc(50% + 38px); color: var(--teal); font-size: 11px; }
+  .screen {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(90deg, #151019f5, #18111bba 31%, #1a121e2c 68%, #1d152114), linear-gradient(0deg, #130d18af, transparent 35%);
+    padding: 64px clamp(30px, 7vw, 120px);
+  }
+  .screen-top, .screen-bottom { position: absolute; left: clamp(30px, 7vw, 120px); right: clamp(30px, 7vw, 120px); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .screen-top { top: 31px; }
+  .screen-bottom { bottom: 25px; color: var(--muted); }
+  .wordmark { display: inline-flex; align-items: center; gap: 12px; border-bottom: 1px solid #ffe4c634; padding-bottom: 7px; }
+  .mark { width: 15px; height: 15px; color: var(--rust); border: 2px solid currentColor; transform: rotate(45deg); position: relative; }
+  .mark::after { content: ""; position: absolute; width: 5px; height: 5px; left: 3px; top: 3px; background: currentColor; }
+  .card { width: min(100%, 550px); }
+  .card .eyebrow { color: var(--rust); }
+  h1, h2 { margin: 9px 0 11px; font-family: var(--display); font-weight: 800; line-height: .92; text-transform: uppercase; letter-spacing: -.02em; text-wrap: balance; }
+  h1 { font-size: clamp(68px, 11vw, 155px); white-space: nowrap; }
+  h2 { font-size: clamp(60px, 8vw, 108px); }
+  .lede { color: #e5d0bd; max-width: 34ch; margin: 15px 0 24px; font-size: clamp(15px, 1.5vw, 18px); }
+  button {
+    background: var(--rust);
+    color: #25141b;
+    font: 900 13px/1 var(--mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 15px 22px;
+    min-width: 168px;
+    border: 1px solid #ffc49b;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+  }
+  button:hover, button:focus-visible { background: #ffbb8c; outline: 2px solid var(--ivory); outline-offset: 4px; }
+  button:active { transform: translateY(2px); }
+  .controls { display: grid; grid-template-columns: max-content 1fr; gap: 6px 13px; margin: 26px 0 0; width: fit-content; color: var(--muted); text-transform: uppercase; font: 700 10px/1.4 var(--mono); letter-spacing: .06em; }
+  kbd { color: var(--ivory); font: inherit; white-space: nowrap; }
+  #resultLine { color: var(--teal); font: 700 13px/1.4 var(--mono); margin: 16px 0 24px; letter-spacing: .06em; text-transform: uppercase; }
+  @media (max-height: 540px) {
+    .screen-top, .screen-bottom { display: none; }
+    .screen { padding-block: 20px; }
+    .controls { margin-top: 15px; }
+    .lede { margin: 9px 0 14px; }
+  }
+  @media (max-width: 600px) {
+    .top, .bottom { left: 16px; right: 16px; }
+    .readout { min-width: 114px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="arena" aria-label="Rift Kiln arena"></canvas>
+<div id="vignette"></div>
+<div id="hud" hidden>
+  <div id="damage"></div>
+  <div class="top">
+    <section><div class="data-label">Score</div><strong class="data-number" id="score">0000</strong></section>
+    <section class="center">
+      <div class="data-label" id="wave">Wave 1 / 5</div>
+      <strong class="data-number" id="time">01:50</strong>
+      <div class="waves" id="wavePips" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </section>
+    <section class="right"><div class="data-label">Best</div><strong class="data-number" id="best">0000</strong></section>
+  </div>
+  <div id="callout"></div>
+  <div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <div id="chain" hidden></div>
+  <div class="bottom">
+    <section class="readout">
+      <div class="data-label">Suit integrity</div><strong id="health">100</strong><div class="meter"><i id="healthBar"></i></div>
+    </section>
+    <section class="readout right">
+      <div class="data-label">Arc burst · RMB</div><strong id="arcStatus">READY</strong><div class="meter"><i id="arcBar"></i></div>
+    </section>
+  </div>
+</div>
+<section class="screen" id="intro">
+  <div class="screen-top">
+    <div class="wordmark"><span class="mark"></span><span class="eyebrow">Kiln Station</span></div>
+    <span class="eyebrow">Solo arena</span>
+  </div>
+  <div class="card">
+    <div class="eyebrow">Hold the kiln until the rift closes</div>
+    <h1>Rift Kiln</h1>
+    <p class="lede">Outlast five waves of drones. Grab teal repair cells to restore suit integrity.</p>
+    <button id="start" type="button">Enter arena <span aria-hidden="true">↗</span></button>
+    <div class="controls">
+      <kbd>W A S D</kbd><span>Move</span>
+      <kbd>Mouse</kbd><span>Look</span>
+      <kbd>Space</kbd><span>Jump</span>
+      <kbd>Left click</kbd><span>Pulse rifle</span>
+      <kbd>Right click</kbd><span>Arc burst</span>
+      <kbd>Esc / P</kbd><span>Pause</span>
+    </div>
+  </div>
+  <div class="screen-bottom"><span class="eyebrow">Survive 01:50</span><span class="eyebrow" id="introBest"></span></div>
+</section>
+<section class="screen" id="overlay" hidden>
+  <div class="card">
+    <div class="eyebrow" id="endLabel"></div>
+    <h2 id="endTitle"></h2>
+    <p class="lede" id="endText"></p>
+    <p id="resultLine" hidden></p>
+    <button id="again" type="button"></button>
+  </div>
+</section>
+
+<script>
+'use strict';
+const byId = (id) => document.getElementById(id);
+const canvas = byId('arena');
+const hud = byId('hud');
+const intro = byId('intro');
+const overlay = byId('overlay');
+const overlayButton = byId('again');
+const hudScore = byId('score');
+const hudTime = byId('time');
+const hudWave = byId('wave');
+const hudBest = byId('best');
+const hudHealth = byId('health');
+const healthBar = byId('healthBar');
+const arcBar = byId('arcBar');
+const arcStatus = byId('arcStatus');
+const damageWash = byId('damage');
+const crosshair = byId('crosshair');
+const callout = byId('callout');
+const chainReadout = byId('chain');
+const wavePips = Array.from(byId('wavePips').children);
+const duration = 110;
+const arcCooldown = 2.65;
+const storageKey = 'rift-kiln-high-score';
+const tau = Math.PI * 2;
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const mix = (a, b, t) => a + (b - a) * t;
+const random = (min, max) => mix(min, max, Math.random());
+const gl = canvas.getContext('webgl', { alpha: false, antialias: true });
+
+function showError(message) {
+  intro.hidden = true;
+  hud.hidden = true;
+  overlay.hidden = false;
+  overlayButton.hidden = true;
+  byId('endLabel').textContent = 'Rift Kiln';
+  byId('endTitle').textContent = 'WebGL unavailable';
+  byId('endText').textContent = message;
+}
+
+if (!gl) showError('Open this file in a desktop browser with WebGL enabled to enter the arena.');
+else boot();
+
+function boot() {
+  const vertexSource = [
+    'attribute vec3 aPosition;',
+    'attribute vec3 aNormal;',
+    'attribute vec4 aColor;',
+    'uniform mat4 uViewProjection;',
+    'uniform mat4 uModel;',
+    'uniform vec3 uCamera;',
+    'uniform vec3 uTint;',
+    'varying vec3 vColor;',
+    'varying float vDistance;',
+    'void main() {',
+    '  vec4 world = uModel * vec4(aPosition, 1.0);',
+    '  vec3 n = normalize(mat3(uModel) * aNormal);',
+    '  float light = 0.51 + 0.49 * max(dot(n, normalize(vec3(-0.48, 0.79, 0.39))), 0.0);',
+    '  light += 0.10 * max(dot(n, normalize(vec3(0.73, 0.13, -0.49))), 0.0);',
+    '  vColor = mix(aColor.rgb * light, aColor.rgb, aColor.a) * uTint;',
+    '  vDistance = length(world.xyz - uCamera);',
+    '  gl_Position = uViewProjection * world;',
+    '}'
+  ].join('\n');
+  const fragmentSource = [
+    'precision mediump float;',
+    'varying vec3 vColor;',
+    'varying float vDistance;',
+    'void main() {',
+    '  vec3 fog = vec3(0.116, 0.086, 0.136);',
+    '  float veil = smoothstep(18.0, 86.0, vDistance) * 0.91;',
+    '  gl_FragColor = vec4(mix(vColor, fog, veil), 1.0);',
+    '}'
+  ].join('\n');
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
+    console.error(gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
+  }
+
+  const vertex = compile(gl.VERTEX_SHADER, vertexSource);
+  const fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
+  if (!vertex || !fragment) {
+    showError('The graphics shaders could not start. Try a desktop browser with hardware acceleration enabled.');
+    return;
+  }
+  const program = gl.createProgram();
+  gl.attachShader(program, vertex);
+  gl.attachShader(program, fragment);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(program));
+    showError('The graphics program could not start. Try another desktop browser.');
+    return;
+  }
+  gl.useProgram(program);
+  gl.enable(gl.DEPTH_TEST);
+  gl.clearColor(0.116, 0.086, 0.136, 1);
+  const positionAttribute = gl.getAttribLocation(program, 'aPosition');
+  const normalAttribute = gl.getAttribLocation(program, 'aNormal');
+  const colorAttribute = gl.getAttribLocation(program, 'aColor');
+  const projectionUniform = gl.getUniformLocation(program, 'uViewProjection');
+  const modelUniform = gl.getUniformLocation(program, 'uModel');
+  const cameraUniform = gl.getUniformLocation(program, 'uCamera');
+  const tintUniform = gl.getUniformLocation(program, 'uTint');
+  for (const attribute of [positionAttribute, normalAttribute, colorAttribute]) gl.enableVertexAttribArray(attribute);
+
+  const color = (hex, glow = 0) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255, glow];
+  const graphite = color(0x393140);
+  const shale = color(0x504456);
+  const violet = color(0x655267);
+  const gunmetal = color(0x474452);
+  const dark = color(0x25222d);
+  const cream = color(0xd1a991);
+  const vermilion = color(0x995140);
+  const copper = color(0x9c6550);
+  const amber = color(0xff955c, .89);
+  const paleAmber = color(0xffd09a, 1);
+  const turquoise = color(0x88edce, 1);
+  const deepTeal = color(0x377069, .12);
+  const purple = color(0xbe8eff, 1);
+  const glare = color(0xfff2d6, 1);
+
+  function tri(data, a, b, c, tint) {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const length = Math.hypot(nx, ny, nz) || 1;
+    for (const point of [a, b, c]) data.push(point[0], point[1], point[2], nx / length, ny / length, nz / length, ...tint);
+  }
+
+  function quad(data, a, b, c, d, tint) {
+    tri(data, a, b, c, tint);
+    tri(data, a, c, d, tint);
+  }
+
+  function box(data, x, y, z, w, h, d, tint, top = tint) {
+    const l = x - w / 2, r = x + w / 2, b = y - h / 2, t = y + h / 2, f = z + d / 2, n = z - d / 2;
+    quad(data, [l,b,f], [r,b,f], [r,t,f], [l,t,f], tint);
+    quad(data, [r,b,n], [l,b,n], [l,t,n], [r,t,n], tint);
+    quad(data, [l,b,n], [l,b,f], [l,t,f], [l,t,n], tint);
+    quad(data, [r,b,f], [r,b,n], [r,t,n], [r,t,f], tint);
+    quad(data, [l,t,f], [r,t,f], [r,t,n], [l,t,n], top);
+    quad(data, [l,b,n], [r,b,n], [r,b,f], [l,b,f], tint);
+  }
+
+  function cylinder(data, x, y, z, lowerRadius, upperRadius, height, sides, tint, top = tint) {
+    const low = y - height / 2, high = y + height / 2;
+    for (let i = 0; i < sides; i++) {
+      const a = tau * i / sides, b = tau * (i + 1) / sides;
+      const ax = Math.cos(a), az = Math.sin(a), bx = Math.cos(b), bz = Math.sin(b);
+      const p = [x + ax * lowerRadius, low, z + az * lowerRadius];
+      const q = [x + bx * lowerRadius, low, z + bz * lowerRadius];
+      const r = [x + bx * upperRadius, high, z + bz * upperRadius];
+      const s = [x + ax * upperRadius, high, z + az * upperRadius];
+      quad(data, p, s, r, q, tint);
+      tri(data, [x, high, z], r, s, top);
+      tri(data, [x, low, z], p, q, tint);
+    }
+  }
+
+  function ring(data, x, y, z, radius, width, slices, tint, vertical = false) {
+    const point = (a, r) => vertical ? [x + Math.cos(a) * r, y + Math.sin(a) * r, z] : [x + Math.cos(a) * r, y, z + Math.sin(a) * r];
+    for (let i = 0; i < slices; i++) {
+      const a = i / slices * tau, b = (i + 1) / slices * tau;
+      quad(data, point(a, radius), point(a, radius - width), point(b, radius - width), point(b, radius), tint);
+    }
+  }
+
+  function gem(data, x, y, z, radius, height, sides, tint, shade = tint) {
+    for (let i = 0; i < sides; i++) {
+      const a = tau * i / sides, b = tau * (i + 1) / sides;
+      const point = [x + Math.cos(a) * radius, y, z + Math.sin(a) * radius];
+      const next = [x + Math.cos(b) * radius, y, z + Math.sin(b) * radius];
+      tri(data, [x, y + height / 2, z], next, point, i % 2 ? tint : shade);
+      tri(data, [x, y - height / 2, z], point, next, tint);
+    }
+  }
+
+  function beam(data, a, b, width, tint) {
+    quad(data, [a[0],a[1] + width,a[2]], [a[0],a[1] - width,a[2]],
+      [b[0],b[1] - width,b[2]], [b[0],b[1] + width,b[2]], tint);
+    const dx = b[0] - a[0], dz = b[2] - a[2], length = Math.hypot(dx, dz) || 1;
+    const wx = dz / length * width, wz = -dx / length * width;
+    quad(data, [a[0] + wx,a[1],a[2] + wz], [a[0] - wx,a[1],a[2] - wz],
+      [b[0] - wx,b[1],b[2] - wz], [b[0] + wx,b[1],b[2] + wz], tint);
+  }
+
+  function mesh(make) {
+    const data = [];
+    make(data);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    return { buffer, count: data.length / 10 };
+  }
+
+  const bounds = { x: 25, z: 22 };
+  const center = { x: 0, z: -2.5 };
+  const solids = [];
+  const arenaMesh = mesh((data) => {
+    const tileColors = [color(0x423345), color(0x453548), color(0x49394a), color(0x4b3b4d)];
+    box(data, 0, -.31, 0, 50, .6, 44, dark);
+    for (let x = -24; x <= 24; x += 4) {
+      for (let z = -20; z <= 20; z += 4) {
+        const tile = (x * x + z * 3 + 127) & 3;
+        const tint = tileColors[tile];
+        quad(data, [x-1.97,0,z+1.97], [x+1.97,0,z+1.97], [x+1.97,0,z-1.97], [x-1.97,0,z-1.97], tint);
+      }
+    }
+    for (const side of [-1, 1]) {
+      box(data, side * 23.7, .012, 0, .12, .024, 43, copper);
+      box(data, 0, .012, side * 20.7, 47.41, .024, .12, copper);
+      box(data, side * 3.45, .013, 8, .08, .026, 15, copper);
+      for (let j = 0; j < 16; j++) {
+        box(data, side * 23.2, .02, -19 + j * 2.5, .2, .04, .68, vermilion);
+        box(data, -19 + j * 2.5, .02, side * 20.15, .68, .04, .2, vermilion);
+      }
+      // Ribbed outer walls and light strips sit just outside the collision boundary.
+      box(data, side * 25.65, 2.18, 0, 1.3, 4.36, 46, graphite);
+      box(data, side * 25.2, 4.37, 0, .72, .27, 46, copper);
+      box(data, side * 25.12, .36, 0, .5, .71, 45, vermilion);
+      box(data, 0, 2.15, side * 22.65, 52.55, 4.3, 1.3, shale);
+      box(data, 0, 4.29, side * 22.35, 52, .27, .84, copper);
+      box(data, 0, .36, side * 22.14, 50, .71, .47, vermilion);
+      for (let z = -18; z <= 18; z += 6) {
+        box(data, side * 25.13, 2.45, z, .46, 4.93, .82, gunmetal);
+        box(data, side * 24.9, 3.46, z + 1.1, .1, .1, 2.9, amber);
+        box(data, side * 25.22, 2.35, z + 2.1, .21, 1.23, 2.8, dark);
+      }
+      for (let x = -22; x <= 22; x += 5.5) {
+        box(data, x, 2.75, side * 22.12, .72, 5.52, .44, graphite);
+        box(data, x, 4.72, side * 21.85, .25, .26, .14, paleAmber);
+        box(data, x + 1.8, 1.55, side * 22, 2.9, .09, .15, copper);
+      }
+      for (let j = 0; j < 7; j++) {
+        const z = -33 + j * 10.5;
+        const h = 8 + ((j * 15 + 4) % 7);
+        box(data, side * (32 + j % 3), h / 2 - 1, z, 4.1, h, 7.1, color(0x302536));
+        box(data, side * (32 + j % 3), h - .9, z, 4.35, .17, 7.3, copper);
+        cylinder(data, side * 29, 4.2 + (j % 3), z + 2, 1.05, 1.21, 10 + j % 3 * 2, 8, color(0x483445));
+      }
+    }
+    function platform(x, z, w, d, height, tint, top) {
+      solids.push({ x, z, w, d, h: height });
+      box(data, x, height / 2, z, w, height, d, tint, top);
+      box(data, x, height - .09, z + d / 2 + .011, w * .82, .09, .022, copper);
+      box(data, x, height - .09, z - d / 2 - .011, w * .82, .09, .022, copper);
+      box(data, x - w / 2 - .011, height - .09, z, .022, .09, d * .82, copper);
+      box(data, x + w / 2 + .011, height - .09, z, .022, .09, d * .82, copper);
+      for (const side of [-1, 1]) {
+        box(data, x + side * w * .31, height + .004, z - d * .38, w * .18, .008, .06, amber);
+        box(data, x + side * w * .31, height + .004, z + d * .38, w * .18, .008, .06, amber);
+      }
+    }
+    platform(0, center.z, 8.8, 8.8, .92, graphite, violet);
+    platform(-16.3, -1.6, 5.55, 11, 2.35, shale, violet);
+    platform(16.3, 1.6, 5.55, 11, 2.35, shale, violet);
+    platform(-16.3, 5.5, 5.55, 3.1, 1.14, vermilion, copper);
+    platform(16.3, -5.5, 5.55, 3.1, 1.14, vermilion, copper);
+    platform(-7.9, 10.6, 3.4, 3.6, 3.25, graphite, shale);
+    platform(7.9, -11.6, 3.4, 3.6, 3.25, graphite, shale);
+    platform(-9.6, -13.4, 5.3, 3.1, 1.15, shale, cream);
+    platform(9.6, 11.7, 5.3, 3.1, 1.15, shale, cream);
+    for (const side of [-1, 1]) {
+      const z = side * 12.1, x = -side * 12.85;
+      box(data, x, 1.5, z, 1.9, .4, 1.9, gunmetal);
+      box(data, x, 1.53, z + side * .96, 1.25, .13, .035, amber);
+      box(data, x, 5.05, z, .22, 7.1, .22, graphite);
+      box(data, x + side * .9, 7.55, z, 2, .22, .22, copper);
+    }
+    // Suspended bands frame the rift above traversable space.
+    ring(data, center.x, .928, center.z, 3.48, .075, 48, amber);
+    ring(data, center.x, .934, center.z, 2.66, .032, 32, cream);
+    ring(data, center.x, .018, center.z, 7.3, .048, 52, copper);
+    ring(data, center.x, 8.05, center.z, 4.31, .26, 20, vermilion);
+    ring(data, center.x, 7.99, center.z, 4.18, .07, 20, amber);
+    for (const side of [-1, 1]) {
+      beam(data, [side * 25,10,-4.8], [side * 4.1,8.03,-4.8], .1, copper);
+      beam(data, [side * 25,10,.1], [side * 4.1,8.03,.1], .1, copper);
+      for (let j = 0; j < 6; j++) {
+        box(data, side * (5 + j * 2.6), 9.15 + j * .19, -4.8, .15, .24, .46, graphite);
+      }
+    }
+    for (let i = 0; i < 15; i++) {
+      const x = (i - 7) * 7.3;
+      const h = 5 + ((i * 23 + 11) % 14);
+      const z = -43 - (i * 11 % 17);
+      box(data, x, h / 2 - 1.5, z, 4.6, h, 6.5, color(i % 2 ? 0x5c3c4b : 0x51384c));
+      box(data, x, h - 1.5, z, 4.8, .28, 6.8, copper);
+      box(data, x, h - 2, z + 3.26, 2.3, .17, .04, amber);
+    }
+    const gates = [
+      [-20,-16], [0,-18.3], [20,-16], [20,0], [20,16], [0,18.6], [-20,16], [-20,0]
+    ];
+    for (const [x, z] of gates) {
+      ring(data, x, .019, z, 1.96, .13, 12, vermilion);
+      ring(data, x, .021, z, 1.54, .06, 12, copper);
+      for (const offset of [-1, 1]) {
+        box(data, x + offset * 1.3, .011, z + offset * 1.3, .28, .022, .16, amber);
+      }
+    }
+  });
+
+  const symbolMesh = mesh((data) => {
+    gem(data, 0, 0, 0, .86, 2.9, 6, amber, paleAmber);
+    gem(data, 0, 0, 0, 1.23, .49, 6, vermilion, copper);
+  });
+  const orbitMesh = mesh((data) => {
+    ring(data, 0, 0, 0, 1.9, .063, 36, amber, true);
+    for (const side of [-1, 1]) gem(data, side * 1.9, 0, 0, .11, .31, 4, glare);
+  });
+  const skyDisk = mesh((data) => {
+    for (let i = 0; i < 40; i++) {
+      const a = tau * i / 40, b = tau * (i + 1) / 40;
+      tri(data, [0,0,0], [Math.cos(a),Math.sin(a),0], [Math.cos(b),Math.sin(b),0], color(0xd28673, 1));
+    }
+  });
+  const dartMesh = mesh((data) => {
+    gem(data, 0, 0, 0, .66, .87, 6, gunmetal, violet);
+    gem(data, 0, .03, .53, .25, .31, 4, turquoise);
+    for (const side of [-1, 1]) {
+      gem(data, side * .72, -.04, -.08, .44, .18, 4, deepTeal, turquoise);
+      gem(data, side * .67, -.19, -.02, .14, .34, 4, turquoise);
+    }
+  });
+  const masonMesh = mesh((data) => {
+    box(data, 0, 0, 0, 1.21, .99, .95, vermilion, copper);
+    box(data, 0, .07, .498, .91, .34, .08, dark);
+    box(data, 0, .07, .544, .53, .085, .015, paleAmber);
+    for (const side of [-1, 1]) {
+      box(data, side * .72, -.02, -.05, .28, .61, 1.3, gunmetal);
+      box(data, side * .72, -.05, .62, .14, .15, .06, amber);
+    }
+  });
+  const prismMesh = mesh((data) => {
+    gem(data, 0, .03, 0, .64, 1.72, 5, violet, purple);
+    ring(data, 0, -.12, 0, .94, .075, 8, purple);
+    gem(data, 0, .1, .57, .23, .32, 4, glare);
+    for (const side of [-1, 1]) gem(data, .78 * side, -.17, 0, .19, .57, 4, purple);
+  });
+  const repairMesh = mesh((data) => {
+    gem(data, 0, 0, 0, .39, .86, 6, deepTeal, turquoise);
+    box(data, 0, 0, .35, .4, .094, .05, glare);
+    box(data, 0, 0, .35, .095, .4, .05, glare);
+    box(data, 0, 0, -.35, .4, .094, .05, glare);
+    box(data, 0, 0, -.35, .095, .4, .05, glare);
+  });
+  const repairRing = mesh((data) => ring(data, 0, 0, 0, 1.08, .05, 20, turquoise));
+  const warmRing = mesh((data) => ring(data, 0, 0, 0, 1, .05, 32, amber));
+  const shardMesh = mesh((data) => gem(data, 0, 0, 0, 1, 2, 4, glare));
+  const weaponMesh = mesh((data) => {
+    box(data, .008, .006, .04, .20, .155, .42, graphite, shale);
+    box(data, .018, -.082, .13, .14, .21, .22, dark);
+    box(data, 0, -.02, -.13, .166, .126, .29, gunmetal, cream);
+    box(data, 0, -.02, -.28, .14, .119, .036, dark);
+    box(data, 0, -.02, -.300, .081, .051, .017, deepTeal);
+    box(data, -.053, .095, .118, .022, .036, .076, turquoise);
+    box(data, .052, .095, .118, .022, .036, .076, turquoise);
+    for (let i = 0; i < 5; i++) {
+      box(data, -.087, .039, -.136 + i * .041, .011, .046, .017, turquoise);
+      box(data, .088, .035, -.136 + i * .041, .012, .039, .017, turquoise);
+    }
+    box(data, .008, -.13, .245, .148, .105, .23, vermilion);
+  });
+
+  function perspective(out, angle, aspect, near, far) {
+    out.fill(0);
+    const focalLength = 1 / Math.tan(angle / 2);
+    out[0] = focalLength / aspect;
+    out[5] = focalLength;
+    out[10] = (far + near) / (near - far);
+    out[11] = -1;
+    out[14] = 2 * far * near / (near - far);
+  }
+
+  function viewAt(out, x, y, z, yaw, pitch) {
+    const sy = Math.sin(yaw), cy = Math.cos(yaw);
+    const sp = Math.sin(pitch), cp = Math.cos(pitch);
+    const ux = -sy * sp, uy = cp, uz = cy * sp;
+    const bx = -sy * cp, by = -sp, bz = cy * cp;
+    out.set([
+      cy, ux, bx, 0,
+      0, uy, by, 0,
+      sy, uz, bz, 0,
+      -(cy * x + sy * z), -(ux * x + uy * y + uz * z), -(bx * x + by * y + bz * z), 1
+    ]);
+  }
+
+  function multiply(out, a, b) {
+    for (let column = 0; column < 4; column++) {
+      const offset = column * 4;
+      for (let row = 0; row < 4; row++) {
+        out[offset + row] = a[row] * b[offset] + a[row + 4] * b[offset + 1]
+          + a[row + 8] * b[offset + 2] + a[row + 12] * b[offset + 3];
+      }
+    }
+  }
+
+  const projection = new Float32Array(16);
+  const gunProjection = new Float32Array(16);
+  const view = new Float32Array(16);
+  const viewProjection = new Float32Array(16);
+  const model = new Float32Array(16);
+  const lineBuffer = { buffer: gl.createBuffer(), count: 0 };
+  const white = [1, 1, 1];
+
+  function draw(object, x = 0, y = 0, z = 0, sx = 1, sy = sx, sz = sx, angle = 0, tint = white) {
+    const cosine = Math.cos(angle), sine = Math.sin(angle);
+    model.set([
+      cosine * sx,0,-sine * sx,0, 0,sy,0,0, sine * sz,0,cosine * sz,0, x,y,z,1
+    ]);
+    gl.uniformMatrix4fv(modelUniform, false, model);
+    gl.uniform3fv(tintUniform, tint);
+    gl.bindBuffer(gl.ARRAY_BUFFER, object.buffer);
+    gl.vertexAttribPointer(positionAttribute, 3, gl.FLOAT, false, 40, 0);
+    gl.vertexAttribPointer(normalAttribute, 3, gl.FLOAT, false, 40, 12);
+    gl.vertexAttribPointer(colorAttribute, 4, gl.FLOAT, false, 40, 24);
+    gl.drawArrays(gl.TRIANGLES, 0, object.count);
+  }
+
+  function resize() {
+    const density = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(canvas.clientWidth * density));
+    const height = Math.max(1, Math.round(canvas.clientHeight * density));
+    if (width !== canvas.width || height !== canvas.height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    gl.viewport(0, 0, width, height);
+    perspective(projection, 65 * Math.PI / 180, width / height, .065, 140);
+    perspective(gunProjection, .94, width / height, .035, 6);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  let best = 0;
+  try { best = Math.max(0, Number(localStorage.getItem(storageKey)) || 0); } catch {}
+  if (best) byId('introBest').textContent = 'Best ' + best.toLocaleString();
+  const keys = new Set();
+  const primary = { held: false, time: 0, kick: 0 };
+  const arc = { held: false, time: 0, kick: 0 };
+  const player = { x: -4.9, y: 0, z: 16.2, yaw: .12, pitch: 0, vx: 0, vy: 0, vz: 0, grounded: true, health: 100, radius: .42 };
+  const types = {
+    dart: { mesh: dartMesh, hp: 42, speed: 8.6, radius: .71, height: 1.37, minRange: 1.65, score: 120, tint: turquoise },
+    mason: { mesh: masonMesh, hp: 105, speed: 4.2, radius: .83, height: 1.16, minRange: 8.8, score: 240, tint: amber },
+    prism: { mesh: prismMesh, hp: 70, speed: 5.55, radius: .77, height: 2.32, minRange: 11.3, score: 200, tint: purple }
+  };
+  const spawnNames = ['Darts incoming', 'Masons breach the gates', 'Prisms in the kiln', 'Gates at full pressure', 'Final surge'];
+  const gates = [
+    [-20,-16], [0,-18.3], [20,-16], [20,0], [20,16], [0,18.6], [-20,16], [-20,0]
+  ];
+  const repairs = [
+    { x: -16.3, y: 2.35, z: -1.3, delay: 0 }, { x: 16.3, y: 2.35, z: 1.5, delay: 0 },
+    { x: 0, y: .92, z: center.z, delay: 0 }, { x: -3.1, y: 0, z: -15.7, delay: 0 }
+  ];
+  const enemies = [];
+  const portals = [];
+  const bullets = [];
+  const particles = [];
+  const trails = [];
+  const bursts = [];
+  const embers = Array.from({ length: 32 }, () => ({
+    x: random(-25,25), y: random(3,15), z: random(-22,22), speed: random(.55,1.3), seed: random(0,tau)
+  }));
+
+  let phase = 'title';
+  let elapsed = 0, wave = 0, score = 0, kills = 0, chain = 0, chainTime = 0;
+  let spawnTime = 0, calloutTime = 0, damage = 0, hitTime = 0, shake = 0, bobPhase = 0;
+  let lockOwned = false;
+  let audio;
+  let masterGain;
+
+  function enableAudio() {
+    try {
+      if (!audio) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        audio = new AudioContext();
+        masterGain = audio.createGain();
+        masterGain.gain.value = .22;
+        masterGain.connect(audio.destination);
+      }
+      if (audio.state === 'suspended') audio.resume().catch(() => {});
+    } catch {}
+  }
+
+  function tone(from, to, length, volume, type = 'triangle') {
+    if (!audio || audio.state !== 'running') return;
+    const now = audio.currentTime;
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(from, now);
+    oscillator.frequency.exponentialRampToValueAtTime(to, now + length);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(.001, now + length);
+    oscillator.connect(gain);
+    gain.connect(masterGain);
+    oscillator.start(now);
+    oscillator.stop(now + length);
+  }
+
+  function showCallout(text, time = 2) {
+    callout.textContent = text;
+    calloutTime = time;
+  }
+
+  function clearInput() {
+    keys.clear();
+    primary.held = false;
+    arc.held = false;
+  }
+
+  function releaseMouse() {
+    lockOwned = false;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+
+  function captureMouse() {
+    if (document.pointerLockElement === canvas) {
+      lockOwned = true;
+      return;
+    }
+    const fallback = () => {
+      if (phase === 'playing') showCallout('Mouse capture unavailable · Arrow keys aim', 3.2);
+    };
+    try {
+      if (!canvas.requestPointerLock) {
+        fallback();
+        return;
+      }
+      const pending = canvas.requestPointerLock();
+      if (pending && typeof pending.catch === 'function') pending.catch(fallback);
+    } catch { fallback(); }
+  }
+
+  function reset() {
+    Object.assign(player, { x: -4.9, y: 0, z: 16.2, yaw: .12, pitch: 0, vx: 0, vy: 0, vz: 0, grounded: true, health: 100 });
+    for (const list of [enemies, portals, bullets, particles, trails, bursts]) list.length = 0;
+    for (const repair of repairs) repair.delay = 0;
+    elapsed = wave = score = kills = chain = chainTime = 0;
+    damage = hitTime = shake = bobPhase = 0;
+    primary.time = primary.kick = arc.time = arc.kick = 0;
+    spawnTime = .08;
+    calloutTime = 0;
+    clearInput();
+    showCallout(spawnNames[0], 2.6);
+  }
+
+  function startGame(restart) {
+    if (phase === 'error') return;
+    if (restart) reset();
+    phase = 'playing';
+    intro.hidden = true;
+    overlay.hidden = true;
+    hud.hidden = false;
+    enableAudio();
+    captureMouse();
+    updateHUD();
+  }
+
+  function pauseGame() {
+    if (phase !== 'playing') return;
+    phase = 'paused';
+    clearInput();
+    releaseMouse();
+    overlay.hidden = false;
+    byId('endLabel').textContent = 'Rift Kiln';
+    byId('endTitle').textContent = 'Paused';
+    byId('endText').textContent = 'Click to resume or press R to restart.';
+    byId('resultLine').hidden = true;
+    overlayButton.textContent = 'Resume arena';
+  }
+
+  function complete(survived) {
+    phase = 'complete';
+    clearInput();
+    releaseMouse();
+    if (survived) score += 1000;
+    const record = score > best;
+    if (record) {
+      best = score;
+      try { localStorage.setItem(storageKey, String(best)); } catch {}
+    }
+    overlay.hidden = false;
+    hud.hidden = true;
+    byId('endLabel').textContent = survived ? 'Arena cleared' : 'Suit signal lost';
+    byId('endTitle').textContent = survived ? 'Rift sealed' : 'Kiln breach';
+    byId('endText').textContent = survived ? 'You held the kiln through the final surge.' : 'Your suit failed before the rift could close.';
+    const result = byId('resultLine');
+    result.hidden = false;
+    result.textContent = score.toLocaleString() + ' points · ' + kills + ' down' + (record ? ' · New best' : '');
+    overlayButton.textContent = 'Run again · R';
+    if (survived) tone(330, 880, .45, .13);
+    else tone(140, 39, .43, .19, 'sawtooth');
+  }
+
+  byId('start').addEventListener('click', () => startGame(true));
+  overlayButton.addEventListener('click', () => startGame(phase !== 'paused'));
+  const gameKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyP', 'KeyR']);
+  document.addEventListener('keydown', (event) => {
+    if (gameKeys.has(event.code) && !(event.code === 'Space' && event.target instanceof HTMLButtonElement)) event.preventDefault();
+    if (event.code === 'KeyR' && !event.repeat && phase !== 'title') {
+      startGame(true);
+      return;
+    }
+    if (phase !== 'playing') return;
+    if (event.code === 'KeyP' || event.code === 'Escape') pauseGame();
+    else keys.add(event.code);
+  });
+  document.addEventListener('keyup', (event) => keys.delete(event.code));
+  canvas.addEventListener('mousedown', (event) => {
+    if (phase !== 'playing') return;
+    event.preventDefault();
+    if (event.button === 0) primary.held = true;
+    if (event.button === 2) arc.held = true;
+  });
+  window.addEventListener('mouseup', (event) => {
+    if (event.button === 0) primary.held = false;
+    if (event.button === 2) arc.held = false;
+  });
+  document.addEventListener('contextmenu', (event) => {
+    if (phase === 'playing') event.preventDefault();
+  });
+  document.addEventListener('mousemove', (event) => {
+    if (phase === 'playing' && document.pointerLockElement === canvas) {
+      player.yaw += event.movementX * .00215;
+      player.pitch = clamp(player.pitch - event.movementY * .00215, -1.49, 1.49);
+    }
+  });
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === canvas) {
+      if (phase === 'playing') lockOwned = true;
+      else releaseMouse();
+    } else if (lockOwned) pauseGame();
+  });
+  document.addEventListener('pointerlockerror', () => {
+    if (phase === 'playing') showCallout('Mouse capture unavailable · Arrow keys aim', 3.2);
+  });
+  window.addEventListener('blur', pauseGame);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+  function overlaps(x, z, radius, solid) {
+    return Math.abs(x - solid.x) < solid.w / 2 + radius && Math.abs(z - solid.z) < solid.d / 2 + radius;
+  }
+
+  function blocked(x, z, feet, radius) {
+    return Math.abs(x) >= bounds.x - radius || Math.abs(z) >= bounds.z - radius
+      || solids.some((solid) => solid.h - .026 > feet && overlaps(x, z, radius, solid));
+  }
+
+  function floorAt(x, z, radius, maxHeight = Infinity) {
+    let top = 0;
+    for (const solid of solids) {
+      if (solid.h <= maxHeight && overlaps(x, z, radius, solid)) top = Math.max(top, solid.h);
+    }
+    return top;
+  }
+
+  function movePlayer(dt) {
+    player.yaw += ((keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0)) * 1.9 * dt;
+    player.pitch = clamp(player.pitch + ((keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0)) * 1.55 * dt, -1.49, 1.49);
+    if (player.grounded && keys.has('Space')) {
+      player.grounded = false;
+      player.vy = 10.05;
+      tone(92, 143, .09, .035);
+    }
+    const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
+    const strafe = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
+    if (player.grounded) {
+      const multiplier = Math.max(0, 1 - dt * 7.1);
+      player.vx *= multiplier;
+      player.vz *= multiplier;
+    }
+    if (forward || strafe) {
+      const sine = Math.sin(player.yaw), cosine = Math.cos(player.yaw);
+      const scale = 1 / Math.hypot(forward, strafe);
+      const wishX = (sine * forward + cosine * strafe) * scale;
+      const wishZ = (-cosine * forward + sine * strafe) * scale;
+      const speed = 10.5;
+      const difference = speed - (player.vx * wishX + player.vz * wishZ);
+      const amount = clamp(difference, 0, speed * dt * (player.grounded ? 11.2 : 2.6));
+      player.vx += wishX * amount;
+      player.vz += wishZ * amount;
+    }
+    const magnitude = Math.hypot(player.vx, player.vz);
+    if (magnitude > 17) {
+      player.vx *= 17 / magnitude;
+      player.vz *= 17 / magnitude;
+    }
+    const radius = player.radius;
+    const x = player.x + player.vx * dt;
+    if (!blocked(x, player.z, player.y, radius)) player.x = x;
+    else player.vx = 0;
+    const z = player.z + player.vz * dt;
+    if (!blocked(player.x, z, player.y, radius)) player.z = z;
+    else player.vz = 0;
+    const floor = floorAt(player.x, player.z, radius, player.y + .032);
+    player.vy -= 22 * dt;
+    const nextY = player.y + player.vy * dt;
+    if (nextY <= floor) {
+      player.grounded = true;
+      player.y = floor;
+      player.vy = 0;
+    } else {
+      player.y = nextY;
+      player.grounded = false;
+    }
+    if (player.grounded) bobPhase += Math.min(11, magnitude) * dt * 1.06;
+  }
+
+  function rayBox(ox, oy, oz, dx, dy, dz, minimum, maximum, maxDistance) {
+    let near = 0, far = maxDistance;
+    const origin = [ox, oy, oz], direction = [dx, dy, dz];
+    for (let axis = 0; axis < 3; axis++) {
+      if (Math.abs(direction[axis]) < .00001) {
+        if (origin[axis] < minimum[axis] || origin[axis] > maximum[axis]) return maxDistance;
+      } else {
+        let a = (minimum[axis] - origin[axis]) / direction[axis];
+        let b = (maximum[axis] - origin[axis]) / direction[axis];
+        if (a > b) [a, b] = [b, a];
+        near = Math.max(near, a);
+        far = Math.min(far, b);
+        if (near > far) return maxDistance;
+      }
+    }
+    return near;
+  }
+
+  function worldRay(x, y, z, dx, dy, dz, maxDistance) {
+    let distance = maxDistance;
+    for (const solid of solids) {
+      distance = Math.min(distance, rayBox(x,y,z,dx,dy,dz,
+        [solid.x - solid.w / 2, 0, solid.z - solid.d / 2],
+        [solid.x + solid.w / 2, solid.h, solid.z + solid.d / 2], distance));
+    }
+    if (dy < 0) distance = Math.min(distance, -y / dy);
+    if (dx > 0) distance = Math.min(distance, (bounds.x - x) / dx);
+    if (dx < 0) distance = Math.min(distance, (-bounds.x - x) / dx);
+    if (dz > 0) distance = Math.min(distance, (bounds.z - z) / dz);
+    if (dz < 0) distance = Math.min(distance, (-bounds.z - z) / dz);
+    return Math.max(0, distance);
+  }
+
+  function raySphere(x, y, z, dx, dy, dz, sphereX, sphereY, sphereZ, radius, range) {
+    const sx = sphereX - x, sy = sphereY - y, sz = sphereZ - z;
+    const along = sx * dx + sy * dy + sz * dz;
+    const discriminant = radius * radius + along * along - sx * sx - sy * sy - sz * sz;
+    if (discriminant < 0) return range;
+    const root = Math.sqrt(discriminant);
+    if (along + root < 0) return range;
+    return Math.min(range, Math.max(0, along - root));
+  }
+
+  function clearShot(x, y, z, targetX, targetY, targetZ) {
+    const dx = targetX - x, dy = targetY - y, dz = targetZ - z;
+    const distance = Math.hypot(dx, dy, dz);
+    return distance < .035 || worldRay(x,y,z,dx/distance,dy/distance,dz/distance,distance) >= distance - .035;
+  }
+
+  function scatter(x, y, z, count, tint, strength = 1) {
+    for (let i = 0; i < count; i++) {
+      const life = random(.18,.57);
+      particles.push({ x,y,z, vx: random(-4.9,4.9) * strength, vy: random(-2,6.1) * strength, vz: random(-4.9,4.9) * strength, life, max: life, size: random(.025,.09), tint });
+    }
+    if (particles.length > 230) particles.splice(0, particles.length - 230);
+  }
+
+  function enemyHit(enemy, amount) {
+    if (enemy.hp <= 0) return;
+    enemy.hp -= amount;
+    enemy.flash = .14;
+    hitTime = .105;
+    if (enemy.hp > 0) {
+      tone(640, 930, .038, .059, 'sine');
+      return;
+    }
+    chain = chainTime > 0 ? Math.min(5, chain + 1) : 1;
+    chainTime = 3.4;
+    score += enemy.spec.score * chain;
+    kills++;
+    scatter(enemy.x, enemy.y, enemy.z, 19, enemy.spec.tint, 1.25);
+    bursts.push({ x: enemy.x, y: enemy.y, z: enemy.z, life: .27, max: .27, radius: 1.55 });
+    hitTime = .2;
+    shake = Math.max(shake, .075);
+    tone(235, 502, .12, .12, 'triangle');
+  }
+
+  function damagePlayer(amount) {
+    if (phase !== 'playing') return;
+    player.health = Math.max(0, player.health - amount);
+    damage = Math.min(.88, damage + .54);
+    shake = Math.max(shake, .105);
+    tone(73, 42, .16, .11, 'sawtooth');
+    if (player.health <= 0) complete(false);
+  }
+
+  function firePrimary() {
+    primary.time = .109;
+    primary.kick = .12;
+    const cp = Math.cos(player.pitch);
+    const x = player.x, y = player.y + 1.62, z = player.z;
+    const dx = Math.sin(player.yaw) * cp, dy = Math.sin(player.pitch), dz = -Math.cos(player.yaw) * cp;
+    let distance = worldRay(x, y, z, dx, dy, dz, 63);
+    let target;
+    for (const enemy of enemies) {
+      if (enemy.hp <= 0) continue;
+      const contact = raySphere(x,y,z,dx,dy,dz,enemy.x,enemy.y,enemy.z,enemy.spec.radius,distance);
+      if (contact < distance) {
+        distance = contact;
+        target = enemy;
+      }
+    }
+    const impact = [x + dx * distance, y + dy * distance, z + dz * distance];
+    trails.push({ a: [x + Math.cos(player.yaw) * .29 + dx * .54, y - .29 + dy * .54, z + Math.sin(player.yaw) * .29 + dz * .54],
+      b: impact, life: .064 });
+    if (target) enemyHit(target, 23);
+    if (distance < 62.9) scatter(impact[0], impact[1], impact[2], target ? 5 : 3, target ? target.spec.tint : paleAmber, .49);
+    tone(190, 74, .069, .083, 'triangle');
+  }
+
+  function fireArc() {
+    arc.time = arcCooldown;
+    arc.kick = .29;
+    primary.kick = .14;
+    shake = Math.max(shake, .13);
+    const dx = Math.sin(player.yaw) * Math.cos(player.pitch), dy = Math.sin(player.pitch), dz = -Math.cos(player.yaw) * Math.cos(player.pitch);
+    bullets.push({ x: player.x, y: player.y + 1.62, z: player.z, dx,dy,dz, speed: 25, size: .175, life: 1.85, friendly: true });
+    player.vx -= dx * 1.6;
+    player.vz -= dz * 1.6;
+    tone(410, 48, .26, .22, 'sawtooth');
+  }
+
+  function burst(x, y, z, direct) {
+    const radius = 3.85;
+    scatter(x, y, z, 26, paleAmber, 1.48);
+    bursts.push({ x,y,z, life: .35, max: .35, radius });
+    for (const enemy of enemies) {
+      const distance = Math.hypot(enemy.x - x, enemy.y - y, enemy.z - z);
+      if (enemy === direct) enemyHit(enemy, 85);
+      else if (distance < radius && clearShot(x,y,z,enemy.x,enemy.y,enemy.z)) enemyHit(enemy, Math.round(mix(74, 28, distance / radius)));
+    }
+    shake = Math.max(shake, .13 * (1 - Math.min(1, Math.hypot(player.x - x, player.z - z) / 28)));
+    tone(112, 32, .24, .16, 'triangle');
+  }
+
+  function updateBullets(dt) {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const shot = bullets[i];
+      const travel = shot.speed * dt, { x,y,z,dx,dy,dz } = shot;
+      let distance = worldRay(x,y,z,dx,dy,dz,travel);
+      let target;
+      let foundPlayer = false;
+      if (shot.friendly) {
+        for (const enemy of enemies) {
+          if (enemy.hp <= 0) continue;
+          const contact = raySphere(x,y,z,dx,dy,dz,enemy.x,enemy.y,enemy.z,enemy.spec.radius + .07,distance);
+          if (contact < distance) {
+            distance = contact;
+            target = enemy;
+          }
+        }
+      } else {
+        const contact = raySphere(x,y,z,dx,dy,dz,player.x,player.y + 1.01,player.z,.72,distance);
+        if (contact < distance) {
+          distance = contact;
+          foundPlayer = true;
+        }
+      }
+      shot.x += dx * distance;
+      shot.y += dy * distance;
+      shot.z += dz * distance;
+      shot.life -= dt;
+      if (distance >= travel && shot.life > 0) continue;
+      bullets.splice(i, 1);
+      if (shot.friendly) burst(shot.x - dx * .032, shot.y - dy * .032, shot.z - dz * .032, target);
+      else if (foundPlayer) damagePlayer(shot.damage);
+      else if (distance < travel) scatter(shot.x, shot.y, shot.z, 4, shot.tint, .47);
+      if (phase !== 'playing') return;
+    }
+  }
+
+  function scheduleEnemy() {
+    let chosen;
+    for (let i = 0; i < 20; i++) {
+      const gate = gates[Math.floor(Math.random() * gates.length)];
+      const distant = Math.hypot(player.x - gate[0], player.z - gate[1]) > 9;
+      const clear = !portals.some((portal) => portal.gate === gate) &&
+        !enemies.some((enemy) => Math.hypot(enemy.x - gate[0], enemy.z - gate[1]) < 3);
+      if (distant && clear) {
+        chosen = gate;
+        break;
+      }
+    }
+    if (!chosen) return;
+    let kind = 'dart';
+    const roll = Math.random();
+    if (wave >= 2 && roll < .28) kind = 'prism';
+    else if (wave >= 1 && roll < .65) kind = 'mason';
+    portals.push({ gate: chosen, kind, time: .74 });
+  }
+
+  function updatePortals(dt) {
+    for (let i = portals.length - 1; i >= 0; i--) {
+      const portal = portals[i];
+      portal.time -= dt;
+      if (portal.time > 0) continue;
+      portals.splice(i, 1);
+      const [x,z] = portal.gate;
+      const spec = types[portal.kind];
+      enemies.push({ x,z,y: spec.height, hp: spec.hp, flash: 0, spec, kind: portal.kind, angle: 0,
+        side: Math.random() < .5 ? -1 : 1, seed: random(0,tau), fire: random(.87,1.68) });
+      scatter(x, .55, z, 11, spec.tint, .74);
+    }
+  }
+
+  function fireEnemy(enemy) {
+    const x = enemy.x, y = enemy.y + .02, z = enemy.z;
+    const dx = player.x + player.vx * .16 - x, dy = player.y + 1.13 - y, dz = player.z + player.vz * .16 - z;
+    const distance = Math.hypot(dx,dy,dz) || 1;
+    const prism = enemy.kind === 'prism';
+    for (const angle of prism ? [-.147, 0, .147] : [0]) {
+      const cosine = Math.cos(angle), sine = Math.sin(angle);
+      bullets.push({ x,y,z, dx: (dx * cosine - dz * sine) / distance, dy: dy / distance, dz: (dx * sine + dz * cosine) / distance,
+        speed: prism ? 15 : 17.5, size: prism ? .114 : .145, life: 4, damage: prism ? 9 : 15, tint: enemy.spec.tint });
+    }
+    enemy.fire = (prism ? 2.25 : 1.93) + random(0, .65) - wave * .09;
+  }
+
+  function updateEnemies(dt) {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const enemy = enemies[i];
+      if (enemy.hp <= 0) {
+        enemies.splice(i, 1);
+        continue;
+      }
+      enemy.fire -= dt;
+      enemy.flash = Math.max(0, enemy.flash - dt);
+      const targetY = player.y + 1.04;
+      const dx = player.x - enemy.x, dz = player.z - enemy.z;
+      const distance = Math.max(.001, Math.hypot(dx, dz));
+      const attackRange = enemy.kind === 'dart' ? 2.1 : 20.4;
+      const canAttack = distance < attackRange && clearShot(enemy.x,enemy.y,enemy.z,player.x,targetY,player.z);
+      const seeking = !canAttack || distance > enemy.spec.minRange;
+      enemy.angle = Math.atan2(dx, dz);
+      let mx = dx / distance, mz = dz / distance;
+      if (!seeking) {
+        if (enemy.kind === 'dart') {
+          mx = 0;
+          mz = 0;
+        } else {
+          const retreat = distance < enemy.spec.minRange * .56 ? -.59 : 0;
+          const sidestep = enemy.side * .67;
+          [mx,mz] = [mx * retreat + mz * sidestep, mz * retreat - mx * sidestep];
+        }
+      }
+      for (const other of enemies) {
+        if (other === enemy || other.hp <= 0) continue;
+        const ox = enemy.x - other.x, oz = enemy.z - other.z;
+        const separation = Math.hypot(ox, oz);
+        if (separation > .02 && separation < 1.82) {
+          const weight = Math.min(1.45, (1.82 - separation) / separation);
+          mx += ox * weight;
+          mz += oz * weight;
+        }
+      }
+      const feet = enemy.y - .49, radius = enemy.spec.radius * .85;
+      if (blocked(enemy.x + mx * 1.48, enemy.z + mz * 1.48, feet, radius)) {
+        const turn = enemy.side * 1.34;
+        const cos = Math.cos(turn), sin = Math.sin(turn);
+        const rightX = mx * cos - mz * sin, rightZ = mx * sin + mz * cos;
+        if (!blocked(enemy.x + rightX * 1.1, enemy.z + rightZ * 1.1, feet, radius)) {
+          mx = rightX;
+          mz = rightZ;
+        } else {
+          [mx, mz] = [mx * cos + mz * sin, -mx * sin + mz * cos];
+        }
+      }
+      const step = (enemy.spec.speed + wave * .24) * dt / Math.max(1, Math.hypot(mx,mz));
+      if (!blocked(enemy.x + mx * step, enemy.z, feet, radius)) enemy.x += mx * step;
+      if (!blocked(enemy.x, enemy.z + mz * step, feet, radius)) enemy.z += mz * step;
+      const terrain = floorAt(enemy.x, enemy.z, radius * .6);
+      const desired = terrain + enemy.spec.height + .22 * Math.sin(elapsed * 3.5 + enemy.seed);
+      enemy.y = mix(enemy.y, desired, Math.min(1, dt * 5));
+      if (canAttack && enemy.fire <= 0) {
+        if (enemy.kind === 'dart') {
+          if (Math.abs(enemy.y - targetY) > 1.15) continue;
+          enemy.fire = .63;
+          damagePlayer(12 + wave);
+          if (phase !== 'playing') return;
+        } else {
+          fireEnemy(enemy);
+        }
+      }
+    }
+  }
+
+  function updateEffects(dt) {
+    damage = Math.max(0, damage - dt * 1.8);
+    hitTime = Math.max(0, hitTime - dt);
+    shake = Math.max(0, shake - dt * .52);
+    calloutTime = Math.max(0, calloutTime - dt);
+    chainTime = Math.max(0, chainTime - dt);
+    for (const particle of particles) {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.z += particle.vz * dt;
+      particle.vy -= dt * 9.1;
+      particle.y = Math.max(.018, particle.y);
+    }
+    for (const list of [particles, trails, bursts]) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        list[i].life -= dt;
+        if (list[i].life <= 0) list.splice(i, 1);
+      }
+    }
+  }
+
+  function updateHUD() {
+    const remaining = Math.max(0, Math.ceil(duration - elapsed));
+    hudTime.textContent = String(Math.floor(remaining / 60)).padStart(2, '0') + ':' + String(remaining % 60).padStart(2, '0');
+    hudTime.classList.toggle('urgent', remaining <= 15);
+    hudWave.textContent = 'Wave ' + (wave + 1) + ' / 5';
+    wavePips.forEach((pip, index) => pip.classList.toggle('lit', index <= wave));
+    hudScore.textContent = String(score).padStart(4, '0');
+    hudBest.textContent = String(Math.max(score, best)).padStart(4, '0');
+    hudHealth.textContent = player.health;
+    healthBar.style.transform = 'scaleX(' + player.health / 100 + ')';
+    healthBar.style.backgroundColor = player.health <= 30 ? 'var(--rust)' : 'var(--teal)';
+    arcBar.style.transform = 'scaleX(' + (1 - arc.time / arcCooldown) + ')';
+    arcStatus.textContent = arc.time <= 0 ? 'READY' : arc.time.toFixed(1) + 's';
+    damageWash.style.opacity = damage;
+    crosshair.classList.toggle('hit', hitTime > 0);
+    callout.style.opacity = clamp(calloutTime * 2, 0, 1);
+    chainReadout.hidden = chain < 2 || chainTime <= 0;
+    chainReadout.textContent = '×' + chain + ' chain';
+  }
+
+  function step(dt) {
+    elapsed += dt;
+    if (elapsed >= duration) {
+      complete(true);
+      return;
+    }
+    const nextWave = Math.min(4, Math.floor(elapsed / 21));
+    if (nextWave !== wave) {
+      wave = nextWave;
+      spawnTime = 0;
+      showCallout(spawnNames[wave], 2.65);
+      tone(185, 370, .28, .13);
+    }
+    movePlayer(dt);
+    primary.time = Math.max(0, primary.time - dt);
+    primary.kick = Math.max(0, primary.kick - dt * .91);
+    arc.time = Math.max(0, arc.time - dt);
+    arc.kick = Math.max(0, arc.kick - dt * 1.17);
+    if (primary.held && primary.time <= 0) firePrimary();
+    if (arc.held && arc.time <= 0) fireArc();
+    spawnTime -= dt;
+    if (spawnTime <= 0 && enemies.length + portals.length < 4 + wave * 2) {
+      scheduleEnemy();
+      spawnTime = 2.63 - wave * .42;
+    }
+    updatePortals(dt);
+    updateEnemies(dt);
+    if (phase !== 'playing') return;
+    updateBullets(dt);
+    if (phase !== 'playing') return;
+    for (const repair of repairs) {
+      repair.delay = Math.max(0, repair.delay - dt);
+      if (!repair.delay && player.health < 100 && Math.hypot(player.x - repair.x, player.z - repair.z) < 1.1 && Math.abs(player.y - repair.y) < 1) {
+        const previous = player.health;
+        player.health = Math.min(100, player.health + 32);
+        repair.delay = 16;
+        scatter(repair.x, repair.y + .45, repair.z, 12, turquoise, .85);
+        showCallout('+' + (player.health - previous) + ' suit integrity', 1.35);
+        tone(320, 925, .19, .14, 'sine');
+      }
+    }
+    updateEffects(dt);
+    updateHUD();
+  }
+
+  function render(clock) {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const inTitle = phase === 'title';
+    const velocity = Math.min(1, Math.hypot(player.vx, player.vz) / 10.5);
+    const bob = player.grounded ? Math.sin(bobPhase * 2) * .036 * velocity : 0;
+    const x = inTitle ? -7.6 : player.x;
+    const y = inTitle ? 3.7 + Math.sin(clock * .6) * .13 : player.y + 1.62 + bob + shake * Math.sin(clock * 87) * .43;
+    const z = inTitle ? 17.5 : player.z;
+    const yaw = inTitle ? .035 + Math.sin(clock * .25) * .05 : player.yaw + shake * Math.cos(clock * 75) * .16;
+    const pitch = inTitle ? .03 : player.pitch + shake * Math.sin(clock * 62) * .17;
+    viewAt(view, x,y,z,yaw,pitch);
+    multiply(viewProjection, projection, view);
+    gl.uniformMatrix4fv(projectionUniform, false, viewProjection);
+    gl.uniform3f(cameraUniform, x, y, z);
+    draw(skyDisk, -13, 15, -51, 5.9);
+    draw(arenaMesh);
+    const coreY = 5.6 + .26 * Math.sin(clock * 1.58);
+    draw(symbolMesh, center.x, coreY, center.z, 1,1,1, clock * .68);
+    draw(orbitMesh, center.x, coreY, center.z, 1,1,1, clock * -.76);
+    draw(orbitMesh, center.x, coreY, center.z, .84,.84,.84, clock * .91);
+    for (const ember of embers) {
+      const yOffset = (ember.y + clock * ember.speed) % 14;
+      const size = .016 + .018 * (.5 + .5 * Math.sin(clock * 3 + ember.seed));
+      draw(shardMesh, ember.x + .71 * Math.sin(clock * .7 + ember.seed), .4 + yOffset, ember.z, size, size * 2.1, size, clock, [1,.63,.42]);
+    }
+    for (const repair of repairs) {
+      if (repair.delay > 0) continue;
+      const scale = .94 + .08 * Math.sin(clock * 3.2);
+      draw(repairRing, repair.x, repair.y + .017, repair.z, scale,1,scale);
+      draw(repairMesh, repair.x, repair.y + .59 + .12 * Math.sin(clock * 2.9), repair.z, 1,1,1, clock * 1.56);
+    }
+    for (const portal of portals) {
+      const [gx,gz] = portal.gate;
+      const scale = .64 + (1 - portal.time / .74) * 1.14;
+      draw(warmRing, gx, .03, gz, scale,1,scale);
+      draw(warmRing, gx, .19 + .34 * scale, gz, scale * .76,1,scale * .76, clock);
+      draw(shardMesh, gx, .83, gz, .085, scale + .2, .085, clock * 6, [1,.46,.28]);
+    }
+    for (const enemy of enemies) {
+      if (enemy.hp <= 0) continue;
+      const tint = enemy.flash > 0 ? [1.7,1.65,1.52] : white;
+      draw(enemy.spec.mesh, enemy.x, enemy.y, enemy.z, 1,1,1, enemy.angle, tint);
+    }
+    const lineData = [];
+    for (const shot of bullets) {
+      const tint = shot.friendly ? pureAmber : shot.tint;
+      draw(shardMesh, shot.x, shot.y, shot.z, shot.size, shot.size, shot.size, clock * 8, tint.slice(0,3));
+      beam(lineData, [shot.x,shot.y,shot.z], [shot.x-shot.dx*.56,shot.y-shot.dy*.56,shot.z-shot.dz*.56], .035, tint);
+    }
+    for (const trail of trails) beam(lineData, trail.a, trail.b, .009 + trail.life * .12, turquoise);
+    if (lineData.length) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer.buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineData), gl.DYNAMIC_DRAW);
+      lineBuffer.count = lineData.length / 10;
+      draw(lineBuffer);
+    }
+    for (const particle of particles) {
+      const ratio = particle.life / particle.max, scale = particle.size * (.36 + ratio * .64);
+      draw(shardMesh, particle.x, particle.y, particle.z, scale, scale * 1.55, scale, ratio * 7, particle.tint.slice(0,3));
+    }
+    for (const blast of bursts) {
+      const fraction = 1 - blast.life / blast.max;
+      const scale = (.16 + fraction * .84) * blast.radius;
+      draw(warmRing, blast.x, Math.max(.06, blast.y - fraction * .64), blast.z, scale,1,scale, 0, [1 - fraction * .42,1,1]);
+    }
+    if (!inTitle && phase !== 'complete') {
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+      gl.uniformMatrix4fv(projectionUniform, false, gunProjection);
+      gl.uniform3f(cameraUniform, 0,0,0);
+      const bx = .36 + Math.cos(bobPhase) * .024 * velocity;
+      const by = -.32 + bob * .73 - arc.kick * .16;
+      const bz = -.72 + primary.kick * .92 + arc.kick * .38;
+      draw(weaponMesh, bx, by, bz, 1,1,1, -.07);
+      if (primary.kick > .086) {
+        const scale = (.145 + arc.kick * .26) * (primary.kick / .12);
+        draw(shardMesh, bx -.018, by -.02, bz -.313, scale, scale * .66, scale, clock * 25, arc.kick > .19 ? [1,.65,.35] : [.62,1,.84]);
+      }
+    }
+  }
+
+  const pureAmber = color(0xffae71, 1);
+  let last = performance.now();
+  function frame(now) {
+    const delta = clamp((now - last) / 1000, 0, .05);
+    last = now;
+    if (phase === 'playing') step(delta);
+    render(now / 1000);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>

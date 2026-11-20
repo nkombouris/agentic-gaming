@@ -1,0 +1,2533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLACKSITE: ZERO PROTOCOL // Turn-Based Tactical Combat</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #060a12;
+    color: #e2f1ff;
+    font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace, sans-serif;
+  }
+  #gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+
+  /* Tactical HUD Layer */
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px 20px;
+  }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .tac-panel {
+    background: rgba(8, 15, 28, 0.88);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    border-left: 4px solid #00e5ff;
+    border-radius: 6px;
+    padding: 10px 16px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    pointer-events: auto;
+  }
+  .tac-panel.amber {
+    border-left-color: #ffb300;
+    border-color: rgba(255, 179, 0, 0.4);
+  }
+  .tac-panel.crimson {
+    border-left-color: #ff2a5f;
+    border-color: rgba(255, 42, 95, 0.45);
+  }
+  .panel-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #7ea2c8;
+  }
+  .panel-value {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #ffffff;
+    margin-top: 2px;
+  }
+  .panel-sub {
+    font-size: 11px;
+    color: #9ec0e6;
+    margin-top: 2px;
+  }
+
+  /* Turn Phase Banner */
+  #phaseBanner {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(8, 16, 30, 0.92);
+    border: 1px solid rgba(0, 229, 255, 0.5);
+    border-bottom: 3px solid #00e5ff;
+    padding: 8px 28px;
+    border-radius: 6px;
+    text-align: center;
+    box-shadow: 0 0 25px rgba(0, 229, 255, 0.25);
+    transition: all 0.2s ease;
+  }
+  #phaseBanner.enemy-turn {
+    border-color: rgba(255, 42, 95, 0.7);
+    border-bottom-color: #ff2a5f;
+    box-shadow: 0 0 30px rgba(255, 42, 95, 0.45);
+  }
+  #phaseTitle {
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #00e5ff;
+  }
+  #phaseBanner.enemy-turn #phaseTitle {
+    color: #ff2a5f;
+  }
+  #phaseSub {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: #a4c2e5;
+    margin-top: 2px;
+  }
+
+  /* Target Lock / Shot Breakdown Panel */
+  #targetPanel {
+    position: fixed;
+    top: 88px;
+    right: 20px;
+    width: 280px;
+    background: rgba(12, 18, 34, 0.92);
+    border: 1px solid rgba(255, 42, 95, 0.55);
+    border-right: 4px solid #ff2a5f;
+    border-radius: 6px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.75);
+    pointer-events: auto;
+    display: none;
+  }
+  .tgt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+  .tgt-name {
+    font-size: 15px;
+    font-weight: 900;
+    color: #ff4d79;
+    letter-spacing: 1px;
+  }
+  .tgt-cover-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  .tgt-stats-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .tgt-stat-box {
+    flex: 1;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+    padding: 6px 4px;
+    margin: 0 3px;
+  }
+  .tgt-stat-val {
+    font-size: 20px;
+    font-weight: 900;
+  }
+  .tgt-stat-lbl {
+    font-size: 9px;
+    color: #8da9c4;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .tgt-breakdown {
+    font-size: 11px;
+    color: #b0cce8;
+    line-height: 1.45;
+    margin-bottom: 10px;
+  }
+  .btn-fire-confirm {
+    width: 100%;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ff2a5f 0%, #ff6a00 100%);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-weight: 900;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    box-shadow: 0 0 16px rgba(255, 42, 95, 0.45);
+  }
+  .btn-fire-confirm:hover {
+    filter: brightness(1.15);
+  }
+
+  /* Bottom Bar: Operative Status + Action Dock */
+  .bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .unit-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 275px;
+  }
+  .unit-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .unit-name {
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #00e5ff;
+  }
+  .ap-pips {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .ap-pip {
+    width: 18px;
+    height: 10px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+  }
+  .ap-pip.filled {
+    background: #00e5ff;
+    box-shadow: 0 0 8px #00e5ff;
+  }
+  .ap-pip.bonus {
+    background: #ffb300;
+    border-color: #ffd54f;
+    box-shadow: 0 0 8px #ffb300;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .bar-lbl {
+    font-size: 11px;
+    font-weight: 800;
+    width: 48px;
+    color: #90b4d8;
+  }
+  .hp-track {
+    flex: 1;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #hpFill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #00c853, #00e676);
+    transition: width 0.18s ease;
+  }
+  .ammo-blocks {
+    display: flex;
+    gap: 5px;
+    flex: 1;
+  }
+  .ammo-blk {
+    height: 10px;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    border-radius: 2px;
+  }
+  .ammo-blk.loaded {
+    background: #00e5ff;
+    box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+  }
+
+  /* Action Buttons Bar */
+  .actions-dock {
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+    flex-wrap: wrap;
+  }
+  .act-btn {
+    cursor: pointer;
+    background: rgba(10, 18, 34, 0.9);
+    border: 1px solid rgba(0, 229, 255, 0.32);
+    border-bottom: 3px solid rgba(0, 229, 255, 0.6);
+    color: #e2f1ff;
+    padding: 9px 14px;
+    border-radius: 6px;
+    min-width: 112px;
+    text-align: left;
+    transition: all 0.12s ease;
+    position: relative;
+  }
+  .act-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    border-color: #00e5ff;
+    background: rgba(0, 229, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 229, 255, 0.28);
+  }
+  .act-btn.active {
+    background: rgba(0, 229, 255, 0.24);
+    border-color: #00e5ff;
+    border-bottom-color: #ffb300;
+    transform: translateY(-4px);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.45);
+  }
+  .act-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+  .act-btn.end-turn-btn {
+    border-color: rgba(255, 179, 0, 0.45);
+    border-bottom-color: #ffb300;
+    min-width: 120px;
+  }
+  .act-btn.end-turn-btn:hover:not(:disabled) {
+    background: rgba(255, 179, 0, 0.18);
+  }
+  .act-key {
+    font-size: 10px;
+    font-weight: 900;
+    color: #00e5ff;
+    letter-spacing: 1px;
+  }
+  .act-name {
+    font-size: 13px;
+    font-weight: 900;
+    margin-top: 2px;
+    color: #ffffff;
+  }
+  .act-cost {
+    font-size: 10px;
+    color: #8fb3d9;
+    margin-top: 2px;
+  }
+
+  /* Legend / Hint Pill */
+  .legend-bar {
+    display: flex;
+    gap: 14px;
+    font-size: 11px;
+    color: #9ec0e6;
+    background: rgba(8, 15, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 8px 14px;
+    border-radius: 6px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .leg-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
+  /* Start / Pause / End Overlays */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: radial-gradient(circle at center, rgba(10, 20, 38, 0.86) 0%, rgba(4, 7, 14, 0.96) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(6px);
+  }
+  .modal-card {
+    max-width: 680px;
+    width: 100%;
+    background: rgba(9, 16, 30, 0.96);
+    border: 2px solid #00e5ff;
+    border-radius: 10px;
+    padding: 30px 36px;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(0, 229, 255, 0.25);
+  }
+  .modal-title {
+    font-size: 38px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #ffffff;
+    text-shadow: 0 0 18px rgba(0, 229, 255, 0.7);
+  }
+  .modal-sub {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: #00e5ff;
+    margin: 6px 0 20px;
+    text-transform: uppercase;
+  }
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px 18px;
+    text-align: left;
+    background: rgba(4, 9, 18, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    font-size: 12px;
+  }
+  .ctrl-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    padding-bottom: 4px;
+  }
+  .kbd {
+    background: rgba(0, 229, 255, 0.15);
+    border: 1px solid rgba(0, 229, 255, 0.45);
+    color: #00e5ff;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .briefing-text {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #b6d1ee;
+    margin-bottom: 22px;
+  }
+  .btn-launch {
+    cursor: pointer;
+    pointer-events: auto;
+    background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+    border: 1px solid #00e5ff;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 14px 36px;
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(0, 229, 255, 0.5);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .btn-launch:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 0 32px rgba(0, 229, 255, 0.85);
+  }
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin: 18px 0 24px;
+  }
+  .stat-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    padding: 12px 18px;
+    min-width: 125px;
+  }
+  .stat-box .v {
+    font-size: 26px;
+    font-weight: 900;
+    color: #ffb300;
+  }
+  .stat-box .l {
+    font-size: 10px;
+    color: #90b4d8;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 2px;
+  }
+  .hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- Tactical HUD -->
+<div id="hud">
+  <div class="top-bar">
+    <div class="tac-panel">
+      <div class="panel-label">Mission Progress // SectorSweep</div>
+      <div class="panel-value" id="hostilesDisplay">HOSTILES: 0</div>
+      <div class="panel-sub" id="waveDisplay">WAVE 1 OF 3 // TURN 1</div>
+    </div>
+
+    <div id="phaseBanner">
+      <div id="phaseTitle">TACTICAL COMMAND PHASE</div>
+      <div id="phaseSub">SELECT TILE TO MOVE OR TARGET HOSTILE IN LINE OF SIGHT</div>
+    </div>
+
+    <div class="tac-panel amber" style="text-align: right;">
+      <div class="panel-label">Tactical Score</div>
+      <div class="panel-value" id="scoreDisplay">0</div>
+      <div class="panel-sub">BEST: <span id="highScoreDisplay">0</span></div>
+    </div>
+  </div>
+
+  <!-- Target Shot Breakdown Panel -->
+  <div id="targetPanel">
+    <div class="tgt-header">
+      <span class="tgt-name" id="tgtName">SECTOID TROOPER</span>
+      <span class="tgt-cover-badge" id="tgtCoverBadge">HALF COVER</span>
+    </div>
+    <div class="tgt-stats-row">
+      <div class="tgt-stat-box">
+        <div class="tgt-stat-val" id="tgtHitVal" style="color:#00e5ff;">75%</div>
+        <div class="tgt-stat-lbl">Hit Chance</div>
+      </div>
+      <div class="tgt-stat-box">
+        <div class="tgt-stat-val" id="tgtCritVal" style="color:#ffb300;">15%</div>
+        <div class="tgt-stat-lbl">Crit Chance</div>
+      </div>
+      <div class="tgt-stat-box">
+        <div class="tgt-stat-val" id="tgtDmgVal" style="color:#ff4d79;">3-4</div>
+        <div class="tgt-stat-lbl">Damage</div>
+      </div>
+    </div>
+    <div class="tgt-breakdown" id="tgtBreakdown">
+      Base Aim: 82% | Cover: -25% | Range: +0%
+    </div>
+    <button class="btn-fire-confirm" id="confirmFireBtn">EXECUTE SHOT [ENTER / CLICK]</button>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    <div class="tac-panel unit-card">
+      <div class="unit-top">
+        <span class="unit-name">OP // VANGUARD-01</span>
+        <div class="ap-pips" id="apPips">
+          <span style="font-size:10px;color:#8fb3d9;font-weight:800;margin-right:4px;">AP</span>
+          <div class="ap-pip filled"></div>
+          <div class="ap-pip filled"></div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl" id="hpText">HP 14/14</span>
+        <div class="hp-track"><div id="hpFill"></div></div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl" id="ammoText">AMMO 4</span>
+        <div class="ammo-blocks" id="ammoBlocks"></div>
+      </div>
+    </div>
+
+    <div class="actions-dock">
+      <button class="act-btn active" id="btnModeMoveFire">
+        <div class="act-key">[1] PULSE RIFLE</div>
+        <div class="act-name">MOVE / FIRE</div>
+        <div class="act-cost">1-2 AP // 3-4 DMG</div>
+      </button>
+      <button class="act-btn" id="btnModeOverwatch">
+        <div class="act-key">[2] REACTION</div>
+        <div class="act-name">OVERWATCH</div>
+        <div class="act-cost">1 AP (Ends Turn)</div>
+      </button>
+      <button class="act-btn" id="btnModeGrenade">
+        <div class="act-key">[3] ORDNANCE</div>
+        <div class="act-name" id="grenadeLabel">GRENADE (2)</div>
+        <div class="act-cost">1 AP // 3x3 4 DMG</div>
+      </button>
+      <button class="act-btn" id="btnModeReload">
+        <div class="act-key">[4] WEAPON</div>
+        <div class="act-name">RELOAD</div>
+        <div class="act-cost">1 AP // Fill 4/4</div>
+      </button>
+      <button class="act-btn" id="btnModeStim">
+        <div class="act-key">[5] MED-STIM</div>
+        <div class="act-name" id="stimLabel">STIMPACK (2)</div>
+        <div class="act-cost">0 AP // +5 HP +1 AP</div>
+      </button>
+      <button class="act-btn end-turn-btn" id="btnEndTurn">
+        <div class="act-key">[SPACE]</div>
+        <div class="act-name" style="color:#ffb300;">END TURN</div>
+        <div class="act-cost">Pass Phase</div>
+      </button>
+    </div>
+
+    <div class="legend-bar">
+      <div class="leg-item"><span class="leg-swatch" style="background:#00e5ff;"></span>1 AP Move / Full Cover (-50%)</div>
+      <div class="leg-item"><span class="leg-swatch" style="background:#ffb300;"></span>2 AP Dash / Flanking (+35% Crit)</div>
+      <div class="leg-item"><span class="leg-swatch" style="background:#ff2a5f;"></span>Explosive Barrel (3x3 AoE)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Start / Pause Modal -->
+<div class="modal-overlay" id="startModal">
+  <div class="modal-card">
+    <div class="modal-title">BLACKSITE: ZERO PROTOCOL</div>
+    <div class="modal-sub" id="startModalSub">XCOM-STYLE TURN-BASED TACTICAL COMBAT</div>
+
+    <div class="controls-grid">
+      <div class="ctrl-row"><span>Move to Reachable Tile</span><span class="kbd">Left Click Tile</span></div>
+      <div class="ctrl-row"><span>Fire Pulse Rifle</span><span class="kbd">Click Enemy / Enter</span></div>
+      <div class="ctrl-row"><span>Cycle Visible Targets</span><span class="kbd">Tab</span></div>
+      <div class="ctrl-row"><span>Overwatch Reaction Stance</span><span class="kbd">2</span></div>
+      <div class="ctrl-row"><span>Frag Grenade (3x3 AoE)</span><span class="kbd">3 + Click Tile</span></div>
+      <div class="ctrl-row"><span>Reload / Nano-Stim</span><span class="kbd">4 / 5</span></div>
+      <div class="ctrl-row"><span>End Player Turn</span><span class="kbd">Space</span></div>
+      <div class="ctrl-row"><span>Restart Mission</span><span class="kbd">R</span></div>
+    </div>
+
+    <div class="briefing-text">
+      Command elite operative <strong>VANGUARD-01</strong> through a 3-Wave Blacksite breach.<br>
+      Use <strong>Full Cover Pillars (-50% Hit)</strong> and <strong>Half Cover Consoles (-25% Hit)</strong>, preview <strong>Flanking Sightlines (+18% Aim, +35% Crit)</strong> before moving, set <strong>Overwatch</strong> traps, and detonate <strong>Plasma Barrels</strong> to eliminate all alien squads!
+    </div>
+
+    <button class="btn-launch" id="startBtn">DEPLOY TO BLACKSITE</button>
+  </div>
+</div>
+
+<!-- Victory / Defeat Modal -->
+<div class="modal-overlay hidden" id="endModal">
+  <div class="modal-card">
+    <div class="modal-title" id="endTitle">SECTOR SECURED</div>
+    <div class="modal-sub" id="endSub">ALL HOSTILE SQUADS NEUTRALIZED</div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="v" id="endKills">0</div>
+        <div class="l">Hostiles KIA</div>
+      </div>
+      <div class="stat-box">
+        <div class="v" id="endTurns">0</div>
+        <div class="l">Turns Taken</div>
+      </div>
+      <div class="stat-box">
+        <div class="v" id="endScore">0</div>
+        <div class="l">Tactical Score</div>
+      </div>
+      <div class="stat-box">
+        <div class="v" id="endBest">0</div>
+        <div class="l">Best Record</div>
+      </div>
+    </div>
+
+    <button class="btn-launch" id="restartBtn">REDEPLOY [R]</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // =========================================================================
+  // 1. WEBAUDIO PROCEDURAL SOUND SYNTHESIZER
+  // =========================================================================
+  var audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  function playSfx(type) {
+    if (!audioCtx) return;
+    var now = audioCtx.currentTime;
+    try {
+      if (type === "step") {
+        var o = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        o.type = "triangle";
+        o.frequency.setValueAtTime(130, now);
+        o.frequency.exponentialRampToValueAtTime(55, now + 0.06);
+        g.gain.setValueAtTime(0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(now); o.stop(now + 0.06);
+      } else if (type === "rifle") {
+        var o1 = audioCtx.createOscillator();
+        var g1 = audioCtx.createGain();
+        o1.type = "sawtooth";
+        o1.frequency.setValueAtTime(820, now);
+        o1.frequency.exponentialRampToValueAtTime(110, now + 0.16);
+        g1.gain.setValueAtTime(0.24, now);
+        g1.gain.exponentialRampToValueAtTime(0.002, now + 0.16);
+        o1.connect(g1); g1.connect(audioCtx.destination);
+        o1.start(now); o1.stop(now + 0.16);
+      } else if (type === "sniper") {
+        var os = audioCtx.createOscillator();
+        var gs = audioCtx.createGain();
+        os.type = "square";
+        os.frequency.setValueAtTime(1350, now);
+        os.frequency.exponentialRampToValueAtTime(180, now + 0.24);
+        gs.gain.setValueAtTime(0.22, now);
+        gs.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        os.connect(gs); gs.connect(audioCtx.destination);
+        os.start(now); os.stop(now + 0.24);
+      } else if (type === "hit") {
+        var oh = audioCtx.createOscillator();
+        var gh = audioCtx.createGain();
+        oh.type = "sine";
+        oh.frequency.setValueAtTime(320, now);
+        oh.frequency.exponentialRampToValueAtTime(75, now + 0.12);
+        gh.gain.setValueAtTime(0.26, now);
+        gh.gain.exponentialRampToValueAtTime(0.002, now + 0.12);
+        oh.connect(gh); gh.connect(audioCtx.destination);
+        oh.start(now); oh.stop(now + 0.12);
+      } else if (type === "crit") {
+        var oc = audioCtx.createOscillator();
+        var gc = audioCtx.createGain();
+        oc.type = "sawtooth";
+        oc.frequency.setValueAtTime(520, now);
+        oc.frequency.setValueAtTime(980, now + 0.05);
+        oc.frequency.exponentialRampToValueAtTime(220, now + 0.25);
+        gc.gain.setValueAtTime(0.28, now);
+        gc.gain.exponentialRampToValueAtTime(0.002, now + 0.25);
+        oc.connect(gc); gc.connect(audioCtx.destination);
+        oc.start(now); oc.stop(now + 0.25);
+      } else if (type === "miss") {
+        var om = audioCtx.createOscillator();
+        var gm = audioCtx.createGain();
+        om.type = "sine";
+        om.frequency.setValueAtTime(640, now);
+        om.frequency.exponentialRampToValueAtTime(290, now + 0.1);
+        gm.gain.setValueAtTime(0.1, now);
+        gm.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        om.connect(gm); gm.connect(audioCtx.destination);
+        om.start(now); om.stop(now + 0.1);
+      } else if (type === "explode") {
+        var len = Math.floor(audioCtx.sampleRate * 0.42);
+        var buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+        var data = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.32));
+        }
+        var noise = audioCtx.createBufferSource();
+        noise.buffer = buf;
+        var filt = audioCtx.createBiquadFilter();
+        filt.type = "lowpass";
+        filt.frequency.setValueAtTime(480, now);
+        filt.frequency.linearRampToValueAtTime(65, now + 0.42);
+        var ge = audioCtx.createGain();
+        ge.gain.setValueAtTime(0.42, now);
+        ge.gain.exponentialRampToValueAtTime(0.004, now + 0.42);
+        noise.connect(filt); filt.connect(ge); ge.connect(audioCtx.destination);
+        noise.start(now);
+      } else if (type === "reload" || type === "overwatch") {
+        var or = audioCtx.createOscillator();
+        var gr = audioCtx.createGain();
+        or.type = "triangle";
+        or.frequency.setValueAtTime(type === "overwatch" ? 440 : 310, now);
+        or.frequency.setValueAtTime(type === "overwatch" ? 880 : 620, now + 0.08);
+        gr.gain.setValueAtTime(0.18, now);
+        gr.gain.exponentialRampToValueAtTime(0.002, now + 0.2);
+        or.connect(gr); gr.connect(audioCtx.destination);
+        or.start(now); or.stop(now + 0.2);
+      } else if (type === "stim") {
+        var ost = audioCtx.createOscillator();
+        var gst = audioCtx.createGain();
+        ost.type = "sine";
+        ost.frequency.setValueAtTime(380, now);
+        ost.frequency.exponentialRampToValueAtTime(1020, now + 0.25);
+        gst.gain.setValueAtTime(0.22, now);
+        gst.gain.exponentialRampToValueAtTime(0.002, now + 0.25);
+        ost.connect(gst); gst.connect(audioCtx.destination);
+        ost.start(now); ost.stop(now + 0.25);
+      }
+    } catch (e) {}
+  }
+
+  // =========================================================================
+  // 2. CONSTANTS, GRID DEFINITIONS & STATE
+  // =========================================================================
+  var COLS = 20;
+  var ROWS = 13;
+  var TILE_FLOOR = 0;
+  var TILE_FULL = 1;   // Blocks LoS & Movement, -45% Hit Cover
+  var TILE_HALF = 2;   // Blocks Movement only, -25% Hit Cover, Destructible
+  var TILE_BARREL = 3; // Blocks Movement, -25% Cover, Explodes 3x3 for 5 DMG
+
+  var STORAGE_KEY = "blacksite_zero_protocol_high_v1";
+  var highScore = 0;
+  try {
+    highScore = parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10) || 0;
+  } catch (e) {}
+
+  var canvas = document.getElementById("gameCanvas");
+  var ctx = canvas.getContext("2d");
+
+  var grid = [];      // [y][x] tile type
+  var fog = [];       // [y][x] 0 = unexplored, 1 = shrouded, 2 = visible
+  var pickups = [];   // {x, y, type: 'med'|'ammo'|'grenade'}
+  var particles = [];
+  var floatTexts = [];
+  var projectiles = [];
+  var soundRipples = [];
+
+  var gameState = "START"; // START, PLAYER_IDLE, ANIMATING, ENEMY_TURN, PAUSED, ENDED
+  var activeMode = "MOVE_FIRE"; // MOVE_FIRE, GRENADE
+  var turnNumber = 1;
+  var currentWave = 1;
+  var totalKills = 0;
+  var score = 0;
+  var shakeMag = 0;
+
+  var player = null;
+  var enemies = [];
+  var bfsPaths = {}; // key "x,y" -> { costAp: 1|2, dist: number, path: [{x,y},...] }
+  var hoveredTile = { x: -1, y: -1 };
+  var selectedTargetId = null;
+
+  // Layout metrics computed on resize
+  var viewMetrics = { tileSize: 48, offsetX: 0, offsetY: 0 };
+
+  function resizeCanvas() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var availW = w - 60;
+    var availH = h - 210;
+    var ts = Math.floor(Math.min(availW / COLS, availH / ROWS));
+    ts = Math.max(28, Math.min(68, ts));
+    viewMetrics.tileSize = ts;
+    viewMetrics.offsetX = Math.floor((w - COLS * ts) * 0.5);
+    viewMetrics.offsetY = Math.floor((h - ROWS * ts) * 0.5) - 6;
+  }
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  // =========================================================================
+  // 3. TACTICAL FACILITY MAP GENERATION
+  // =========================================================================
+  // Hand-crafted symmetrical-with-variations cyber facility layout
+  var MAP_TEMPLATE = [
+    "11111111111111111111",
+    "10000200011000200001",
+    "10110003000030001101",
+    "10100200022000200101",
+    "10000001000010000001",
+    "10230101030010103201",
+    "10000200000000200001",
+    "10230101003010103201",
+    "10000001000010000001",
+    "10100200022000200101",
+    "10110003000030001101",
+    "10000200011000200001",
+    "11111111111111111111"
+  ];
+
+  function buildMap() {
+    grid = [];
+    fog = [];
+    pickups = [];
+    for (var y = 0; y < ROWS; y++) {
+      var row = [];
+      var fogRow = [];
+      var line = MAP_TEMPLATE[y];
+      for (var x = 0; x < COLS; x++) {
+        var ch = line ? line.charAt(x) : "0";
+        row.push(parseInt(ch, 10) || 0);
+        fogRow.push(0);
+      }
+      grid.push(row);
+      fog.push(fogRow);
+    }
+    // Place tactical supply pickups
+    pickups.push({ x: 6,  y: 6,  type: "med" });
+    pickups.push({ x: 13, y: 6,  type: "grenade" });
+    pickups.push({ x: 9,  y: 2,  type: "ammo" });
+    pickups.push({ x: 10, y: 10, type: "med" });
+  }
+
+  function inBounds(x, y) {
+    return x >= 0 && x < COLS && y >= 0 && y < ROWS;
+  }
+
+  function isWalkable(x, y, ignoreUnit) {
+    if (!inBounds(x, y)) return false;
+    if (grid[y][x] !== TILE_FLOOR) return false;
+    if (player && player.hp > 0 && player !== ignoreUnit && player.x === x && player.y === y) return false;
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (e.hp > 0 && e !== ignoreUnit && e.x === x && e.y === y) return false;
+    }
+    return true;
+  }
+
+  // =========================================================================
+  // 4. LINE OF SIGHT (RAYCAST + XCOM CORNER STEP-OUT) & DIRECTIONAL COVER
+  // =========================================================================
+  // Raycast between continuous points (x0, y0) and (x1, y1) checking for TILE_FULL
+  function clearRayBetweenPoints(x0, y0, x1, y1) {
+    var dx = x1 - x0;
+    var dy = y1 - y0;
+    var dist = Math.hypot(dx, dy);
+    if (dist < 0.05) return true;
+    var steps = Math.ceil(dist * 6);
+    for (var i = 1; i < steps; i++) {
+      var t = i / steps;
+      var px = x0 + dx * t;
+      var py = y0 + dy * t;
+      var tx = Math.floor(px);
+      var ty = Math.floor(py);
+      // Ignore the exact start or target tile so walls themselves can be seen
+      if ((tx === Math.floor(x0) && ty === Math.floor(y0)) ||
+          (tx === Math.floor(x1) && ty === Math.floor(y1))) {
+        continue;
+      }
+      if (inBounds(tx, ty) && grid[ty][tx] === TILE_FULL) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Get step-out peek origins for a unit at (ux, uy): center + adjacent open side-step positions if next to cover
+  function getPeekPositions(ux, uy) {
+    var pts = [{ x: ux + 0.5, y: uy + 0.5 }];
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    var hasAdjacentCover = false;
+    for (var i = 0; i < dirs.length; i++) {
+      var cx = ux + dirs[i][0], cy = uy + dirs[i][1];
+      if (inBounds(cx, cy) && grid[cy][cx] !== TILE_FLOOR) {
+        hasAdjacentCover = true;
+        break;
+      }
+    }
+    if (hasAdjacentCover) {
+      for (var j = 0; j < dirs.length; j++) {
+        var nx = ux + dirs[j][0], ny = uy + dirs[j][1];
+        if (inBounds(nx, ny) && grid[ny][nx] === TILE_FLOOR) {
+          pts.push({ x: ux + 0.5 + dirs[j][0] * 0.42, y: uy + 0.5 + dirs[j][1] * 0.42 });
+        }
+      }
+    }
+    return pts;
+  }
+
+  function hasLineOfSight(x0, y0, x1, y1, maxRange) {
+    var maxR = maxRange || 10.5;
+    var d = Math.hypot(x1 - x0, y1 - y0);
+    if (d > maxR) return false;
+
+    // Direct center-to-center check first
+    if (clearRayBetweenPoints(x0 + 0.5, y0 + 0.5, x1 + 0.5, y1 + 0.5)) return true;
+
+    // XCOM Corner Step-Out Peek check
+    var origins = getPeekPositions(x0, y0);
+    var targets = getPeekPositions(x1, y1);
+    for (var i = 0; i < origins.length; i++) {
+      for (var j = 0; j < targets.length; j++) {
+        if (clearRayBetweenPoints(origins[i].x, origins[i].y, targets[j].x, targets[j].y)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function recomputeFogOfWar() {
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (fog[y][x] === 2) fog[y][x] = 1; // Demote visible to shrouded
+      }
+    }
+    if (!player) return;
+    for (var ty = 0; ty < ROWS; ty++) {
+      for (var tx = 0; tx < COLS; tx++) {
+        var dist = Math.hypot(tx - player.x, ty - player.y);
+        if (dist <= 10.0) {
+          if (clearRayBetweenPoints(player.x + 0.5, player.y + 0.5, tx + 0.5, ty + 0.5) ||
+              hasLineOfSight(player.x, player.y, tx, ty, 10.0)) {
+            fog[ty][tx] = 2;
+          }
+        }
+      }
+    }
+  }
+
+  // Evaluate Cover of target at (tx, ty) against shooter at (sx, sy)
+  // Returns { level: 0 (None/Flanked), 1 (Half Cover -25%), 2 (Full Cover -45%), flanked: boolean }
+  function evaluateCoverAgainstShooter(sx, sy, tx, ty) {
+    var dx = sx - tx;
+    var dy = sy - ty;
+    var dist = Math.hypot(dx, dy);
+
+    // Point-blank range bypasses cover!
+    if (dist <= 1.55) {
+      return { level: 0, flanked: true };
+    }
+
+    var bestCover = 0;
+    // Check X-axis adjacent cover if shooter is at least 1 tile offset in X
+    if (Math.abs(dx) >= 1 && Math.abs(dx) >= Math.abs(dy) * 0.35) {
+      var stepX = dx > 0 ? 1 : -1;
+      var cx = tx + stepX;
+      var cy = ty;
+      if (inBounds(cx, cy)) {
+        var tileX = grid[cy][cx];
+        if (tileX === TILE_FULL) bestCover = Math.max(bestCover, 2);
+        else if (tileX === TILE_HALF || tileX === TILE_BARREL) bestCover = Math.max(bestCover, 1);
+      }
+    }
+    // Check Y-axis adjacent cover if shooter is at least 1 tile offset in Y
+    if (Math.abs(dy) >= 1 && Math.abs(dy) >= Math.abs(dx) * 0.35) {
+      var stepY = dy > 0 ? 1 : -1;
+      var cx2 = tx;
+      var cy2 = ty + stepY;
+      if (inBounds(cx2, cy2)) {
+        var tileY = grid[cy2][cx2];
+        if (tileY === TILE_FULL) bestCover = Math.max(bestCover, 2);
+        else if (tileY === TILE_HALF || tileY === TILE_BARREL) bestCover = Math.max(bestCover, 1);
+      }
+    }
+
+    return {
+      level: bestCover,
+      flanked: bestCover === 0
+    };
+  }
+
+  // Calculate Shot Hit %, Crit %, and breakdown from (sx, sy) to target enemy
+  function calculateShotStats(sx, sy, target) {
+    var dist = Math.hypot(target.x - sx, target.y - sy);
+    var baseAim = 82;
+    var rangeMod = 0;
+    if (dist <= 3.2) rangeMod = Math.round((3.5 - dist) * 6); // Close range bonus
+    else if (dist > 7.0) rangeMod = -Math.round((dist - 7.0) * 5); // Long range penalty
+
+    var cov = evaluateCoverAgainstShooter(sx, sy, target.x, target.y);
+    var coverMod = cov.level === 2 ? -50 : (cov.level === 1 ? -25 : 0);
+    var flankBonus = cov.flanked ? 18 : 0;
+
+    var hitChance = Math.max(10, Math.min(98, baseAim + rangeMod + coverMod + flankBonus));
+    var critChance = cov.flanked ? 50 : (cov.level === 1 ? 15 : 5);
+
+    var covLabel = cov.level === 2 ? "FULL COVER (-50%)" : (cov.level === 1 ? "HALF COVER (-25%)" : "FLANKED (+18% AIM, +35% CRIT)");
+    return {
+      hitChance: hitChance,
+      critChance: critChance,
+      flanked: cov.flanked,
+      coverLevel: cov.level,
+      coverLabel: covLabel,
+      rangeMod: rangeMod
+    };
+  }
+
+  // =========================================================================
+  // 5. BFS MOVEMENT PATHFINDING
+  // =========================================================================
+  function computeReachableTiles() {
+    bfsPaths = {};
+    if (!player || player.ap <= 0) return;
+
+    var maxSteps = player.ap >= 2 ? 8 : 4;
+    var queue = [{ x: player.x, y: player.y, dist: 0, path: [] }];
+    var visited = {};
+    visited[player.x + "," + player.y] = 0;
+
+    var dirs = [
+      { dx: 1, dy: 0, cost: 1 },
+      { dx: -1, dy: 0, cost: 1 },
+      { dx: 0, dy: 1, cost: 1 },
+      { dx: 0, dy: -1, cost: 1 },
+      // Diagonal steps allowed if both cardinal neighbors are clear
+      { dx: 1, dy: 1, cost: 1.42 },
+      { dx: -1, dy: 1, cost: 1.42 },
+      { dx: 1, dy: -1, cost: 1.42 },
+      { dx: -1, dy: -1, cost: 1.42 }
+    ];
+
+    while (queue.length > 0) {
+      queue.sort(function(a, b) { return a.dist - b.dist; });
+      var cur = queue.shift();
+
+      for (var i = 0; i < dirs.length; i++) {
+        var d = dirs[i];
+        var nx = cur.x + d.dx;
+        var ny = cur.y + d.dy;
+        var ndist = cur.dist + d.cost;
+        if (ndist > maxSteps + 0.1) continue;
+        if (!isWalkable(nx, ny, player)) continue;
+
+        // Prevent cutting corners diagonally past walls/cover
+        if (d.dx !== 0 && d.dy !== 0) {
+          if (!inBounds(cur.x + d.dx, cur.y) || grid[cur.y][cur.x + d.dx] !== TILE_FLOOR) continue;
+          if (!inBounds(cur.x, cur.y + d.dy) || grid[cur.y + d.dy][cur.x] !== TILE_FLOOR) continue;
+        }
+
+        var key = nx + "," + ny;
+        if (visited[key] === undefined || ndist < visited[key]) {
+          visited[key] = ndist;
+          var newPath = cur.path.concat([{ x: nx, y: ny }]);
+          bfsPaths[key] = {
+            dist: ndist,
+            costAp: ndist <= 4.2 ? 1 : 2,
+            path: newPath
+          };
+          queue.push({ x: nx, y: ny, dist: ndist, path: newPath });
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // 6. FLOATING COMBAT TEXT, PARTICLES & ANIMATIONS
+  // =========================================================================
+  function addFloatText(gx, gy, text, color, scale) {
+    floatTexts.push({
+      gx: gx + 0.5,
+      gy: gy + 0.2,
+      text: text,
+      color: color || "#ffffff",
+      scale: scale || 1.0,
+      life: 1.35,
+      maxLife: 1.35
+    });
+  }
+
+  function spawnParticlesAtTile(gx, gy, color, count, speed) {
+    for (var i = 0; i < count; i++) {
+      var ang = Math.random() * Math.PI * 2;
+      var spd = (0.6 + Math.random() * 1.8) * (speed || 1.8);
+      particles.push({
+        gx: gx + 0.5 + (Math.random() - 0.5) * 0.3,
+        gy: gy + 0.5 + (Math.random() - 0.5) * 0.3,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        color: color,
+        size: 2.5 + Math.random() * 3.5,
+        life: 0.4 + Math.random() * 0.35,
+        maxLife: 0.75
+      });
+    }
+  }
+
+  function animateUnitAlongPath(unit, path, onStepCheck, onComplete) {
+    if (!path || path.length === 0) {
+      if (onComplete) onComplete();
+      return;
+    }
+    gameState = "ANIMATING";
+    var idx = 0;
+
+    function nextStep() {
+      if (idx >= path.length || unit.hp <= 0) {
+        unit.drawX = unit.x;
+        unit.drawY = unit.y;
+        if (onComplete) onComplete();
+        return;
+      }
+      var target = path[idx];
+      var startX = unit.x;
+      var startY = unit.y;
+      var t = 0;
+      var stepDuration = 0.11;
+      playSfx("step");
+
+      function stepFrame(now) {
+        t += 0.016 / stepDuration;
+        if (t >= 1) {
+          unit.x = target.x;
+          unit.y = target.y;
+          unit.drawX = unit.x;
+          unit.drawY = unit.y;
+          if (unit === player) {
+            recomputeFogOfWar();
+            checkPickupAtPlayer();
+          }
+          idx++;
+          if (onStepCheck) {
+            onStepCheck(unit, function(interrupted) {
+              if (interrupted || unit.hp <= 0) {
+                if (onComplete) onComplete();
+              } else {
+                nextStep();
+              }
+            });
+          } else {
+            nextStep();
+          }
+        } else {
+          unit.drawX = startX + (target.x - startX) * t;
+          unit.drawY = startY + (target.y - startY) * t;
+          requestAnimationFrame(stepFrame);
+        }
+      }
+      requestAnimationFrame(stepFrame);
+    }
+    nextStep();
+  }
+
+  function fireProjectileAnim(fromX, fromY, toX, toY, color, sfxName, onArrive) {
+    playSfx(sfxName || "rifle");
+    spawnParticlesAtTile(fromX, fromY, color || "#00e5ff", 8, 1.6);
+    var p = {
+      x: fromX + 0.5,
+      y: fromY + 0.5,
+      tx: toX + 0.5,
+      ty: toY + 0.5,
+      t: 0,
+      color: color || "#00e5ff",
+      done: false
+    };
+    projectiles.push(p);
+
+    function stepProj() {
+      p.t += 0.12;
+      if (p.t >= 1) {
+        p.done = true;
+        if (onArrive) onArrive();
+      } else {
+        requestAnimationFrame(stepProj);
+      }
+    }
+    requestAnimationFrame(stepProj);
+  }
+
+  // =========================================================================
+  // 7. EXPLOSIONS, DESTRUCTIBLE COVER & PICKUPS
+  // =========================================================================
+  function triggerExplosion(cx, cy, dmg, labelText) {
+    playSfx("explode");
+    shakeMag = Math.max(shakeMag, 12);
+    spawnParticlesAtTile(cx, cy, "#ff6a00", 30, 3.2);
+    spawnParticlesAtTile(cx, cy, "#ffea00", 18, 2.2);
+    if (labelText) addFloatText(cx, cy, labelText, "#ff9100", 1.15);
+
+    var chainBarrels = [];
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var tx = cx + dx;
+        var ty = cy + dy;
+        if (!inBounds(tx, ty)) continue;
+
+        spawnParticlesAtTile(tx, ty, "#ff5252", 6, 1.4);
+
+        // Shred Half Cover
+        if (grid[ty][tx] === TILE_HALF) {
+          grid[ty][tx] = TILE_FLOOR;
+          spawnParticlesAtTile(tx, ty, "#78909c", 14, 2.0);
+          addFloatText(tx, ty, "COVER DESTROYED", "#b0bec5", 0.85);
+        } else if (grid[ty][tx] === TILE_BARREL) {
+          grid[ty][tx] = TILE_FLOOR;
+          if (tx !== cx || ty !== cy) {
+            chainBarrels.push({ x: tx, y: ty });
+          }
+        }
+
+        // Damage Player if in 3x3 blast
+        if (player && player.hp > 0 && player.x === tx && player.y === ty) {
+          player.hp = Math.max(0, player.hp - dmg);
+          addFloatText(tx, ty, "-" + dmg + " BLAST!", "#ff2a5f", 1.15);
+        }
+
+        // Damage Enemies if in 3x3 blast (also shreds 1 armor!)
+        for (var i = 0; i < enemies.length; i++) {
+          var e = enemies[i];
+          if (e.hp > 0 && e.x === tx && e.y === ty) {
+            if (e.armor > 0) {
+              e.armor = 0;
+              addFloatText(tx, ty - 0.3, "ARMOR SHREDDED!", "#ffb300", 0.95);
+            }
+            e.hp = Math.max(0, e.hp - dmg);
+            addFloatText(tx, ty, "-" + dmg + " DMG", "#ff5252", 1.1);
+            if (e.hp <= 0) handleEnemyKilled(e);
+          }
+        }
+      }
+    }
+
+    // Chain-detonate any secondary plasma barrels
+    for (var c = 0; c < chainBarrels.length; c++) {
+      triggerExplosion(chainBarrels[c].x, chainBarrels[c].y, 5, "CHAIN DETONATION!");
+    }
+
+    recomputeFogOfWar();
+    checkWinLossState();
+  }
+
+  function checkPickupAtPlayer() {
+    for (var i = pickups.length - 1; i >= 0; i--) {
+      var pk = pickups[i];
+      if (pk.x === player.x && pk.y === player.y) {
+        playSfx("stim");
+        if (pk.type === "med") {
+          player.hp = Math.min(player.maxHp, player.hp + 5);
+          addFloatText(player.x, player.y, "+5 HP MED-CACHE", "#00e676", 1.05);
+        } else if (pk.type === "grenade") {
+          player.grenades++;
+          addFloatText(player.x, player.y, "+1 FRAG GRENADE", "#ffb300", 1.05);
+        } else if (pk.type === "ammo") {
+          player.ammo = player.maxAmmo;
+          player.stims++;
+          addFloatText(player.x, player.y, "AMMO + STIM CACHE", "#00e5ff", 1.05);
+        }
+        score += 75;
+        pickups.splice(i, 1);
+      }
+    }
+  }
+
+  // =========================================================================
+  // 8. ENEMY WAVES & SPAWNING
+  // =========================================================================
+  var nextEnemyId = 1;
+  function createEnemy(type, x, y) {
+    // Ensure spawn tile is walkable
+    if (!isWalkable(x, y, null)) {
+      var found = false;
+      for (var r = 1; r <= 3 && !found; r++) {
+        for (var dy = -r; dy <= r && !found; dy++) {
+          for (var dx = -r; dx <= r && !found; dx++) {
+            if (isWalkable(x + dx, y + dy, null)) {
+              x += dx; y += dy; found = true;
+            }
+          }
+        }
+      }
+    }
+    var template = {
+      trooper: { name: "SECTOID TROOPER", hp: 4, armor: 0, aim: 68, dmgMin: 2, dmgMax: 3, range: 7.5, color: "#ff2a5f" },
+      sniper:  { name: "VIPER MARKSMAN",  hp: 5, armor: 0, aim: 80, dmgMin: 3, dmgMax: 4, range: 10.0, color: "#d500f9" },
+      mech:    { name: "AEGIS HEAVY MECH", hp: 8, armor: 1, aim: 72, dmgMin: 3, dmgMax: 4, range: 7.5, color: "#ff9100" }
+    }[type];
+
+    return {
+      id: nextEnemyId++,
+      type: type,
+      name: template.name,
+      x: x, y: y,
+      drawX: x, drawY: y,
+      hp: template.hp,
+      maxHp: template.hp,
+      armor: template.armor,
+      aim: template.aim,
+      dmgMin: template.dmgMin,
+      dmgMax: template.dmgMax,
+      range: template.range,
+      color: template.color,
+      overwatch: false
+    };
+  }
+
+  function spawnWave(waveNum) {
+    currentWave = waveNum;
+    if (waveNum === 1) {
+      enemies.push(createEnemy("trooper", 8, 3));
+      enemies.push(createEnemy("trooper", 11, 9));
+      enemies.push(createEnemy("sniper",  14, 5));
+    } else if (waveNum === 2) {
+      enemies.push(createEnemy("trooper", 15, 2));
+      enemies.push(createEnemy("mech",    15, 6));
+      enemies.push(createEnemy("sniper",  15, 10));
+      addFloatText(player.x, player.y - 0.6, "WAVE 2 REINFORCEMENTS BREACHED!", "#ffb300", 1.15);
+    } else if (waveNum === 3) {
+      enemies.push(createEnemy("mech",    17, 4));
+      enemies.push(createEnemy("sniper",  17, 8));
+      enemies.push(createEnemy("trooper", 12, 2));
+      addFloatText(player.x, player.y - 0.6, "FINAL ELITE SQUAD DEPLOYED!", "#ff2a5f", 1.2);
+    }
+    recomputeFogOfWar();
+  }
+
+  function handleEnemyKilled(e) {
+    totalKills++;
+    var pts = e.type === "mech" ? 350 : (e.type === "sniper" ? 250 : 175);
+    score += pts;
+    if (score > highScore) {
+      highScore = score;
+      try { localStorage.setItem(STORAGE_KEY, String(highScore)); } catch (err) {}
+    }
+    spawnParticlesAtTile(e.x, e.y, e.color, 22, 2.5);
+    addFloatText(e.x, e.y - 0.35, "HOSTILE KIA +" + pts, "#00e5ff", 1.05);
+
+    enemies = enemies.filter(function(item) { return item.hp > 0; });
+    if (selectedTargetId === e.id) {
+      selectedTargetId = null;
+    }
+
+    // Check if next wave should deploy immediately when sector is cleared
+    if (enemies.length === 0 && currentWave < 3) {
+      spawnWave(currentWave + 1);
+    }
+    checkWinLossState();
+  }
+
+  function checkWinLossState() {
+    if (gameState === "ENDED") return true;
+    if (player.hp <= 0) {
+      endMission(false);
+      return true;
+    }
+    if (enemies.length === 0 && currentWave >= 3) {
+      // Bonus score for remaining HP and efficiency
+      score += player.hp * 40 + Math.max(0, (12 - turnNumber) * 50);
+      if (score > highScore) {
+        highScore = score;
+        try { localStorage.setItem(STORAGE_KEY, String(highScore)); } catch (err) {}
+      }
+      endMission(true);
+      return true;
+    }
+    return false;
+  }
+
+  // =========================================================================
+  // 9. PLAYER ACTIONS & COMBAT EXECUTION
+  // =========================================================================
+  function getVisibleEnemies() {
+    var list = [];
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (e.hp > 0 && fog[e.y][e.x] === 2 && hasLineOfSight(player.x, player.y, e.x, e.y, 10.0)) {
+        list.push(e);
+      }
+    }
+    return list;
+  }
+
+  function executePlayerShotOnEnemy(target, isOverwatchShot, onComplete) {
+    if (!isOverwatchShot) {
+      if (player.ap < 1 || player.ammo < 1) return;
+      player.ap -= 1;
+      player.ammo -= 1;
+    } else {
+      player.ammo = Math.max(0, player.ammo - 1);
+    }
+
+    gameState = "ANIMATING";
+    var stats = calculateShotStats(player.x, player.y, target);
+    var hitChance = isOverwatchShot ? Math.max(15, stats.hitChance - 12) : stats.hitChance;
+    var roll = Math.random() * 100;
+    var isHit = roll < hitChance;
+
+    fireProjectileAnim(player.x, player.y, target.x, target.y, "#00e5ff", "rifle", function() {
+      if (isHit) {
+        var critRoll = Math.random() * 100;
+        var isCrit = !isOverwatchShot && (critRoll < stats.critChance);
+        var rawDmg = isCrit ? 6 : (3 + Math.floor(Math.random() * 2));
+        var finalDmg = Math.max(1, rawDmg - target.armor);
+        if (isCrit && target.armor > 0) {
+          target.armor = 0; // Crits pierce & shred armor
+        }
+        target.hp = Math.max(0, target.hp - finalDmg);
+        shakeMag = isCrit ? 10 : 6;
+        playSfx(isCrit ? "crit" : "hit");
+        spawnParticlesAtTile(target.x, target.y, isCrit ? "#ffb300" : "#00e5ff", 16, 2.2);
+
+        if (isCrit) {
+          addFloatText(target.x, target.y, "CRITICAL! -" + finalDmg, "#ffb300", 1.25);
+          score += 50;
+        } else {
+          addFloatText(target.x, target.y, "-" + finalDmg + " DMG", "#ffffff", 1.05);
+        }
+
+        if (target.hp <= 0) {
+          handleEnemyKilled(target);
+        }
+      } else {
+        playSfx("miss");
+        addFloatText(target.x, target.y, "MISSED!", "#90a4ae", 0.95);
+        // Missed shots can damage adjacent Half Cover!
+        spawnParticlesAtTile(target.x, target.y, "#90a4ae", 6, 1.2);
+      }
+
+      if (onComplete) {
+        onComplete();
+      } else {
+        finishPlayerAction();
+      }
+    });
+  }
+
+  function finishPlayerAction() {
+    if (checkWinLossState()) return;
+    recomputeFogOfWar();
+    computeReachableTiles();
+    var vis = getVisibleEnemies();
+    if (vis.length > 0) {
+      var stillValid = vis.some(function(e) { return e.id === selectedTargetId; });
+      if (!stillValid) selectedTargetId = vis[0].id;
+    } else {
+      selectedTargetId = null;
+    }
+    gameState = "PLAYER_IDLE";
+    activeMode = "MOVE_FIRE";
+    updateHUD();
+
+    // Auto-end turn if 0 AP and no free stims
+    if (player.ap <= 0 && player.stims <= 0) {
+      setTimeout(function() {
+        if (gameState === "PLAYER_IDLE" && player.ap <= 0) {
+          startEnemyTurn();
+        }
+      }, 450);
+    }
+  }
+
+  // =========================================================================
+  // 10. TACTICAL AI & ENEMY ACTIVITY PHASE
+  // =========================================================================
+  function startEnemyTurn() {
+    if (gameState === "ENDED") return;
+    gameState = "ENEMY_TURN";
+    selectedTargetId = null;
+    updateHUD();
+
+    var aiQueue = enemies.filter(function(e) { return e.hp > 0; });
+    var idx = 0;
+
+    function processNextEnemy() {
+      if (checkWinLossState()) return;
+      if (idx >= aiQueue.length) {
+        // Begin next Player Turn
+        turnNumber++;
+        if (turnNumber === 4 && currentWave === 1) {
+          spawnWave(2);
+        } else if (turnNumber === 7 && currentWave === 2) {
+          spawnWave(3);
+        }
+        player.ap = 2;
+        player.overwatch = false;
+        recomputeFogOfWar();
+        computeReachableTiles();
+        var vis = getVisibleEnemies();
+        selectedTargetId = vis.length > 0 ? vis[0].id : null;
+        gameState = "PLAYER_IDLE";
+        activeMode = "MOVE_FIRE";
+        updateHUD();
+        return;
+      }
+
+      var e = aiQueue[idx++];
+      if (e.hp <= 0) {
+        processNextEnemy();
+        return;
+      }
+      e.overwatch = false;
+
+      // Score candidate movement tiles within radius 4
+      var bestTile = { x: e.x, y: e.y };
+      var bestScore = -9999;
+
+      for (var dy = -4; dy <= 4; dy++) {
+        for (var dx = -4; dx <= 4; dx++) {
+          var tx = e.x + dx;
+          var ty = e.y + dy;
+          var moveDist = Math.hypot(dx, dy);
+          if (moveDist > 4.2) continue;
+          if ((tx !== e.x || ty !== e.y) && !isWalkable(tx, ty, e)) continue;
+
+          var dToPlayer = Math.hypot(tx - player.x, ty - player.y);
+          var hasLoS = hasLineOfSight(tx, ty, player.x, player.y, e.range);
+          var scoreVal = 0;
+
+          if (hasLoS) {
+            scoreVal += 45;
+            // Check cover at (tx, ty) against player
+            var myCov = evaluateCoverAgainstShooter(player.x, player.y, tx, ty);
+            scoreVal += myCov.level * 22;
+
+            // Check if this tile flanks the player!
+            var pCov = evaluateCoverAgainstShooter(tx, ty, player.x, player.y);
+            if (pCov.flanked) scoreVal += 28;
+
+            // Preferred engagement distance by archetype
+            var idealDist = e.type === "sniper" ? 7.0 : (e.type === "mech" ? 4.5 : 5.0);
+            scoreVal -= Math.abs(dToPlayer - idealDist) * 4.5;
+          } else {
+            // Advance toward player if out of LoS
+            scoreVal -= dToPlayer * 6.0;
+          }
+
+          if (scoreVal > bestScore) {
+            bestScore = scoreVal;
+            bestTile = { x: tx, y: ty };
+          }
+        }
+      }
+
+      // Build simple step path from (e.x, e.y) to bestTile
+      var path = [];
+      var cx = e.x, cy = e.y;
+      var safety = 0;
+      while ((cx !== bestTile.x || cy !== bestTile.y) && safety++ < 6) {
+        var stepX = bestTile.x > cx ? 1 : (bestTile.x < cx ? -1 : 0);
+        var stepY = bestTile.y > cy ? 1 : (bestTile.y < cy ? -1 : 0);
+        if (stepX !== 0 && isWalkable(cx + stepX, cy, e)) {
+          cx += stepX;
+          path.push({ x: cx, y: cy });
+        } else if (stepY !== 0 && isWalkable(cx, cy + stepY, e)) {
+          cy += stepY;
+          path.push({ x: cx, y: cy });
+        } else {
+          break;
+        }
+      }
+
+      // If enemy moves in the shroud, emit sound sensor ripple
+      if (path.length > 0 && fog[e.y][e.x] !== 2) {
+        soundRipples.push({ gx: bestTile.x + 0.5, gy: bestTile.y + 0.5, r: 0.2, maxR: 2.2, alpha: 0.9 });
+      }
+
+      animateUnitAlongPath(
+        e,
+        path,
+        function onStep(unit, resumeCallback) {
+          recomputeFogOfWar();
+          // Trigger Player Overwatch if enemy steps into visible LoS!
+          if (player.overwatch && player.ammo > 0 && fog[unit.y][unit.x] === 2 &&
+              hasLineOfSight(player.x, player.y, unit.x, unit.y, 9.5)) {
+            player.overwatch = false;
+            addFloatText(player.x, player.y - 0.35, "OVERWATCH TRIGGERED!", "#00e5ff", 1.15);
+            setTimeout(function() {
+              executePlayerShotOnEnemy(unit, true, function() {
+                resumeCallback(unit.hp <= 0);
+              });
+            }, 220);
+          } else {
+            resumeCallback(false);
+          }
+        },
+        function onMoveDone() {
+          if (e.hp <= 0 || checkWinLossState()) {
+            setTimeout(processNextEnemy, 260);
+            return;
+          }
+          recomputeFogOfWar();
+
+          // Can enemy shoot at Player?
+          if (hasLineOfSight(e.x, e.y, player.x, player.y, e.range)) {
+            var pCov = evaluateCoverAgainstShooter(e.x, e.y, player.x, player.y);
+            var covPenalty = pCov.level === 2 ? -50 : (pCov.level === 1 ? -25 : 0);
+            var flankAdd = pCov.flanked ? 15 : 0;
+            var hitPct = Math.max(12, Math.min(90, e.aim + covPenalty + flankAdd));
+
+            var projCol = e.type === "sniper" ? "#d500f9" : (e.type === "mech" ? "#ff9100" : "#ff2a5f");
+            var sfxType = e.type === "sniper" ? "sniper" : "rifle";
+
+            setTimeout(function() {
+              fireProjectileAnim(e.x, e.y, player.x, player.y, projCol, sfxType, function() {
+                if (Math.random() * 100 < hitPct) {
+                  var dmg = e.dmgMin + Math.floor(Math.random() * (e.dmgMax - e.dmgMin + 1));
+                  player.hp = Math.max(0, player.hp - dmg);
+                  shakeMag = 9;
+                  playSfx("hit");
+                  spawnParticlesAtTile(player.x, player.y, "#ff2a5f", 16, 2.2);
+                  addFloatText(player.x, player.y, "-" + dmg + " HP" + (pCov.flanked ? " (FLANKED!)" : ""), "#ff2a5f", 1.15);
+                } else {
+                  playSfx("miss");
+                  addFloatText(player.x, player.y, pCov.level > 0 ? "BLOCKED BY COVER!" : "EVADED!", "#00e5ff", 1.0);
+                  // Heavy Mech missed shot can destroy player's adjacent Half Cover!
+                  if (e.type === "mech" && pCov.level === 1) {
+                    var stepX = e.x > player.x ? 1 : (e.x < player.x ? -1 : 0);
+                    var stepY = e.y > player.y ? 1 : (e.y < player.y ? -1 : 0);
+                    if (inBounds(player.x + stepX, player.y) && grid[player.y][player.x + stepX] === TILE_HALF) {
+                      grid[player.y][player.x + stepX] = TILE_FLOOR;
+                      spawnParticlesAtTile(player.x + stepX, player.y, "#ff9100", 12, 2.0);
+                    } else if (inBounds(player.x, player.y + stepY) && grid[player.y + stepY][player.x] === TILE_HALF) {
+                      grid[player.y + stepY][player.x] = TILE_FLOOR;
+                      spawnParticlesAtTile(player.x, player.y + stepY, "#ff9100", 12, 2.0);
+                    }
+                  }
+                }
+                checkWinLossState();
+                setTimeout(processNextEnemy, 380);
+              });
+            }, 220);
+          } else {
+            setTimeout(processNextEnemy, 200);
+          }
+        }
+      );
+    }
+
+    setTimeout(processNextEnemy, 450);
+  }
+
+  // =========================================================================
+  // 11. HUD & UI EVENT HANDLERS
+  // =========================================================================
+  function updateHUD() {
+    if (!player) return;
+    document.getElementById("hostilesDisplay").textContent = "HOSTILES: " + enemies.length;
+    document.getElementById("waveDisplay").textContent = "WAVE " + currentWave + " OF 3 // TURN " + turnNumber;
+    document.getElementById("scoreDisplay").textContent = score;
+    document.getElementById("highScoreDisplay").textContent = highScore;
+
+    // Phase Banner
+    var pb = document.getElementById("phaseBanner");
+    var pt = document.getElementById("phaseTitle");
+    var ps = document.getElementById("phaseSub");
+    if (gameState === "ENEMY_TURN") {
+      pb.classList.add("enemy-turn");
+      pt.textContent = "HOSTILE ACTIVITY PHASE";
+      ps.textContent = "ALIEN SQUADS MANEUVERING...";
+    } else {
+      pb.classList.remove("enemy-turn");
+      pt.textContent = activeMode === "GRENADE" ? "SELECT GRENADE TARGET (RANGE 6.5)" : "TACTICAL COMMAND PHASE";
+      ps.textContent = activeMode === "GRENADE"
+        ? "3x3 BLAST SHREDS COVER & DEALS 4 GUARANTEED DAMAGE"
+        : "CLICK TILE TO MOVE (BLUE 1 AP / GOLD 2 AP) OR CLICK HOSTILE TO FIRE";
+    }
+
+    // AP Pips
+    var apWrap = document.getElementById("apPips");
+    apWrap.innerHTML = '<span style="font-size:10px;color:#8fb3d9;font-weight:800;margin-right:4px;">AP</span>';
+    var maxPips = Math.max(2, player.ap);
+    for (var i = 0; i < maxPips; i++) {
+      var pip = document.createElement("div");
+      pip.className = "ap-pip" + (i < player.ap ? (i >= 2 ? " bonus" : " filled") : "");
+      apWrap.appendChild(pip);
+    }
+
+    // HP & Ammo
+    document.getElementById("hpText").textContent = "HP " + player.hp + "/" + player.maxHp;
+    document.getElementById("hpFill").style.width = Math.round((player.hp / player.maxHp) * 100) + "%";
+    document.getElementById("ammoText").textContent = "AMMO " + player.ammo;
+
+    var ammoWrap = document.getElementById("ammoBlocks");
+    ammoWrap.innerHTML = "";
+    for (var a = 0; a < player.maxAmmo; a++) {
+      var blk = document.createElement("div");
+      blk.className = "ammo-blk" + (a < player.ammo ? " loaded" : "");
+      ammoWrap.appendChild(blk);
+    }
+
+    // Action Buttons
+    var isIdle = gameState === "PLAYER_IDLE";
+    var bMove = document.getElementById("btnModeMoveFire");
+    var bOver = document.getElementById("btnModeOverwatch");
+    var bGren = document.getElementById("btnModeGrenade");
+    var bRel  = document.getElementById("btnModeReload");
+    var bStim = document.getElementById("btnModeStim");
+    var bEnd  = document.getElementById("btnEndTurn");
+
+    bMove.className = "act-btn" + (activeMode === "MOVE_FIRE" ? " active" : "");
+    bGren.className = "act-btn" + (activeMode === "GRENADE" ? " active" : "");
+
+    document.getElementById("grenadeLabel").textContent = "GRENADE (" + player.grenades + ")";
+    document.getElementById("stimLabel").textContent = "STIMPACK (" + player.stims + ")";
+
+    bMove.disabled = !isIdle || player.ap <= 0;
+    bOver.disabled = !isIdle || player.ap <= 0 || player.ammo <= 0;
+    bGren.disabled = !isIdle || player.ap <= 0 || player.grenades <= 0;
+    bRel.disabled  = !isIdle || player.ap <= 0 || player.ammo >= player.maxAmmo;
+    bStim.disabled = !isIdle || player.stims <= 0;
+    bEnd.disabled  = !isIdle;
+
+    // Target Breakdown Panel
+    var tPanel = document.getElementById("targetPanel");
+    var vis = getVisibleEnemies();
+    var selEnemy = null;
+    for (var k = 0; k < vis.length; k++) {
+      if (vis[k].id === selectedTargetId) selEnemy = vis[k];
+    }
+    if (isIdle && selEnemy && activeMode === "MOVE_FIRE") {
+      tPanel.style.display = "block";
+      var st = calculateShotStats(player.x, player.y, selEnemy);
+      document.getElementById("tgtName").textContent = selEnemy.name;
+      var badge = document.getElementById("tgtCoverBadge");
+      badge.textContent = st.flanked ? "FLANKED!" : (st.coverLevel === 2 ? "FULL COVER" : "HALF COVER");
+      badge.style.background = st.flanked ? "#ffb300" : (st.coverLevel === 2 ? "#00e5ff" : "#546e7a");
+      badge.style.color = st.flanked ? "#000" : "#fff";
+
+      document.getElementById("tgtHitVal").textContent = st.hitChance + "%";
+      document.getElementById("tgtCritVal").textContent = st.critChance + "%";
+      document.getElementById("tgtDmgVal").textContent = selEnemy.armor > 0 ? "2-3 (1 ARM)" : "3-4 (6 CRIT)";
+      document.getElementById("tgtBreakdown").textContent =
+        "Base Aim: 82% | " + st.coverLabel + (st.rangeMod !== 0 ? " | Range: " + (st.rangeMod > 0 ? "+" : "") + st.rangeMod + "%" : "");
+      document.getElementById("confirmFireBtn").disabled = player.ap <= 0 || player.ammo <= 0;
+    } else {
+      tPanel.style.display = "none";
+    }
+  }
+
+  function resetMission() {
+    buildMap();
+    turnNumber = 1;
+    currentWave = 1;
+    totalKills = 0;
+    score = 0;
+    particles = [];
+    floatTexts = [];
+    projectiles = [];
+    soundRipples = [];
+
+    player = {
+      x: 2, y: 6,
+      drawX: 2, drawY: 6,
+      hp: 14, maxHp: 14,
+      ap: 2,
+      ammo: 4, maxAmmo: 4,
+      grenades: 2,
+      stims: 2,
+      overwatch: false
+    };
+
+    enemies = [];
+    spawnWave(1);
+    recomputeFogOfWar();
+    computeReachableTiles();
+
+    var vis = getVisibleEnemies();
+    selectedTargetId = vis.length > 0 ? vis[0].id : null;
+    activeMode = "MOVE_FIRE";
+    gameState = "PLAYER_IDLE";
+    updateHUD();
+  }
+
+  function endMission(victory) {
+    gameState = "ENDED";
+    var modal = document.getElementById("endModal");
+    var title = document.getElementById("endTitle");
+    var sub = document.getElementById("endSub");
+    title.textContent = victory ? "BLACKSITE SECURED" : "OPERATIVE KIA";
+    title.style.color = victory ? "#00e676" : "#ff2a5f";
+    sub.textContent = victory
+      ? "ALL ALIEN SQUADS NEUTRALIZED // TACTICAL RATING: S-RANK"
+      : "MISSION FAILED // VANGUARD-01 LOST IN ACTION";
+
+    document.getElementById("endKills").textContent = totalKills;
+    document.getElementById("endTurns").textContent = turnNumber;
+    document.getElementById("endScore").textContent = score;
+    document.getElementById("endBest").textContent = highScore;
+    modal.classList.remove("hidden");
+  }
+
+  // Button Listeners
+  document.getElementById("startBtn").addEventListener("click", function() {
+    initAudio();
+    document.getElementById("startModal").classList.add("hidden");
+    if (gameState === "START") resetMission();
+    else if (gameState === "PAUSED") gameState = "PLAYER_IDLE";
+    updateHUD();
+  });
+
+  document.getElementById("restartBtn").addEventListener("click", function() {
+    initAudio();
+    document.getElementById("endModal").classList.add("hidden");
+    resetMission();
+  });
+
+  document.getElementById("btnModeMoveFire").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE") return;
+    activeMode = "MOVE_FIRE";
+    updateHUD();
+  });
+
+  document.getElementById("btnModeOverwatch").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE" || player.ap <= 0 || player.ammo <= 0) return;
+    playSfx("overwatch");
+    player.ap = 0;
+    player.overwatch = true;
+    addFloatText(player.x, player.y - 0.3, "OVERWATCH ACTIVE", "#00e5ff", 1.1);
+    startEnemyTurn();
+  });
+
+  document.getElementById("btnModeGrenade").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE" || player.ap <= 0 || player.grenades <= 0) return;
+    activeMode = activeMode === "GRENADE" ? "MOVE_FIRE" : "GRENADE";
+    updateHUD();
+  });
+
+  document.getElementById("btnModeReload").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE" || player.ap <= 0 || player.ammo >= player.maxAmmo) return;
+    playSfx("reload");
+    player.ap -= 1;
+    player.ammo = player.maxAmmo;
+    addFloatText(player.x, player.y - 0.3, "RELOADED 4/4", "#00e5ff", 1.0);
+    finishPlayerAction();
+  });
+
+  document.getElementById("btnModeStim").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE" || player.stims <= 0) return;
+    playSfx("stim");
+    player.stims -= 1;
+    player.hp = Math.min(player.maxHp, player.hp + 5);
+    player.ap += 1;
+    spawnParticlesAtTile(player.x, player.y, "#00e676", 15, 1.8);
+    addFloatText(player.x, player.y - 0.3, "+5 HP // +1 AP STIM!", "#00e676", 1.1);
+    computeReachableTiles();
+    updateHUD();
+  });
+
+  document.getElementById("btnEndTurn").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE") return;
+    startEnemyTurn();
+  });
+
+  document.getElementById("confirmFireBtn").addEventListener("click", function() {
+    if (gameState !== "PLAYER_IDLE" || player.ap <= 0 || player.ammo <= 0) return;
+    var vis = getVisibleEnemies();
+    for (var i = 0; i < vis.length; i++) {
+      if (vis[i].id === selectedTargetId) {
+        executePlayerShotOnEnemy(vis[i], false);
+        return;
+      }
+    }
+  });
+
+  // Mouse & Keyboard Input
+  canvas.addEventListener("mousemove", function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+    var gx = Math.floor((mx - viewMetrics.offsetX) / viewMetrics.tileSize);
+    var gy = Math.floor((my - viewMetrics.offsetY) / viewMetrics.tileSize);
+    if (inBounds(gx, gy)) {
+      hoveredTile.x = gx;
+      hoveredTile.y = gy;
+    } else {
+      hoveredTile.x = -1;
+      hoveredTile.y = -1;
+    }
+  });
+
+  canvas.addEventListener("mousedown", function(e) {
+    if (e.button !== 0 || gameState !== "PLAYER_IDLE") return;
+    initAudio();
+    var gx = hoveredTile.x;
+    var gy = hoveredTile.y;
+    if (!inBounds(gx, gy)) return;
+
+    // 1. Grenade Mode Click
+    if (activeMode === "GRENADE") {
+      var gDist = Math.hypot(gx - player.x, gy - player.y);
+      if (gDist <= 6.5 && player.ap >= 1 && player.grenades >= 1) {
+        player.ap -= 1;
+        player.grenades -= 1;
+        gameState = "ANIMATING";
+        fireProjectileAnim(player.x, player.y, gx, gy, "#ffb300", "step", function() {
+          triggerExplosion(gx, gy, 4, "FRAG BLAST!");
+          finishPlayerAction();
+        });
+      }
+      return;
+    }
+
+    // 2. Check if clicking a Visible Enemy to Shoot or Select
+    var vis = getVisibleEnemies();
+    for (var i = 0; i < vis.length; i++) {
+      if (vis[i].x === gx && vis[i].y === gy) {
+        if (selectedTargetId === vis[i].id && player.ap >= 1 && player.ammo >= 1) {
+          executePlayerShotOnEnemy(vis[i], false);
+        } else {
+          selectedTargetId = vis[i].id;
+          if (player.ap >= 1 && player.ammo >= 1) {
+            executePlayerShotOnEnemy(vis[i], false);
+          } else {
+            updateHUD();
+          }
+        }
+        return;
+      }
+    }
+
+    // 3. Check if clicking a Visible Explosive Barrel to Detonate with Rifle!
+    if (grid[gy][gx] === TILE_BARREL && fog[gy][gx] === 2 &&
+        hasLineOfSight(player.x, player.y, gx, gy, 10.0) &&
+        player.ap >= 1 && player.ammo >= 1) {
+      player.ap -= 1;
+      player.ammo -= 1;
+      gameState = "ANIMATING";
+      fireProjectileAnim(player.x, player.y, gx, gy, "#00e5ff", "rifle", function() {
+        grid[gy][gx] = TILE_FLOOR;
+        triggerExplosion(gx, gy, 5, "BARREL DETONATED!");
+        finishPlayerAction();
+      });
+      return;
+    }
+
+    // 4. Check if clicking a Reachable Floor Tile to Move
+    var moveInfo = bfsPaths[gx + "," + gy];
+    if (moveInfo && player.ap >= moveInfo.costAp) {
+      player.ap -= moveInfo.costAp;
+      animateUnitAlongPath(player, moveInfo.path, null, function() {
+        finishPlayerAction();
+      });
+    }
+  });
+
+  window.addEventListener("keydown", function(e) {
+    if (["Space", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) !== -1) {
+      e.preventDefault();
+    }
+    if (e.code === "KeyR" && (gameState === "ENDED" || gameState === "PLAYER_IDLE")) {
+      document.getElementById("endModal").classList.add("hidden");
+      resetMission();
+      return;
+    }
+    if (gameState !== "PLAYER_IDLE") return;
+
+    if (e.code === "Digit1") document.getElementById("btnModeMoveFire").click();
+    else if (e.code === "Digit2") document.getElementById("btnModeOverwatch").click();
+    else if (e.code === "Digit3") document.getElementById("btnModeGrenade").click();
+    else if (e.code === "Digit4") document.getElementById("btnModeReload").click();
+    else if (e.code === "Digit5") document.getElementById("btnModeStim").click();
+    else if (e.code === "Space")  document.getElementById("btnEndTurn").click();
+    else if (e.code === "Enter")  document.getElementById("confirmFireBtn").click();
+    else if (e.code === "Tab") {
+      var vis = getVisibleEnemies();
+      if (vis.length > 0) {
+        var curIdx = 0;
+        for (var i = 0; i < vis.length; i++) {
+          if (vis[i].id === selectedTargetId) { curIdx = i; break; }
+        }
+        selectedTargetId = vis[(curIdx + 1) % vis.length].id;
+        updateHUD();
+      }
+    }
+  });
+
+  // Pause on window blur
+  function handlePause() {
+    if (gameState === "PLAYER_IDLE") {
+      gameState = "PAUSED";
+      document.getElementById("startModalSub").textContent = "TACTICAL FEED PAUSED // CLICK TO RESUME";
+      document.getElementById("startBtn").textContent = "RESUME MISSION";
+      document.getElementById("startModal").classList.remove("hidden");
+    }
+  }
+  window.addEventListener("blur", handlePause);
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden) handlePause();
+  });
+
+  // =========================================================================
+  // 12. CANVAS 2D TACTICAL RENDERER
+  // =========================================================================
+  function drawShieldBadge(cx, cy, level, color) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(6, -4);
+    ctx.lineTo(6, 2);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(-6, 2);
+    ctx.lineTo(-6, -4);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(8, 16, 30, 0.9)";
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+
+    if (level === 2) {
+      ctx.fillStyle = color;
+      ctx.fill();
+    } else if (level === 1) {
+      ctx.beginPath();
+      ctx.moveTo(-6, 0);
+      ctx.lineTo(6, 0);
+      ctx.lineTo(6, 2);
+      ctx.lineTo(0, 7);
+      ctx.lineTo(-6, 2);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawCoverIndicatorsAroundTile(gx, gy, ts, ox, oy) {
+    var dirs = [
+      { dx: 0, dy: -1, ox: 0.5, oy: 0.14 },
+      { dx: 0, dy: 1,  ox: 0.5, oy: 0.86 },
+      { dx: -1, dy: 0, ox: 0.14, oy: 0.5 },
+      { dx: 1, dy: 0,  ox: 0.86, oy: 0.5 }
+    ];
+    for (var i = 0; i < dirs.length; i++) {
+      var d = dirs[i];
+      var nx = gx + d.dx, ny = gy + d.dy;
+      if (!inBounds(nx, ny)) continue;
+      var t = grid[ny][nx];
+      if (t === TILE_FULL || t === TILE_HALF || t === TILE_BARREL) {
+        var lvl = t === TILE_FULL ? 2 : 1;
+        var col = lvl === 2 ? "#00e5ff" : "#90caf9";
+        drawShieldBadge(ox + (gx + d.ox) * ts, oy + (gy + d.oy) * ts, lvl, col);
+      }
+    }
+  }
+
+  function render(nowSec, dt) {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    ctx.fillStyle = "#060a12";
+    ctx.fillRect(0, 0, w, h);
+
+    if (!player) return;
+
+    if (shakeMag > 0) {
+      shakeMag = Math.max(0, shakeMag - dt * 28);
+    }
+    var sx = (Math.random() - 0.5) * shakeMag;
+    var sy = (Math.random() - 0.5) * shakeMag;
+
+    var ts = viewMetrics.tileSize;
+    var ox = viewMetrics.offsetX + sx;
+    var oy = viewMetrics.offsetY + sy;
+
+    // 1. Draw Base Grid Tiles & Obstacles
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        var px = ox + x * ts;
+        var py = oy + y * ts;
+        var fState = fog[y][x];
+        var tile = grid[y][x];
+
+        if (fState === 0) {
+          // Unexplored Fog
+          ctx.fillStyle = "#050811";
+          ctx.fillRect(px, py, ts, ts);
+          ctx.strokeStyle = "rgba(0, 229, 255, 0.04)";
+          ctx.strokeRect(px, py, ts, ts);
+          continue;
+        }
+
+        // Floor Base
+        var isChecker = ((x + y) & 1) === 0;
+        ctx.fillStyle = isChecker ? "#0d1726" : "#0a1320";
+        ctx.fillRect(px, py, ts, ts);
+
+        // Reachable Movement Highlights (when in MOVE_FIRE mode)
+        if (gameState === "PLAYER_IDLE" && activeMode === "MOVE_FIRE" && tile === TILE_FLOOR) {
+          var mInfo = bfsPaths[x + "," + y];
+          if (mInfo) {
+            ctx.fillStyle = mInfo.costAp === 1
+              ? "rgba(0, 229, 255, 0.13)"
+              : "rgba(255, 179, 0, 0.11)";
+            ctx.fillRect(px + 2, py + 2, ts - 4, ts - 4);
+            ctx.strokeStyle = mInfo.costAp === 1
+              ? "rgba(0, 229, 255, 0.35)"
+              : "rgba(255, 179, 0, 0.3)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 2, py + 2, ts - 4, ts - 4);
+          }
+        }
+
+        // Grid Hairline
+        ctx.strokeStyle = "rgba(120, 180, 255, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, ts, ts);
+
+        // Obstacles
+        if (tile === TILE_FULL) {
+          // Reinforced Full Cover Pillar
+          ctx.fillStyle = "#1c2d42";
+          ctx.fillRect(px + 2, py + 2, ts - 4, ts - 4);
+          ctx.fillStyle = "#294360";
+          ctx.fillRect(px + 6, py + 6, ts - 12, ts - 12);
+          ctx.strokeStyle = "#00e5ff";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(px + 3, py + 3, ts - 6, ts - 6);
+          // Tech cross
+          ctx.beginPath();
+          ctx.moveTo(px + 8, py + 8); ctx.lineTo(px + ts - 8, py + ts - 8);
+          ctx.moveTo(px + ts - 8, py + 8); ctx.lineTo(px + 8, py + ts - 8);
+          ctx.strokeStyle = "rgba(0, 229, 255, 0.25)";
+          ctx.stroke();
+        } else if (tile === TILE_HALF) {
+          // Half Cover Tactical Console / Crate
+          ctx.fillStyle = "#22344a";
+          ctx.fillRect(px + 6, py + 10, ts - 12, ts - 20);
+          ctx.strokeStyle = "#64b5f6";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(px + 6, py + 10, ts - 12, ts - 20);
+          // Console LEDs
+          ctx.fillStyle = "#00e5ff";
+          ctx.fillRect(px + 10, py + 14, 6, 3);
+          ctx.fillStyle = "#ffb300";
+          ctx.fillRect(px + 19, py + 14, 6, 3);
+        } else if (tile === TILE_BARREL) {
+          // Explosive Plasma Barrel
+          var bPulse = 0.8 + Math.sin(nowSec * 6) * 0.2;
+          ctx.beginPath();
+          ctx.arc(px + ts * 0.5, py + ts * 0.5, ts * 0.3, 0, Math.PI * 2);
+          ctx.fillStyle = "#b71c1c";
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "#ff5252";
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(px + ts * 0.5, py + ts * 0.5, ts * 0.14 * bPulse, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffea00";
+          ctx.fill();
+        }
+
+        // Shroud dimming if Explored but not currently Visible
+        if (fState === 1) {
+          ctx.fillStyle = "rgba(4, 8, 16, 0.62)";
+          ctx.fillRect(px, py, ts, ts);
+        }
+      }
+    }
+
+    // 2. Draw Supply Pickups
+    for (var pi = 0; pi < pickups.length; pi++) {
+      var pk = pickups[pi];
+      if (fog[pk.y][pk.x] === 0) continue;
+      var pkx = ox + (pk.x + 0.5) * ts;
+      var pky = oy + (pk.y + 0.5) * ts;
+      ctx.save();
+      ctx.translate(pkx, pky);
+      ctx.rotate(nowSec * 1.5);
+      ctx.strokeStyle = pk.type === "med" ? "#00e676" : (pk.type === "grenade" ? "#ffb300" : "#00e5ff");
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-8, -8, 16, 16);
+      ctx.restore();
+    }
+
+    // 3. Draw Hovered Path Preview, Cover Shields & Sightlines
+    if (gameState === "PLAYER_IDLE" && inBounds(hoveredTile.x, hoveredTile.y)) {
+      var hx = hoveredTile.x, hy = hoveredTile.y;
+
+      if (activeMode === "GRENADE") {
+        var gDist = Math.hypot(hx - player.x, hy - player.y);
+        var inRange = gDist <= 6.5;
+        ctx.save();
+        ctx.strokeStyle = inRange ? "#ffb300" : "#ff2a5f";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(ox + (player.x + 0.5) * ts, oy + (player.y + 0.5) * ts);
+        ctx.lineTo(ox + (hx + 0.5) * ts, oy + (hy + 0.5) * ts);
+        ctx.stroke();
+        ctx.restore();
+
+        // 3x3 AoE Preview
+        if (inRange) {
+          for (var by = -1; by <= 1; by++) {
+            for (var bx = -1; bx <= 1; bx++) {
+              if (inBounds(hx + bx, hy + by)) {
+                ctx.fillStyle = "rgba(255, 82, 82, 0.28)";
+                ctx.fillRect(ox + (hx + bx) * ts + 2, oy + (hy + by) * ts + 2, ts - 4, ts - 4);
+                ctx.strokeStyle = "#ff5252";
+                ctx.strokeRect(ox + (hx + bx) * ts + 2, oy + (hy + by) * ts + 2, ts - 4, ts - 4);
+              }
+            }
+          }
+        }
+      } else if (activeMode === "MOVE_FIRE") {
+        var hMove = bfsPaths[hx + "," + hy];
+        if (hMove && hMove.path.length > 0) {
+          var pathCol = hMove.costAp === 1 ? "#00e5ff" : "#ffb300";
+          ctx.save();
+          ctx.strokeStyle = pathCol;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(ox + (player.x + 0.5) * ts, oy + (player.y + 0.5) * ts);
+          for (var s = 0; s < hMove.path.length; s++) {
+            ctx.lineTo(ox + (hMove.path[s].x + 0.5) * ts, oy + (hMove.path[s].y + 0.5) * ts);
+          }
+          ctx.stroke();
+
+          // Destination box & directional cover shields
+          ctx.strokeStyle = pathCol;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(ox + hx * ts + 4, oy + hy * ts + 4, ts - 8, ts - 8);
+          drawCoverIndicatorsAroundTile(hx, hy, ts, ox, oy);
+
+          // Pre-Move Sightlines to Visible Enemies from Hovered Tile!
+          for (var ei = 0; ei < enemies.length; ei++) {
+            var en = enemies[ei];
+            if (en.hp > 0 && fog[en.y][en.x] === 2 && hasLineOfSight(hx, hy, en.x, en.y, 10.0)) {
+              var covAtDest = evaluateCoverAgainstShooter(hx, hy, en.x, en.y);
+              ctx.beginPath();
+              ctx.setLineDash([5, 5]);
+              ctx.lineWidth = covAtDest.flanked ? 2.4 : 1.5;
+              ctx.strokeStyle = covAtDest.flanked ? "#ffb300" : "rgba(0, 229, 255, 0.65)";
+              ctx.moveTo(ox + (hx + 0.5) * ts, oy + (hy + 0.5) * ts);
+              ctx.lineTo(ox + (en.x + 0.5) * ts, oy + (en.y + 0.5) * ts);
+              ctx.stroke();
+            }
+          }
+          ctx.restore();
+        }
+      }
+    }
+
+    // Draw Cover Indicators around Player's current position
+    drawCoverIndicatorsAroundTile(player.x, player.y, ts, ox, oy);
+
+    // 4. Draw Active Sightline to Selected Target
+    var visEnemies = getVisibleEnemies();
+    for (var vi = 0; vi < visEnemies.length; vi++) {
+      var ve = visEnemies[vi];
+      if (ve.id === selectedTargetId && gameState === "PLAYER_IDLE" && activeMode === "MOVE_FIRE") {
+        var st = calculateShotStats(player.x, player.y, ve);
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([6, 4]);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = st.flanked ? "#ffb300" : "#ff2a5f";
+        ctx.moveTo(ox + (player.x + 0.5) * ts, oy + (player.y + 0.5) * ts);
+        ctx.lineTo(ox + (ve.x + 0.5) * ts, oy + (ve.y + 0.5) * ts);
+        ctx.stroke();
+
+        // Target reticle ring
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(ox + (ve.x + 0.5) * ts, oy + (ve.y + 0.5) * ts, ts * 0.44, 0, Math.PI * 2);
+        ctx.strokeStyle = st.flanked ? "#ffb300" : "#ff2a5f";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // 5. Draw Sound Sensor Ripples in Fog
+    for (var sr = soundRipples.length - 1; sr >= 0; sr--) {
+      var rp = soundRipples[sr];
+      rp.r += dt * 2.5;
+      rp.alpha -= dt * 0.7;
+      if (rp.alpha <= 0) {
+        soundRipples.splice(sr, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ox + rp.gx * ts, oy + rp.gy * ts, rp.r * ts, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255, 42, 95, " + rp.alpha.toFixed(2) + ")";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 6. Draw Visible Enemies
+    for (var k = 0; k < enemies.length; k++) {
+      var e = enemies[k];
+      if (e.hp <= 0 || fog[e.y][e.x] !== 2) continue;
+
+      var ex = ox + (e.drawX + 0.5) * ts;
+      var ey = oy + (e.drawY + 0.5) * ts;
+
+      // Enemy shadow & base token
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.beginPath();
+      if (e.type === "mech") {
+        // Octagonal Heavy Mech chassis
+        var r = ts * 0.34;
+        ctx.rect(-r, -r, r * 2, r * 2);
+      } else if (e.type === "sniper") {
+        // Diamond Sniper token
+        var rs = ts * 0.35;
+        ctx.moveTo(0, -rs); ctx.lineTo(rs, 0); ctx.lineTo(0, rs); ctx.lineTo(-rs, 0); ctx.closePath();
+      } else {
+        // Circle Trooper token
+        ctx.arc(0, 0, ts * 0.3, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = "#140b18";
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = e.color;
+      ctx.stroke();
+
+      // Inner core
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.14, 0, Math.PI * 2);
+      ctx.fillStyle = e.color;
+      ctx.fill();
+      ctx.restore();
+
+      // Enemy Cover Shield relative to Player
+      var eCov = evaluateCoverAgainstShooter(player.x, player.y, e.x, e.y);
+      if (eCov.level > 0) {
+        drawShieldBadge(ex + ts * 0.32, ey - ts * 0.28, eCov.level, eCov.level === 2 ? "#00e5ff" : "#ffb300");
+      } else {
+        // Flanked exclamation badge
+        ctx.fillStyle = "#ffb300";
+        ctx.font = "900 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("FLANK", ex, ey + ts * 0.44);
+      }
+
+      // Enemy HP Pip Bar above head
+      var pipW = Math.min(8, Math.floor((ts - 8) / e.maxHp));
+      var totalW = e.maxHp * (pipW + 2);
+      var startX = ex - totalW * 0.5;
+      for (var hpIdx = 0; hpIdx < e.maxHp; hpIdx++) {
+        ctx.fillStyle = hpIdx < e.hp ? e.color : "rgba(255, 255, 255, 0.18)";
+        ctx.fillRect(startX + hpIdx * (pipW + 2), ey - ts * 0.44, pipW, 5);
+      }
+      if (e.armor > 0) {
+        ctx.fillStyle = "#ffb300";
+        ctx.fillRect(ex - 6, ey - ts * 0.54, 12, 3);
+      }
+    }
+
+    // 7. Draw Player Operative VANGUARD-01
+    var pxCenter = ox + (player.drawX + 0.5) * ts;
+    var pyCenter = oy + (player.drawY + 0.5) * ts;
+    ctx.save();
+    ctx.translate(pxCenter, pyCenter);
+
+    // Aura pulse
+    ctx.beginPath();
+    ctx.arc(0, 0, ts * 0.36 + Math.sin(nowSec * 4) * 2, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(0, 229, 255, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Operative Body
+    ctx.beginPath();
+    ctx.arc(0, 0, ts * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = "#082032";
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#00e5ff";
+    ctx.stroke();
+
+    // Visor chevron
+    ctx.fillStyle = "#00ff88";
+    ctx.fillRect(-5, -3, 10, 4);
+    ctx.restore();
+
+    if (player.overwatch) {
+      ctx.fillStyle = "#00e5ff";
+      ctx.font = "900 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("OVERWATCH", pxCenter, pyCenter - ts * 0.42);
+    }
+
+    // 8. Draw Tracer Projectiles
+    for (var pr = projectiles.length - 1; pr >= 0; pr--) {
+      var proj = projectiles[pr];
+      if (proj.done) {
+        projectiles.splice(pr, 1);
+        continue;
+      }
+      var curX = proj.x + (proj.tx - proj.x) * proj.t;
+      var curY = proj.y + (proj.ty - proj.y) * proj.t;
+      var tailT = Math.max(0, proj.t - 0.18);
+      var tailX = proj.x + (proj.tx - proj.x) * tailT;
+      var tailY = proj.y + (proj.ty - proj.y) * tailT;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ox + tailX * ts, oy + tailY * ts);
+      ctx.lineTo(ox + curX * ts, oy + curY * ts);
+      ctx.strokeStyle = proj.color;
+      ctx.lineWidth = 4;
+      ctx.shadowColor = proj.color;
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 9. Draw Particles
+    for (var pt = particles.length - 1; pt >= 0; pt--) {
+      var p = particles[pt];
+      p.life -= dt;
+      if (p.life <= 0) {
+        particles.splice(pt, 1);
+        continue;
+      }
+      p.gx += p.vx * dt;
+      p.gy += p.vy * dt;
+      var alpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = alpha;
+      ctx.fillRect(ox + p.gx * ts, oy + p.gy * ts, p.size, p.size);
+      ctx.globalAlpha = 1.0;
+    }
+
+    // 10. Draw Floating Combat Text
+    for (var ft = floatTexts.length - 1; ft >= 0; ft--) {
+      var f = floatTexts[ft];
+      f.life -= dt;
+      if (f.life <= 0) {
+        floatTexts.splice(ft, 1);
+        continue;
+      }
+      f.gy -= dt * 0.55;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (f.life / f.maxLife) * 1.4);
+      ctx.font = "900 " + Math.round(13 * f.scale) + "px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#000000";
+      ctx.fillText(f.text, ox + f.gx * ts + 1.5, oy + f.gy * ts + 1.5);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, ox + f.gx * ts, oy + f.gy * ts);
+      ctx.restore();
+    }
+  }
+
+  // =========================================================================
+  // 13. MAIN ANIMATION LOOP
+  // =========================================================================
+  resetMission();
+  gameState = "START";
+
+  var lastNow = performance.now();
+  function loop(now) {
+    var dt = Math.min(0.05, Math.max(0.001, (now - lastNow) / 1000));
+    lastNow = now;
+    render(now * 0.001, dt);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Bellward</title>
+  <style>
+    :root {
+      color: #e8e9d9;
+      background: #101817;
+      font-family: Georgia, serif;
+      --gold: #f2cc83;
+      --dim: #9eb0a3;
+      --line: #6a7c6e;
+      --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      min-height: 100dvh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(ellipse at 50% 44%, #26352f, #111917 72%);
+    }
+    main { width: min(calc(100vw - 34px), calc((100dvh - 98px) * 1.6), 1216px); }
+    .mast, .legend {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 34px;
+      color: var(--dim);
+      font: 10px/1.3 var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .mast strong { color: var(--gold); font-weight: 500; }
+    .wordmark { display: flex; align-items: center; gap: 11px; }
+    .sigil {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border: 1px solid var(--gold);
+      transform: rotate(45deg);
+      background: linear-gradient(135deg, transparent 40%, var(--gold) 41% 55%, transparent 56%);
+    }
+    .stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 8 / 5;
+      border: 1px solid var(--line);
+      background: #182d2b;
+      overflow: hidden;
+      isolation: isolate;
+      box-shadow: 0 15px 65px #020a0866, 0 0 0 5px #111b18;
+    }
+    #field { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+    .veil {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-items: center;
+      justify-items: start;
+      background: linear-gradient(90deg, #101918e8 3%, #101918bb 36%, #10191815 71%, #10191809);
+    }
+    .card {
+      margin-inline: 7.5%;
+      width: min(390px, 64%);
+      padding: clamp(16px, 3vw, 36px) 0;
+    }
+    .card h1 {
+      margin: 0 0 13px -3px;
+      color: #fff0ca;
+      font-size: clamp(38px, 7vw, 102px);
+      line-height: .9;
+      letter-spacing: -.07em;
+      font-weight: 400;
+      text-shadow: 2px 3px 0 #182420;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      color: #fff0ca;
+      font-weight: 400;
+      font-size: clamp(28px, 5vw, 62px);
+      line-height: 1;
+      letter-spacing: -.05em;
+    }
+    .overline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 18px;
+      color: var(--gold);
+      font: 10px/1.3 var(--mono);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .overline::before { content: ""; width: 22px; height: 1px; background: currentColor; }
+    .card p {
+      max-width: 288px;
+      margin: 0 0 22px;
+      color: #d4dacb;
+      font-size: clamp(12px, 1.47vw, 18px);
+      line-height: 1.46;
+    }
+    .bindings {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 8px 12px;
+      align-items: center;
+      margin: 0 0 26px;
+      color: #d5d9cb;
+      font: 11px/1.15 var(--mono);
+    }
+    .bindings dd, .bindings dt { margin: 0; }
+    kbd {
+      display: inline-block;
+      border: 1px solid #7285759c;
+      border-radius: 2px;
+      background: #293831;
+      color: #f9e3b5;
+      font: inherit;
+      padding: 3px 5px;
+    }
+    button {
+      padding: 12px 16px;
+      border: 1px solid #ffe5a9;
+      border-radius: 1px;
+      background: var(--gold);
+      box-shadow: 3px 3px 0 #0d1311;
+      color: #1d2118;
+      cursor: pointer;
+      font: 700 11px/1.2 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    button:hover, button:focus-visible { background: #ffe6ac; }
+    button:focus-visible { outline: 2px solid #fff4db; outline-offset: 4px; }
+    .arrow { padding-left: 13px; }
+    .hud {
+      position: absolute;
+      inset: 13px;
+      display: grid;
+      grid-template-columns: minmax(95px, 1fr) auto minmax(95px, 1fr);
+      align-items: start;
+      pointer-events: none;
+      gap: 9px;
+      font: 10px/1.4 var(--mono);
+      color: #dee5d7;
+    }
+    .plate {
+      border: 1px solid #81928466;
+      background: #101c19e8;
+      box-shadow: 0 3px 0 #08121077;
+    }
+    .vitals { justify-self: start; padding: 8px 10px; }
+    .hearts { display: flex; gap: 4px; margin-bottom: 6px; }
+    .heart {
+      width: 12px;
+      height: 11px;
+      background: #a64e4f;
+      clip-path: polygon(0 18%, 18% 18%, 18% 0%, 40% 0%, 50% 20%, 60% 0%, 82% 0%, 82% 18%, 100% 18%, 100% 50%, 50% 100%, 0 50%);
+    }
+    .heart.full { background: #ff9b83; }
+    .readout { display: flex; justify-content: space-between; gap: 14px; color: #c4d5c5; }
+    .readout .urgent { color: #ff9b83; }
+    .objective {
+      justify-self: center;
+      text-align: center;
+      padding: 7px 10px;
+      min-width: 134px;
+    }
+    .objective span { display: block; }
+    #shrine-pips { color: var(--gold); letter-spacing: 4px; }
+    .map { justify-self: end; display: block; width: min(13vw, 120px); height: auto; image-rendering: pixelated; }
+    #hint {
+      position: absolute;
+      bottom: 13px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 7px 10px;
+      max-width: 80%;
+      color: #ffe3a3;
+      text-align: center;
+      font: 10px/1.4 var(--mono);
+      pointer-events: none;
+    }
+    .legend { letter-spacing: .045em; text-transform: none; gap: 12px; }
+    .legend span + span { text-align: right; }
+    .veil.compact {
+      justify-items: center;
+      background: #0a1513ad;
+    }
+    .veil.compact .card {
+      width: min(380px, 82%);
+      margin: 0;
+      padding: clamp(14px, 3vw, 34px);
+      border: 1px solid #7f947f;
+      box-shadow: 5px 5px 0 #07100e;
+      background: #172421;
+    }
+    .veil.compact p { max-width: none; }
+    @media (max-height: 570px), (max-width: 640px) {
+      .card h1 { font-size: clamp(29px, 6vw, 60px); margin-bottom: 8px; }
+      .overline { margin-bottom: 7px; }
+      .card p, .bindings { margin-bottom: 9px; }
+      .bindings { gap: 4px 7px; font-size: 9px; }
+      .card kbd { padding: 1px 3px; }
+      .card button { padding: 6px 8px; }
+      .hud { inset: 6px; gap: 4px; }
+      .heart { width: 8px; height: 8px; }
+      .vitals, .objective { padding: 4px 5px; }
+      .map { width: 64px; }
+      .legend { font-size: 8px; }
+    }
+  </style>
+</head>
+<body>
+<main aria-label="Bellward">
+  <header class="mast">
+    <span class="wordmark"><i class="sigil" aria-hidden="true"></i><span id="wordmark" hidden>Bellward</span></span>
+    <span>Best <strong id="best">0000</strong></span>
+  </header>
+  <div class="stage">
+    <canvas id="field" aria-label="Top-down view of the flooded ruins"></canvas>
+    <div class="hud" id="hud" hidden>
+      <div class="vitals plate">
+        <div class="hearts" id="hearts" aria-label="Health"></div>
+        <div class="readout"><span id="countdown"></span><span id="score"></span></div>
+      </div>
+      <div class="objective plate">
+        <span id="mission">Light the shrines</span>
+        <span id="shrine-pips" aria-label="0 of 3 shrines lit">◇◇◇</span>
+      </div>
+      <canvas id="map" class="map plate" width="124" height="92" aria-label="Map of the shrines and the bell"></canvas>
+    </div>
+    <div id="hint" class="plate" hidden></div>
+    <div class="veil" id="intro">
+      <div class="card">
+        <div class="overline">A marshland quest</div>
+        <h1>Bellward</h1>
+        <p>Light three shrines in the flooded ruins. Bring their fire back to the bell before the marsh goes dark.</p>
+        <dl class="bindings">
+          <dt><kbd>W A S D</kbd> <kbd>↑ ← ↓ →</kbd></dt><dd>Move</dd>
+          <dt><kbd>Space</kbd> <kbd>J</kbd></dt><dd>Swing sword</dd>
+          <dt><kbd>Shift</kbd></dt><dd>Dodge</dd>
+          <dt><kbd>E</kbd> hold</dt><dd>Light shrine / ring bell</dd>
+        </dl>
+        <button id="start-game" type="button">Enter the marsh <span class="arrow" aria-hidden="true">→</span></button>
+      </div>
+    </div>
+    <div class="veil compact" id="pause" hidden>
+      <div class="card">
+        <h2>Paused</h2>
+        <p>The marsh will wait.</p>
+        <button id="resume-game" type="button">Resume</button>
+      </div>
+    </div>
+    <div class="veil compact" id="ending" hidden>
+      <div class="card">
+        <div class="overline" id="result-label"></div>
+        <h2 id="result-title"></h2>
+        <p id="result-copy"></p>
+        <button id="restart-game" type="button">Play again <span class="arrow" aria-hidden="true">↻</span></button>
+      </div>
+    </div>
+  </div>
+  <footer class="legend" id="field-legend" hidden>
+    <span>WASD / arrows Move &nbsp;·&nbsp; Space Swing &nbsp;·&nbsp; Shift Dodge &nbsp;·&nbsp; E Interact</span>
+    <span>Esc Pause &nbsp;·&nbsp; R Restart</span>
+  </footer>
+</main>
+<script>
+'use strict';
+
+const byId = id => document.getElementById(id);
+const field = byId('field');
+const output = field.getContext('2d', { alpha: false });
+const map = byId('map').getContext('2d');
+const VIEW_W = 576, VIEW_H = 360;
+const TILE = 16, COLS = 62, ROWS = 45;
+const WORLD_W = COLS * TILE, WORLD_H = ROWS * TILE;
+const MAX_HEALTH = 7, ROUND_TIME = 160, DEFENSE_TIME = 15;
+for (let i = 0; i < MAX_HEALTH; i++) {
+  const heart = document.createElement('span');
+  heart.className = 'heart';
+  byId('hearts').appendChild(heart);
+}
+const TAU = Math.PI * 2;
+const scene = Object.assign(document.createElement('canvas'), { width: VIEW_W, height: VIEW_H });
+const ctx = scene.getContext('2d', { alpha: false });
+const terrain = Object.assign(document.createElement('canvas'), { width: WORLD_W, height: WORLD_H });
+const groundArt = terrain.getContext('2d', { alpha: false });
+const mapArt = Object.assign(document.createElement('canvas'), { width: 124, height: 92 });
+const mapGround = mapArt.getContext('2d');
+const pressed = new Set();
+const gameKeys = new Set([
+  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight',
+  'Space', 'KeyJ', 'KeyE', 'ShiftLeft', 'ShiftRight', 'Escape', 'KeyR'
+]);
+const within = (value, low, high) => Math.max(low, Math.min(high, value));
+const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const at = (x, y) => ({ x: x * TILE, y: y * TILE });
+const bell = { ...at(31.5, 21), kind: 'bell' };
+const shrineSites = [
+  { ...at(13.5, 11.5), name: 'Alder shrine', keeper: 'crawler' },
+  { ...at(48.5, 10.5), name: 'Reed shrine', keeper: 'wisp' },
+  { ...at(31.5, 37.5), name: 'Flint shrine', keeper: 'warden' }
+];
+const trailLines = [
+  [[31.5, 21], [24, 21], [22, 17.5], [17, 15.5], [13.5, 11.5]],
+  [[31.5, 21], [37.5, 21], [40.5, 16], [47, 15], [48.5, 10.5]],
+  [[13.5, 11.5], [20, 8.7], [28, 8], [36, 8.4], [42.5, 6.8], [48.5, 10.5]],
+  [[31.5, 21], [29.5, 28], [33, 32], [31.5, 37.5]],
+  [[31.5, 37.5], [22, 36], [18, 30], [21, 23], [24, 21]],
+  [[31.5, 37.5], [40.5, 36], [44.5, 30], [41.5, 24], [37.5, 21]]
+];
+const enemyTypes = {
+  crawler: { hp: 2, speed: 38, reach: 17, windup: .33, recovery: .92, lunge: 75, points: 45 },
+  wisp: { hp: 2, speed: 31, reach: 135, windup: .67, recovery: 1.35, lunge: 0, points: 65 },
+  warden: { hp: 4, speed: 28, reach: 29, windup: .56, recovery: 1.24, lunge: 120, points: 90 }
+};
+const cells = new Uint8Array(COLS * ROWS);
+const paths = new Float32Array(COLS * ROWS);
+const flow = new Int16Array(COLS * ROWS);
+const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const scenery = [];
+const ripples = [];
+const motes = [];
+let seed = 47139;
+let mode = 'intro';
+let player, shrines, enemies, bolts, sparks, elapsed, points, defense, wave, nextWave;
+let cameraX, cameraY, shake, damageFlash, fieldHint, interaction, flowTimer, ambient = 0;
+let best = 0;
+try { best = Math.max(0, Number(localStorage.getItem('bellward-best')) || 0); } catch {}
+byId('best').textContent = String(best).padStart(4, '0');
+
+function random() {
+  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+  return seed / 4294967296;
+}
+
+function noise(x, y, salt = 0) {
+  const value = Math.sin(x * 127.1 + y * 311.7 + salt * 19.5) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function segmentDistance(x, y, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const t = within(((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy), 0, 1);
+  return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t);
+}
+
+function shore(x, y, cx, cy, rx, ry) {
+  return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+}
+
+function ground(x, y) {
+  return x >= 0 && x < COLS && y >= 0 && y < ROWS && cells[y * COLS + x] === 1;
+}
+
+function walkable(x, y, radius = 4) {
+  return ground(Math.floor((x - radius) / TILE), Math.floor(y / TILE))
+    && ground(Math.floor((x + radius) / TILE), Math.floor(y / TILE))
+    && ground(Math.floor(x / TILE), Math.floor((y - radius) / TILE))
+    && ground(Math.floor(x / TILE), Math.floor((y + radius) / TILE));
+}
+
+function createTerrain() {
+  const sites = [bell, ...shrineSites];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const cx = x + .5, cy = y + .5, index = y * COLS + x;
+      let path = Infinity;
+      for (const line of trailLines) {
+        for (let i = 1; i < line.length; i++) {
+          path = Math.min(path, segmentDistance(cx, cy, line[i - 1], line[i]));
+        }
+      }
+      const nearestSite = Math.min(...sites.map(site => Math.hypot(cx - site.x / TILE, cy - site.y / TILE)));
+      paths[index] = Math.min(path + (noise(x, y, 2) - .5) * .7, nearestSite - .65);
+      const island = shore(cx, cy, 31, 21.5, 29, 20.8) < .96 + noise(x, y, 3) * .15;
+      const pool = shore(cx, cy, 12.7, 24, 8.7, 5.5) < 1
+        || shore(cx, cy, 50, 25, 7.7, 5.3) < .96
+        || shore(cx, cy, 31.6, 13.7, 5.7, 3.3) < 1
+        || shore(cx, cy, 27, 33.7, 2.4, 3.3) < .84;
+      cells[index] = ((island && !pool) || path < 1.85 || nearestSite < 3.1) ? 1 : 0;
+    }
+  }
+
+  const grass = ['#314943', '#344e46', '#365048', '#385249'];
+  const paving = ['#566257', '#5b695d', '#526255', '#58665a'];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const px = x * TILE, py = y * TILE, index = y * COLS + x;
+      const value = noise(x, y);
+      const variant = Math.floor(noise(x, y, 1) * 4);
+      const level = paths[index];
+      const isGround = cells[index] === 1;
+      if (isGround) {
+        const stone = level < 1.17 || (level < 1.86 && value > .56);
+        groundArt.fillStyle = (stone ? paving : grass)[variant];
+        groundArt.fillRect(px, py, TILE, TILE);
+        if (!ground(x, y - 1)) {
+          groundArt.fillStyle = '#829078';
+          groundArt.fillRect(px, py, TILE, 2);
+        }
+        if (!ground(x, y + 1)) {
+          groundArt.fillStyle = '#223830';
+          groundArt.fillRect(px, py + 11, TILE, 5);
+          groundArt.fillStyle = '#6c7b63';
+          groundArt.fillRect(px, py + 11, TILE, 2);
+          groundArt.fillStyle = '#304d47';
+          groundArt.fillRect(px + 1, py + 15, 14, 1);
+        }
+        if (!ground(x - 1, y)) {
+          groundArt.fillStyle = '#657862';
+          groundArt.fillRect(px, py + 1, 2, 12);
+        }
+        if (!ground(x + 1, y)) {
+          groundArt.fillStyle = '#253c35';
+          groundArt.fillRect(px + 14, py + 1, 2, 14);
+        }
+        if (stone) {
+          groundArt.fillStyle = '#85917b45';
+          groundArt.fillRect(px + 1, py + 1, 13, 1);
+          groundArt.fillStyle = '#1d332944';
+          groundArt.fillRect(px + 1, py + 14, 14, 1);
+          groundArt.fillRect(px + 9, py + 9, 1, 5);
+        }
+        for (let i = 0; i < 5; i++) {
+          groundArt.fillStyle = i < 2 ? '#b1b89928' : '#112d2660';
+          const sx = 2 + Math.floor(noise(x + i, y, i + 7) * 12);
+          const sy = 2 + Math.floor(noise(x, y + i, i + 12) * 11);
+          groundArt.fillRect(px + sx, py + sy, 1 + (i % 3), 1);
+        }
+        if (!stone && value > .64) {
+          groundArt.fillStyle = '#73876670';
+          groundArt.fillRect(px + 7, py + 7, 1, 3);
+          groundArt.fillRect(px + 5, py + 8, 1, 2);
+          groundArt.fillRect(px + 9, py + 8, 1, 2);
+        }
+        if (level > 2.05 && ground(x, y + 1) && value > .75 && noise(x, y, 4) > .47
+          && sites.every(site => Math.hypot(site.x - px - 8, site.y - py - 11) > 60)) {
+          const kind = value > .92 ? 'tree' : value > .86 ? 'stone' : 'reed';
+          scenery.push({ x: px + 4 + variant * 2, y: py + 11, kind, variant });
+        }
+      } else {
+        groundArt.fillStyle = ['#203939', '#213e3d', '#1f3a3a', '#223d3b'][variant];
+        groundArt.fillRect(px, py, TILE, TILE);
+        if (value > .51) {
+          groundArt.fillStyle = '#68958a30';
+          groundArt.fillRect(px + 1, py + 3 + variant * 2, 3 + variant * 2, 1);
+        }
+        if (ground(x, y - 1) || ground(x - 1, y) || ground(x + 1, y)) {
+          groundArt.fillStyle = '#47736a85';
+          groundArt.fillRect(px + 2, py + 2, 11 - variant, 1);
+        }
+        if (value > .86) ripples.push({ x: px + 1, y: py + 5 + variant, phase: value * TAU, w: 5 + 3 * variant });
+        if (value < .03) {
+          groundArt.fillStyle = '#587c64';
+          groundArt.fillRect(px + 5, py + 10, 6, 2);
+          groundArt.fillStyle = '#94a680';
+          groundArt.fillRect(px + 6, py + 9, 3, 1);
+        }
+      }
+      mapGround.fillStyle = isGround ? (level < 1.6 ? '#67776a' : '#3b554b') : '#203935';
+      mapGround.fillRect(x * 2, y * 2 + 1, 2, 2);
+    }
+  }
+  for (const site of sites) {
+    const radius = site.kind === 'bell' ? 47 : 26;
+    groundArt.fillStyle = '#45554a';
+    groundArt.fillRect(site.x - radius, site.y - 13, radius * 2, 31);
+    groundArt.strokeStyle = '#a7ad8a7c';
+    groundArt.lineWidth = 1;
+    groundArt.beginPath();
+    groundArt.ellipse(site.x, site.y + 8, radius, radius * .54, 0, 0, TAU);
+    groundArt.stroke();
+    groundArt.strokeStyle = '#70877075';
+    groundArt.beginPath();
+    groundArt.ellipse(site.x, site.y + 8, radius - 6, radius * .54 - 4, 0, 0, TAU);
+    groundArt.stroke();
+    for (let i = 0; i < 12; i++) {
+      const a = TAU * i / 12;
+      groundArt.fillStyle = i % 3 ? '#91a483' : '#c1ad75';
+      groundArt.fillRect(Math.round(site.x + (radius - 3) * Math.cos(a)) - 1,
+        Math.round(site.y + 8 + (radius * .54 - 2) * Math.sin(a)) - 1, 3, 2);
+    }
+  }
+  for (let i = 0; i < 130; i++) {
+    motes.push({ x: random() * WORLD_W, y: random() * WORLD_H, phase: random() * TAU });
+  }
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = field.getBoundingClientRect();
+  field.width = Math.max(1, Math.round(rect.width * dpr));
+  field.height = Math.max(1, Math.round(rect.height * dpr));
+  output.imageSmoothingEnabled = false;
+}
+
+function block(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+}
+
+function shape(points, fill) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function ellipse(x, y, rx, ry, fill) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, TAU);
+  ctx.fill();
+}
+
+function glow(x, y, r, color, alpha = 1) {
+  const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, 'transparent');
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  ctx.globalAlpha = 1;
+}
+
+function tree(variant) {
+  const dark = variant % 2 ? '#183a31' : '#223b32';
+  const mid = variant % 2 ? '#315747' : '#355647';
+  ellipse(5, 2, 20, 8, '#102c2477');
+  block(-3, -23, 6, 24, '#22342a');
+  block(-2, -15, 2, 14, '#6a6d4c');
+  block(-5, 0, 10, 2, '#53634a');
+  shape([[-18,-16],[-20,-26],[-13,-30],[-11,-40],[-4,-47],[7,-45],[12,-38],
+    [17,-38],[23,-29],[22,-19],[15,-10],[7,-12],[1,-8],[-7,-13],[-14,-11]], dark);
+  shape([[-17,-24],[-12,-27],[-10,-37],[-2,-43],[6,-42],[12,-34],[18,-32],
+    [20,-25],[13,-18],[4,-20],[-4,-15],[-11,-19],[-18,-18]], mid);
+  shape([[-10,-31],[-6,-38],[0,-40],[7,-37],[5,-34],[-3,-32],[-4,-25],[-12,-24]], '#587659');
+  shape([[8,-33],[15,-31],[17,-25],[10,-25],[6,-29]], '#68825f');
+  block(-5, -38, 3, 1, '#9c9c67');
+  block(-13, -23, 5, 1, '#77916a');
+  block(12, -26, 3, 1, '#8b9b6c');
+}
+
+function ruin(variant) {
+  const h = 13 + variant * 3;
+  ellipse(3, 2, 11, 4, '#17332b99');
+  shape([[-8,0],[-7,-h+3],[-2,-h],[6,-h],[8,-h+6],[7,0]], '#253c34');
+  shape([[-7,-2],[-7,-h+3],[-2,-h],[3,-h+2],[3,-3]], '#6f7f6b');
+  block(-7, -h+4, 10, 2, '#a0a58a');
+  block(-6, -h+9, 4, 1, '#3d5749');
+  block(-5, -2, 13, 2, '#3b5b46');
+}
+
+function reeds(variant) {
+  block(-6, 0, 14, 2, '#19352c99');
+  block(-2, -9, 1, 10, '#819172');
+  block(0, -5, 1, 6, '#a1a16c');
+  block(4, -12, 1, 13, '#6b896a');
+  block(6, -7, 1, 7, '#678263');
+  block(-4, -6, 1, 6, '#597a61');
+  if (variant % 2) {
+    block(4, -13, 2, 3, '#be9d70');
+    block(-2, -10, 2, 3, '#a48665');
+  }
+}
+
+function flame(x, y, size, phase, color = '#ffc775') {
+  const flicker = Math.sin(ambient * 10 + phase);
+  const top = y - (5 + flicker * 2) * size;
+  shape([[x - 3*size,y],[x - 4*size,y-3*size],[x-size,top+2],
+    [x+size,top-2],[x+3*size,y-3*size],[x+3*size,y]], color);
+  block(x - size, y - 3*size, 2*size, 3*size, '#fff0ba');
+  block(x + flicker * 3, top - 5, 1, 1, color);
+}
+
+function shrineArt(shrine) {
+  ellipse(1, 1, 23, 9, '#172e26aa');
+  block(-19, -4, 38, 7, '#273a31');
+  block(-19, -7, 38, 4, '#7b8872');
+  block(-15, -16, 30, 9, '#53685a');
+  block(-15, -17, 30, 3, '#a9a48b');
+  block(-14, -8, 28, 2, '#3c5548');
+  shape([[-13,-18],[-13,-30],[-7,-37],[0,-43],[7,-37],[13,-30],[13,-18]], '#203d33');
+  shape([[-12,-19],[-12,-30],[0,-41],[8,-30],[8,-19]], '#718375');
+  shape([[-9,-28],[0,-37],[7,-28],[4,-29],[0,-32],[-5,-27]], '#a9ae90');
+  shape([[-5,-22],[0,-29],[5,-22],[0,-17]], shrine.lit ? '#ffda91' : '#394f44');
+  block(-17, -5, 6, 1, '#a9a48b');
+  block(11, -5, 6, 1, '#a9a48b');
+  for (const side of [-1, 1]) {
+    block(side * 24 - 3, -11, 6, 13, '#385146');
+    block(side * 24 - 4, -13, 8, 3, '#859878');
+    block(side * 24 - 1, -15, 2, 3, '#ad9770');
+  }
+  if (shrine.lit) {
+    glow(0, -24, 47, '#ffbf515e');
+    flame(0, -22, 1.2, shrine.x);
+    flame(-24, -14, .65, 0);
+    flame(24, -14, .65, 3);
+  }
+}
+
+function bellArt() {
+  ellipse(1, 5, 46, 17, '#20362fbb');
+  block(-41, 4, 82, 4, '#31453b');
+  block(-41, 1, 82, 3, '#85917a');
+  block(-37, -6, 74, 7, '#5a7162');
+  block(-37, -8, 74, 3, '#b0af90');
+  block(-32, -17, 64, 8, '#445c50');
+  block(-32, -18, 64, 2, '#899780');
+  block(-31, -57, 62, 39, '#223b33');
+  block(-29, -51, 58, 28, '#31483b');
+  for (const side of [-1, 1]) {
+    const x = side * 28;
+    block(x - 5, -56, 10, 40, '#233c33');
+    block(x - 5, -54, 6, 35, '#728471');
+    block(x - 7, -54, 14, 3, '#8d9b82');
+    block(x - 7, -22, 14, 3, '#a0a789');
+    block(x - 5, -35, 6, 1, '#4c6557');
+    block(x - 2, -48, 1, 9, '#a7ac91');
+    block(side * 50 - 4, 2, 8, 10, '#526e55');
+    block(side * 50 - 6, 0, 12, 3, '#98a681');
+    glow(side * 50, -2, 27, '#ffc57759');
+    flame(side * 50, -2, .9, side * 3);
+  }
+  block(-2, -55, 4, 6, '#aa905b');
+  ctx.save();
+  ctx.translate(0, -49);
+  ctx.rotate(defense >= 0 || mode === 'won' ? Math.sin(ambient * 9) * .19 : 0);
+  shape([[-4,0],[4,0],[10,7],[11,15],[16,22],[16,25],[-16,25],[-16,22],[-11,15],[-10,7]], '#b58b54');
+  shape([[-4,2],[0,1],[0,17],[-6,22],[-12,22],[-8,13],[-7,6]], '#e1bb73');
+  shape([[5,3],[10,8],[11,15],[15,23],[6,22],[4,17]], '#8b6543');
+  block(-16, 22, 32, 3, '#daba76');
+  block(-12, 25, 24, 2, '#473b2a');
+  block(-3, 27, 6, 3, '#b88a50');
+  ctx.restore();
+  shape([[-43,-55],[-37,-59],[-24,-62],[-12,-73],[0,-81],[12,-73],[24,-62],
+    [37,-59],[43,-55],[39,-51],[-39,-51]], '#243e37');
+  shape([[-42,-56],[-27,-60],[-13,-71],[0,-81],[13,-71],[27,-60],[42,-56],
+    [28,-56],[13,-62],[0,-72],[-13,-62],[-28,-56]], '#819782');
+  shape([[-19,-62],[0,-75],[16,-63],[6,-61],[-5,-63]], '#4d6b5c');
+  shape([[-4,-64],[0,-69],[4,-64],[0,-59]], '#e0c17c');
+  block(-39, -53, 78, 2, '#9c9d7e');
+}
+
+function heroArt() {
+  const stride = player.moving ? Math.floor(ambient * 13) % 2 * 2 : 0;
+  if (player.invulnerable > 0 && player.dash <= 0 && Math.floor(ambient * 18) % 2) ctx.globalAlpha = .45;
+  ellipse(1, 1, 9, 4, '#122722bb');
+  block(-6, -9, 11, 8, '#273730');
+  block(-4, -4 + stride, 3, 5, '#b5896a');
+  block(2, -2 - stride, 3, 5, '#744e42');
+  shape([[-5,-16],[4,-16],[7,-12],[7,-6],[4,-4],[-6,-5],[-8,-8],[-7,-13]], '#182c29');
+  shape([[-4,-15],[3,-15],[6,-10],[5,-6],[-5,-6],[-7,-8]], '#6ba799');
+  block(-5, -8, 10, 2, '#c27d62');
+  block(-6, -20, 12, 3, '#24443c');
+  block(-5, -22, 9, 2, '#a3cbb2');
+  block(-6, -20, 11, 5, '#75aa98');
+  block(-4 + Math.round(player.fx), -17, 7, 4, player.fy < -.25 ? '#4e8073' : '#efd0a0');
+  block(-5, -14, 11, 2, '#3a6256');
+  if (player.fy >= -.25) block(Math.round(player.fx * 2) - 1, -16, 2, 1, '#3e4c3d');
+  if (player.swing <= 0) {
+    const side = player.fx < 0 ? -1 : 1;
+    block(side * 8 - 1, -12, 2, 8, '#e4e5ce');
+    block(side * 8 - 2, -6, 4, 1, '#bb8f58');
+  }
+  if (interaction && interaction.progress > 0) {
+    block(-13, -30, 26, 3, '#24382c');
+    block(-12, -29, Math.ceil(24 * interaction.progress / interaction.duration), 1, '#ffd786');
+  }
+  ctx.globalAlpha = 1;
+}
+
+function enemyArt(enemy) {
+  const pulse = Math.sin(ambient * 9 + enemy.orbit);
+  const flash = enemy.flash > 0;
+  if (enemy.appear > 0) {
+    ctx.globalAlpha = .45 + Math.sin(ambient * 18) * .2;
+    ellipse(0, 0, 12, 5, '#ed936f');
+  }
+  if (enemy.keeper) {
+    ctx.strokeStyle = '#d49b67ad';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14, 7, 0, 0, TAU);
+    ctx.stroke();
+    ctx.scale(1.19, 1.19);
+  }
+  ellipse(1, 1, 10, 4, '#122a24bb');
+  if (enemy.kind === 'crawler') {
+    const step = pulse > 0 ? 2 : 0;
+    block(-11, -6 + step, 6, 3, '#723f46');
+    block(5, -6 - step, 6, 3, '#723f46');
+    shape([[-9,-3],[-8,-11],[-5,-15],[0,-13],[5,-15],[8,-11],[9,-3],[3,0],[-5,0]], flash ? '#ffedbc' : '#774953');
+    block(-6, -11, 12, 4, '#b86c69');
+    block(-5, -8, 3, 2, '#ffc184');
+    block(2, -8, 3, 2, '#ffc184');
+    block(-2, -4, 4, 1, '#432f39');
+  } else if (enemy.kind === 'wisp') {
+    ctx.translate(0, -5 + Math.round(pulse * 2));
+    shape([[-10,-6],[-7,-14],[0,-21],[7,-14],[10,-6],[4,-1],[2,-5],[-2,0],[-5,-4]], flash ? '#ffe8c2' : '#58637d');
+    shape([[-7,-10],[0,-18],[6,-11],[4,-4],[-5,-4]], '#7c90a4');
+    block(-4, -12, 8, 5, '#263746');
+    block(-3, -11, 2, 2, '#d9efb4');
+    block(2, -11, 2, 2, '#d9efb4');
+    block(9, -7, 2, 2, '#a3c0a7');
+  } else {
+    shape([[-12,-1],[-11,-12],[-8,-18],[7,-18],[12,-12],[12,-1]], flash ? '#ffe8c2' : '#4c4246');
+    block(-9, -19, 19, 4, '#9b8069');
+    block(-6, -23, 13, 11, flash ? '#ffe8c2' : '#7e7163');
+    block(-4, -19, 9, 3, '#292e2a');
+    block(-3, -18, 3, 1, '#ffb97d');
+    block(2, -18, 2, 1, '#ffb97d');
+    block(-6, -11, 13, 4, '#a98466');
+    block(12, -16, 3, 16, '#d7b780');
+    block(11, -5, 5, 2, '#a78259');
+  }
+  ctx.globalAlpha = 1;
+  if (enemy.keeper || enemy.flash > 0) {
+    block(-10, -31, 20, 2, '#1b3027');
+    block(-10, -31, Math.ceil(20 * enemy.hp / enemy.maxHp), 1, '#e49675');
+  }
+  if (enemy.wind > 0) {
+    const color = Math.sin(ambient * 24) > 0 ? '#ffc480' : '#d77763';
+    shape([[0,-38],[3,-34],[0,-30],[-3,-34]], color);
+  }
+}
+
+function drawActors() {
+  const actors = [...scenery, bell, ...shrines, { ...player, kind: 'hero' }, ...enemies];
+  const visible = actors.filter(a => a.x > cameraX - 56 && a.x < cameraX + VIEW_W + 56
+    && a.y > cameraY - 28 && a.y < cameraY + VIEW_H + 90);
+  visible.sort((a, b) => a.y - b.y);
+  for (const actor of visible) {
+    if (actor.wind > 0 && actor.appear <= 0) {
+      const reach = actor.kind === 'wisp' ? 52 : actor.kind === 'warden' ? 35 : 20;
+      ctx.strokeStyle = '#ed9c6d83';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(actor.x, actor.y);
+      ctx.lineTo(actor.x + actor.tx * reach, actor.y + actor.ty * reach);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  for (const actor of visible) {
+    ctx.save();
+    ctx.translate(Math.round(actor.x), Math.round(actor.y));
+    if (actor.kind === 'tree') tree(actor.variant);
+    else if (actor.kind === 'stone') ruin(actor.variant);
+    else if (actor.kind === 'reed') reeds(actor.variant);
+    else if (actor.kind === 'bell') bellArt();
+    else if (actor.kind === 'shrine') shrineArt(actor);
+    else if (actor.kind === 'hero') heroArt();
+    else enemyArt(actor);
+    ctx.restore();
+  }
+}
+
+const mist = ctx.createRadialGradient(VIEW_W * .58, VIEW_H * .42, 42, VIEW_W * .5, VIEW_H * .5, VIEW_W * .68);
+mist.addColorStop(0, '#d8cc980e');
+mist.addColorStop(.45, '#233d3600');
+mist.addColorStop(1, '#0a1716d7');
+
+function draw() {
+  const sway = shake ? (Math.random() - .5) * shake : 0;
+  ctx.save();
+  ctx.fillStyle = '#213b3a';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.translate(-Math.round(cameraX + sway), -Math.round(cameraY - sway * .7));
+  ctx.drawImage(terrain, 0, 0);
+  for (const ripple of ripples) {
+    if (ripple.x < cameraX - 20 || ripple.x > cameraX + VIEW_W
+      || ripple.y < cameraY || ripple.y > cameraY + VIEW_H) continue;
+    const pulse = .5 + Math.sin(ambient * 1.25 + ripple.phase) * .5;
+    ctx.globalAlpha = pulse * .55;
+    block(ripple.x + pulse * 3, ripple.y, ripple.w, 1, '#79a398');
+    ctx.globalAlpha = 1;
+  }
+  if (defense >= 0) {
+    const pulse = .45 + Math.sin(ambient * 5) * .16;
+    ellipse(bell.x, bell.y + 12, 71, 55, '#f4bb4620');
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = '#ffcf78';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(bell.x, bell.y + 12, 71, 55, 0, 0, TAU);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  if (mode !== 'intro') glow(player.x, player.y - 8, 32, '#c9d19729');
+  drawActors();
+  if (player.swing > 0) {
+    const arc = Math.atan2(player.ay, player.ax);
+    const t = 1 - player.swing / .17;
+    ctx.globalAlpha = 1 - t * .75;
+    ctx.strokeStyle = '#ffde91';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y - 9, 19 + 6 * t, arc - 1.05 + t * .4, arc + .7 + t * .35);
+    ctx.stroke();
+    ctx.strokeStyle = '#fff4cc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y - 9, 24 + t * 5, arc - .63, arc + .62 + t * .27);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  for (const bolt of bolts) {
+    glow(bolt.x, bolt.y - 6, 11, '#f4a36a71');
+    block(bolt.x - 2, bolt.y - 7, 4, 3, '#ffb27f');
+    block(bolt.x, bolt.y - 7, 2, 2, '#fff0b0');
+  }
+  for (const mote of motes) {
+    const pulse = .5 + Math.sin(ambient * 1.8 + mote.phase) * .5;
+    ctx.globalAlpha = pulse * .65;
+    block(mote.x + Math.sin(ambient + mote.phase) * 5, mote.y - pulse * 12, 1 + (pulse > .85), 1, '#f1d090');
+  }
+  for (const spark of sparks) {
+    ctx.globalAlpha = within(spark.life * 3, 0, 1);
+    block(spark.x, spark.y, spark.size, spark.size, spark.color);
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = mist;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  if (damageFlash > 0) {
+    ctx.fillStyle = 'rgba(195, 61, 55, ' + damageFlash * .29 + ')';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+  output.drawImage(scene, 0, 0, field.width, field.height);
+}
+
+function updateHud() {
+  const lit = shrines.filter(shrine => shrine.lit).length;
+  const seconds = Math.max(0, Math.ceil(ROUND_TIME - elapsed));
+  const time = byId('countdown');
+  time.textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  time.classList.toggle('urgent', seconds <= 20);
+  byId('score').textContent = String(points).padStart(4, '0');
+  for (let i = 0; i < MAX_HEALTH; i++) byId('hearts').children[i].classList.toggle('full', i < player.hp);
+  byId('hearts').setAttribute('aria-label', player.hp + ' of ' + MAX_HEALTH + ' health');
+  byId('mission').textContent = defense >= 0 ? 'Defend the bell · ' + Math.ceil(defense) + 's'
+    : lit === 3 ? 'Return to the bell' : 'Light the shrines';
+  byId('shrine-pips').textContent = '◆'.repeat(lit) + '◇'.repeat(3 - lit);
+  byId('shrine-pips').setAttribute('aria-label', lit + ' of 3 shrines lit');
+  const hint = byId('hint');
+  hint.hidden = !fieldHint;
+  hint.textContent = fieldHint;
+
+  map.drawImage(mapArt, 0, 0);
+  for (const site of [bell, ...shrines]) {
+    const x = site.x / 8, y = site.y / 8 + 1;
+    map.fillStyle = site.kind === 'bell' ? '#edd7a3' : site.lit ? '#ffd181' : '#e3936c';
+    map.beginPath();
+    map.moveTo(x, y - 3);
+    map.lineTo(x + 3, y);
+    map.lineTo(x, y + 3);
+    map.lineTo(x - 3, y);
+    map.closePath();
+    map.fill();
+  }
+  map.fillStyle = '#effff0';
+  map.fillRect(Math.round(player.x / 8) - 1, Math.round(player.y / 8), 3, 3);
+}
+
+function resetRound() {
+  player = { ...at(31.5, 23.2), hp: MAX_HEALTH, fx: 0, fy: -1, ax: 0, ay: -1,
+    dashX: 0, dashY: -1, dash: 0, dashCooldown: 0, attackCooldown: 0, swing: 0,
+    invulnerable: 0, moving: false, step: 0 };
+  shrines = shrineSites.map(site => ({ ...site, kind: 'shrine', lit: false }));
+  enemies = [];
+  bolts = [];
+  sparks = [];
+  elapsed = 0;
+  points = 0;
+  defense = -1;
+  wave = 0;
+  nextWave = 10;
+  shake = 0;
+  damageFlash = 0;
+  fieldHint = '';
+  interaction = null;
+  flowTimer = 0;
+  cameraX = within(player.x - VIEW_W * (mode === 'intro' ? .72 : .5), 0, WORLD_W - VIEW_W);
+  cameraY = within(player.y - VIEW_H * .58, 0, WORLD_H - VIEW_H);
+  for (const shrine of shrines) {
+    spawn(shrine.keeper, shrine.x + 24, shrine.y + 12, shrine);
+    spawn(shrine.keeper === 'wisp' ? 'crawler' : 'wisp', shrine.x - 29, shrine.y + 16);
+  }
+  for (const [kind, x, y] of [
+    ['crawler', 24.5, 18.5], ['crawler', 38.2, 17.7], ['wisp', 34, 29.5],
+    ['crawler', 21, 27.5], ['crawler', 42, 27], ['warden', 42.5, 7.1]
+  ]) spawn(kind, x * TILE, y * TILE);
+  if (mode !== 'intro') updateHud();
+}
+
+function spawn(kind, x, y, guard = null, appear = 0) {
+  let origin = walkable(x, y, 6) ? { x, y } : null;
+  const tileX = Math.floor(x / TILE), tileY = Math.floor(y / TILE);
+  for (let r = 1; r <= 3 && !origin; r++) {
+    for (const [dx, dy] of neighbors) {
+      const point = at(tileX + dx * r + .5, tileY + dy * r + .5);
+      if (walkable(point.x, point.y, 6)) { origin = point; break; }
+    }
+  }
+  if (!origin) return;
+  const type = enemyTypes[kind];
+  const maxHp = type.hp + (guard ? (kind === 'warden' ? 4 : 3) : 0);
+  const enemy = { ...origin, kind, type, maxHp, hp: maxHp, keeper: guard, home: origin,
+    orbit: random() * TAU, wind: 0, cool: .65, lunge: 0, tx: 0, ty: 1, flash: 0, appear };
+  enemies.push(enemy);
+  if (guard) guard.guard = enemy;
+}
+
+function moveBody(body, dx, dy, radius) {
+  if (walkable(body.x + dx, body.y, radius)) body.x += dx;
+  if (walkable(body.x, body.y + dy, radius)) body.y += dy;
+}
+
+function pathClear(x1, y1, x2, y2, radius = 1) {
+  const count = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8);
+  for (let i = 1; i <= count; i++) {
+    const t = i / count;
+    if (!walkable(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, radius)) return false;
+  }
+  return true;
+}
+
+function buildFlow() {
+  flow.fill(-1);
+  const start = Math.floor(player.y / TILE) * COLS + Math.floor(player.x / TILE);
+  const queue = [start];
+  flow[start] = 0;
+  for (let i = 0; i < queue.length; i++) {
+    const index = queue[i];
+    const x = index % COLS, y = Math.floor(index / COLS);
+    for (const [dx, dy] of neighbors) {
+      const nx = x + dx, ny = y + dy, next = ny * COLS + nx;
+      if (ground(nx, ny) && flow[next] < 0) {
+        flow[next] = flow[index] + 1;
+        queue.push(next);
+      }
+    }
+  }
+}
+
+function route(enemy) {
+  const x = Math.floor(enemy.x / TILE), y = Math.floor(enemy.y / TILE);
+  let bestIndex = y * COLS + x;
+  for (const [dx, dy] of neighbors) {
+    const nx = x + dx, ny = y + dy, next = ny * COLS + nx;
+    if (ground(nx, ny) && flow[next] >= 0 && flow[next] < flow[bestIndex]) bestIndex = next;
+  }
+  return at(bestIndex % COLS + .5, Math.floor(bestIndex / COLS) + .5);
+}
+
+function burst(x, y, color, count, force = 65) {
+  for (let i = 0; i < count; i++) {
+    const angle = random() * TAU, speed = force * (.25 + .75 * random());
+    sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: .22 + random() * .35, size: random() > .72 ? 2 : 1, color });
+  }
+}
+
+function hitPlayer(from) {
+  if (player.invulnerable > 0 || player.dash > 0) return;
+  player.hp--;
+  player.invulnerable = 1;
+  damageFlash = .9;
+  shake = 7;
+  const d = Math.max(1, distance(player, from));
+  moveBody(player, (player.x - from.x) / d * 11, (player.y - from.y) / d * 11, 5);
+  burst(player.x, player.y - 8, '#ffa183', 12);
+  if (interaction) interaction.progress = 0;
+}
+
+function slash() {
+  player.swing = .17;
+  player.attackCooldown = .34;
+  player.ax = player.fx;
+  player.ay = player.fy;
+  for (const enemy of enemies) {
+    const d = distance(player, enemy);
+    if (d > 29 || enemy.hp <= 0 || enemy.appear > 0) continue;
+    const dx = (enemy.x - player.x) / (d || 1), dy = (enemy.y - player.y) / (d || 1);
+    if (d > 11 && dx * player.ax + dy * player.ay < .24) continue;
+    enemy.hp -= 2;
+    enemy.flash = .13;
+    enemy.wind = 0;
+    enemy.lunge = 0;
+    enemy.cool = Math.max(enemy.cool, .27);
+    moveBody(enemy, dx * 9, dy * 9, 5);
+    burst(enemy.x, enemy.y - 10, '#f4ca85', 10, 84);
+    shake = Math.max(shake, 3);
+    if (enemy.hp <= 0) {
+      points += enemy.type.points + (enemy.keeper ? 100 : 0);
+      burst(enemy.x, enemy.y - 8, '#a8d1ac', 14);
+    }
+  }
+}
+
+function movePlayer(dt) {
+  let dx = Number(pressed.has('KeyD') || pressed.has('ArrowRight'))
+    - Number(pressed.has('KeyA') || pressed.has('ArrowLeft'));
+  let dy = Number(pressed.has('KeyS') || pressed.has('ArrowDown'))
+    - Number(pressed.has('KeyW') || pressed.has('ArrowUp'));
+  const magnitude = Math.hypot(dx, dy);
+  if (magnitude) {
+    dx /= magnitude;
+    dy /= magnitude;
+    player.fx = dx;
+    player.fy = dy;
+  }
+  player.attackCooldown -= dt;
+  player.swing -= dt;
+  player.invulnerable -= dt;
+  player.dashCooldown -= dt;
+  player.dash -= dt;
+  player.step -= dt;
+  if (player.dashCooldown <= 0 && (pressed.has('ShiftLeft') || pressed.has('ShiftRight'))) {
+    player.dash = .17;
+    player.dashCooldown = .95;
+    player.dashX = player.fx;
+    player.dashY = player.fy;
+  }
+  const dashing = player.dash > 0;
+  player.moving = Boolean(magnitude || dashing);
+  if (dashing) moveBody(player, player.dashX * 235 * dt, player.dashY * 235 * dt, 5);
+  else if (magnitude) moveBody(player, dx * 78 * dt, dy * 78 * dt, 5);
+  if (player.moving && player.step <= 0) {
+    player.step = dashing ? .035 : .13;
+    burst(player.x, player.y, dashing ? '#c8d5a5' : '#829580', dashing ? 3 : 1, 20);
+  }
+  if (player.attackCooldown <= 0 && !dashing && (pressed.has('Space') || pressed.has('KeyJ'))) slash();
+}
+
+function moveEnemy(enemy, dt) {
+  const d = distance(enemy, player);
+  const { type } = enemy;
+  const tier = 1 + Math.min(.32, elapsed / 430);
+  enemy.flash -= dt;
+  enemy.cool -= dt;
+  enemy.appear -= dt;
+  if (enemy.appear > 0) return;
+  if (enemy.wind > 0) {
+    enemy.wind -= dt;
+    if (enemy.wind <= 0) {
+      enemy.cool = type.recovery;
+      if (enemy.kind === 'wisp') {
+        bolts.push({ x: enemy.x, y: enemy.y, vx: enemy.tx * 112, vy: enemy.ty * 112, life: 1.7 });
+      } else {
+        enemy.lunge = .2;
+        enemy.struck = false;
+      }
+    }
+    return;
+  }
+  if (enemy.lunge > 0) {
+    enemy.lunge -= dt;
+    moveBody(enemy, enemy.tx * type.lunge * dt, enemy.ty * type.lunge * dt, 5);
+    if (!enemy.struck && distance(enemy, player) < 13) {
+      enemy.struck = true;
+      hitPlayer(enemy);
+    }
+    return;
+  }
+  const shouldReturn = enemy.keeper && distance(enemy, enemy.home) > 78;
+  if (d > 192 && !shouldReturn && defense < 0) return;
+  const direct = pathClear(enemy.x, enemy.y, player.x, player.y, 4);
+  if (!shouldReturn && d < type.reach && direct && enemy.cool <= 0) {
+    enemy.wind = type.windup;
+    enemy.tx = (player.x - enemy.x) / (d || 1);
+    enemy.ty = (player.y - enemy.y) / (d || 1);
+    return;
+  }
+  if (!shouldReturn && direct && (enemy.kind === 'wisp' ? d >= 48 && d < 119 : d < 12)) return;
+  const target = shouldReturn ? enemy.home : direct ? player : route(enemy);
+  const sign = !shouldReturn && direct && enemy.kind === 'wisp' && d < 48 ? -1 : 1;
+  let sx = target.x - enemy.x, sy = target.y - enemy.y;
+  const magnitude = Math.hypot(sx, sy) || 1;
+  sx = sx / magnitude * sign;
+  sy = sy / magnitude * sign;
+  for (const other of enemies) {
+    if (other === enemy || other.hp <= 0) continue;
+    const spacing = distance(enemy, other);
+    if (spacing > .1 && spacing < 14) {
+      sx += (enemy.x - other.x) / spacing * .47;
+      sy += (enemy.y - other.y) / spacing * .47;
+    }
+  }
+  moveBody(enemy, sx * type.speed * tier * dt, sy * type.speed * tier * dt, 5);
+}
+
+function spawnWave() {
+  wave++;
+  const active = enemies.filter(enemy => !enemy.keeper).length;
+  const count = Math.max(0, Math.min(15 - active, 2 + Math.floor(wave / 3) + (defense >= 0 ? 1 : 0), 5));
+  const origin = defense >= 0 ? bell : player;
+  const phase = random() * TAU;
+  let spawned = 0;
+  for (let i = 0; i < 40 && spawned < count; i++) {
+    const angle = phase + i * 2.39996;
+    const radius = (defense >= 0 ? 75 : 124) + random() * 54;
+    const x = origin.x + Math.cos(angle) * radius;
+    const y = origin.y + Math.sin(angle) * radius;
+    if (!walkable(x, y, 7) || distance({ x, y }, player) < 58) continue;
+    if (enemies.some(enemy => Math.hypot(enemy.x - x, enemy.y - y) < 22)) continue;
+    const kind = wave > 3 && (i + wave) % 4 === 0 ? 'warden'
+      : wave > 1 && (i + wave) % 3 === 0 ? 'wisp' : 'crawler';
+    spawn(kind, x, y, null, .62);
+    spawned++;
+  }
+}
+
+function insideBell() {
+  return ((player.x - bell.x) / 71) ** 2 + ((player.y - bell.y - 12) / 55) ** 2 < 1;
+}
+
+function updateRitual(dt) {
+  fieldHint = '';
+  if (defense >= 0) {
+    if (insideBell()) defense = Math.max(0, defense - dt);
+    else fieldHint = 'Step back inside the bell circle';
+    return;
+  }
+  const allLit = shrines.every(shrine => shrine.lit);
+  const shrine = shrines.find(site => distance(site, player) < 37);
+  const nearBell = distance(bell, player) < 48;
+  let target = null;
+  if (shrine && !shrine.lit) {
+    if (shrine.guard && shrine.guard.hp > 0) fieldHint = 'Defeat the shrine keeper';
+    else {
+      target = shrine;
+      fieldHint = 'Hold E to light the ' + shrine.name.toLowerCase();
+    }
+  } else if (nearBell) {
+    if (allLit) {
+      target = bell;
+      fieldHint = 'Hold E to ring the bell';
+    } else fieldHint = 'The bell needs the fire of all three shrines';
+  }
+  if (!target || !pressed.has('KeyE') || player.moving || player.swing > 0) {
+    interaction = null;
+    return;
+  }
+  if (!interaction || interaction.target !== target) {
+    interaction = { target, progress: 0, duration: target === bell ? 2.4 : 3.2 };
+  }
+  interaction.progress += dt;
+  if (interaction.progress < interaction.duration) return;
+  interaction = null;
+  shake = 6;
+  burst(target.x, target.y - 22, '#ffd78e', 41, 99);
+  if (target === bell) {
+    defense = DEFENSE_TIME;
+    spawnWave();
+    nextWave = elapsed + 5;
+  } else {
+    target.lit = true;
+    points += 280;
+    player.hp = Math.min(MAX_HEALTH, player.hp + 2);
+    nextWave = Math.min(nextWave, elapsed + 2.8);
+  }
+}
+
+function update(dt) {
+  elapsed += dt;
+  shake = Math.max(0, shake - dt * 28);
+  damageFlash = Math.max(0, damageFlash - dt * 3);
+  movePlayer(dt);
+  flowTimer -= dt;
+  if (flowTimer <= 0) {
+    flowTimer = .23;
+    buildFlow();
+  }
+  if (elapsed >= nextWave) {
+    spawnWave();
+    nextWave = elapsed + (defense >= 0 ? 6 : Math.max(6, 13 - elapsed * .043));
+  }
+  for (const enemy of enemies) if (enemy.hp > 0) moveEnemy(enemy, dt);
+  enemies = enemies.filter(enemy => enemy.hp > 0);
+  for (const bolt of bolts) {
+    bolt.x += bolt.vx * dt;
+    bolt.y += bolt.vy * dt;
+    bolt.life -= dt;
+    if (!walkable(bolt.x, bolt.y, 0)) bolt.life = 0;
+    if (bolt.life > 0 && distance(player, bolt) < 9) {
+      hitPlayer(bolt);
+      bolt.life = 0;
+    }
+  }
+  bolts = bolts.filter(bolt => bolt.life > 0);
+  updateRitual(dt);
+  for (const spark of sparks) {
+    spark.x += spark.vx * dt;
+    spark.y += spark.vy * dt;
+    spark.life -= dt;
+  }
+  sparks = sparks.filter(spark => spark.life > 0);
+  const targetX = within(player.x - VIEW_W * .5, 0, WORLD_W - VIEW_W);
+  const targetY = within(player.y - VIEW_H * .56, 0, WORLD_H - VIEW_H);
+  const follow = Math.min(1, dt * 7);
+  cameraX += (targetX - cameraX) * follow;
+  cameraY += (targetY - cameraY) * follow;
+  updateHud();
+  if (player.hp <= 0) finish(false, 'The marsh claimed its bell.');
+  else if (defense === 0) finish(true, 'The bell carried the light across the marsh.');
+  else if (elapsed >= ROUND_TIME) finish(false, 'Night fell before the bell could sound.');
+}
+
+function start() {
+  pressed.clear();
+  mode = 'play';
+  byId('intro').hidden = true;
+  byId('pause').hidden = true;
+  byId('ending').hidden = true;
+  byId('hud').hidden = false;
+  byId('wordmark').hidden = false;
+  byId('field-legend').hidden = false;
+  resetRound();
+  resize();
+}
+
+function pause() {
+  pressed.clear();
+  if (mode !== 'play') return;
+  mode = 'paused';
+  byId('pause').hidden = false;
+  byId('hint').hidden = true;
+}
+
+function resume() {
+  if (mode !== 'paused') return;
+  pressed.clear();
+  mode = 'play';
+  byId('pause').hidden = true;
+}
+
+function finish(won, detail) {
+  pressed.clear();
+  mode = won ? 'won' : 'lost';
+  if (won) points += Math.ceil(ROUND_TIME - elapsed) * 5 + 70 * player.hp;
+  if (points > best) {
+    best = points;
+    try { localStorage.setItem('bellward-best', String(best)); } catch {}
+    byId('best').textContent = String(best).padStart(4, '0');
+  }
+  byId('result-label').textContent = points + ' points';
+  byId('result-title').textContent = won ? 'The bell answers' : 'The light goes out';
+  byId('result-copy').textContent = detail;
+  byId('ending').hidden = false;
+  byId('hint').hidden = true;
+}
+
+window.addEventListener('keydown', event => {
+  if (gameKeys.has(event.code)) event.preventDefault();
+  if (event.repeat && (event.code === 'KeyR' || event.code === 'Escape')) return;
+  if (event.code === 'KeyR' && mode !== 'intro') { start(); return; }
+  if (event.code === 'Escape') {
+    if (mode === 'play') pause();
+    else if (mode === 'paused') resume();
+    return;
+  }
+  if (event.code === 'Enter' && !event.repeat && event.target.tagName !== 'BUTTON') {
+    if (mode === 'paused') resume();
+    else if (mode !== 'play') start();
+    return;
+  }
+  if (mode === 'play' && gameKeys.has(event.code)) pressed.add(event.code);
+});
+window.addEventListener('keyup', event => pressed.delete(event.code));
+window.addEventListener('blur', pause);
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+window.addEventListener('resize', resize);
+byId('start-game').addEventListener('click', start);
+byId('restart-game').addEventListener('click', start);
+byId('resume-game').addEventListener('click', resume);
+
+createTerrain();
+resetRound();
+resize();
+let lastFrame = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+  if (mode !== 'paused') ambient += dt;
+  if (mode === 'play') update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

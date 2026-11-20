@@ -1,0 +1,44 @@
+[
+  {
+    "id": "moonlit-tableau",
+    "directory": "luna",
+    "en": {
+      "description": "Build four foundations from ace to king in a game of Klondike Solitaire.",
+      "instructions": "Click or drag cards to move them. Double-click an eligible card to send it to its foundation. Click the deck to draw or recycle, and press R to restart."
+    },
+    "de": {
+      "description": "Lege alle vier Farben vom Ass bis zum König auf den Zielstapeln ab.",
+      "instructions": "Klicke oder ziehe Karten zum Verschieben. Lege eine passende Karte per Doppelklick auf ihrem Zielstapel ab. Ziehe Karten aus dem Vorratsstapel und starte mit R neu."
+    }
+  },
+  {
+    "id": "the-moth-cabinet-astra-6-2",
+    "directory": "astra-6.2",
+    "title": "The Moth Cabinet",
+    "model": "gpt-6.2-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Open a naturalist’s cabinet and collect 26 moth specimens in this single-player solitaire game.",
+      "instructions": "Click an uncovered card one rank above or below the field card. Kings connect to aces, and aces connect to twos. Click the stock or press Space to draw. Collect all 26 cards to win. Longer runs earn more points. Press R for a new deal."
+    },
+    "de": {
+      "description": "Öffne einen Schaukasten und sammle in dieser Patience 26 illustrierte Nachtfalter.",
+      "instructions": "Klicke auf eine freie Karte, deren Wert um eins höher oder niedriger ist als der Wert der Ablagekarte. Das Ass verbindet König und Zwei. Klicke auf den Nachziehstapel oder drücke die Leertaste, um eine Karte zu ziehen. Sammle alle 26 Karten. Lange Folgen bringen mehr Punkte. Mit R startest du eine neue Partie."
+    }
+  },
+  {
+    "id": "tideglass-solitaire-sol-6-2",
+    "directory": "sol-6.2",
+    "title": "Tideglass Solitaire",
+    "model": "gpt-6.2-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Clear 28 cards before the tide comes in. Play a streak for more points and finish with time and stock cards to spare for a bonus.",
+      "instructions": "Play the lowest card in any column if it is one rank higher or lower than the current card. Ace links King and Two. Click the stock or press Space to draw. Use the arrow keys and Enter to play by keyboard. Press R for a new deal."
+    },
+    "de": {
+      "description": "Räume alle 28 Karten ab, bevor die Flut kommt. Spiele mehrere Karten in Folge für mehr Punkte. Übrige Zeit und Karten im Nachziehstapel bringen einen Bonus.",
+      "instructions": "Spiele die unterste Karte einer Spalte, wenn sie einen Rang über oder unter der aktuellen Karte liegt. Das Ass passt auf König und Zwei. Klicke auf den Nachziehstapel oder drücke die Leertaste, um zu ziehen. Mit den Pfeiltasten wählst du eine Spalte, mit Enter spielst du die Karte. Drücke R für eine neue Runde."
+    }
+  }
+]

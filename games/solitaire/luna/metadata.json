@@ -1,0 +1,41 @@
+{
+  "agent": "Codex",
+  "agentName": "Bacon",
+  "title": "Moonlit Tableau",
+  "model": "gpt-6-luna",
+  "reasoning": "medium",
+  "startedAt": "2026-11-17T10:25:38Z",
+  "finishedAt": "2026-11-17T10:26:55Z",
+  "elapsedSeconds": 77,
+  "timingBasis": "Subagent UTC clock from reading the game brief through completion of game checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e90a-53cc-7d20-9b4b-fbc604e028ac",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "Browser smoke test not run"
+  },
+  "revisions": [
+    {
+      "agentName": "Bacon",
+      "model": "gpt-6-luna",
+      "reasoning": "medium",
+      "startedAt": "2026-11-17T10:36:09Z",
+      "finishedAt": "2026-11-17T10:39:36Z",
+      "elapsedSeconds": 207,
+      "timingBasis": "Wall clock from Luna's first revision start through its final fix check",
+      "changes": [
+        "Aligned the stock, waste, and four foundation slots with the tableau and removed extra top-row slots.",
+        "Added double-click to send eligible exposed tableau and waste cards to their foundations.",
+        "Fixed a first-draw exception before the opening deal."
+      ],
+      "validation": {
+        "syntax": "Passed node --check on inline JavaScript",
+        "layout": "Six nonoverlapping top-row slots at 600, 823, and 1280 CSS pixels in an instrumented Canvas draw test",
+        "interaction": "Simulated startup, legal and illegal double-clicks, card reveal, move counts, manual drag, and win detection",
+        "browser": "Browser smoke test not run"
+      }
+    }
+  ],
+  "mobileSupported": false,
+  "mobileSupportNotes": "The fixed minimum card width clips the tableau in phone viewports narrower than 430 CSS pixels. Restart during a hand requires R."
+}

@@ -1,0 +1,89 @@
+Build a small, immediately playable single-player browser game.
+Genre: top down rpg (FF/ SNES Zelda)
+
+If {GENRE} is empty or unfilled, pick a well-known genre and say which. If it
+names a specific existing game, build an original take on its genre: new name,
+visuals, and level layout, not a recreation.
+
+SCOPE & PACE: size scales with your ability; process does not.
+- Plan briefly: pick the concept and mechanics, then write. No design docs.
+- Write index.html in one pass, as complete as you can make it. Typical size is
+  400–1200 lines (2D) or 700–1500 lines (WebGL); stay under ~1800.
+- Must have: core loop, controls, HUD, win/lose, restart.
+- Should have (in the same pass, if natural): juice (particles, screen shake,
+  hit feedback), a difficulty ramp, enemy or obstacle variety, a high score in
+  localStorage.
+- Skip: menus beyond start/game-over, settings, levels beyond one, touch input.
+- Target desktop keyboard/mouse. A round should last 1–3 minutes, with
+  difficulty that rises over time.
+- After the first write: at most 2 fix rounds, only for errors found by the
+  check. No refactors, no rewrites, no new features after the check.
+- Hand over as soon as the check passes.
+
+CLARIFY: use the genre's familiar camera, controls, and core loop. Ask one short
+multiple-choice question and wait only if the genre is truly ambiguous in a way
+that changes the build (e.g. shooter: first-person or third-person). Otherwise
+pick sensible defaults, state the game concept in one sentence, and build
+immediately.
+
+FILES: create a unique directory for this game. Use the session's
+scratchpad/temporary directory if one is provided; otherwise `mktemp -d`. Keep the
+game, any check files, and any screenshots there. Never write to the current
+project or repository, home folders (Desktop, Documents, Downloads), or global
+config. Do not delete the game directory afterwards.
+
+TECH: exactly one self-contained index.html with inline CSS and classic,
+non-module JavaScript (no type="module"). It must work when opened directly via
+file://. No imports, fetch, external assets, CDNs, libraries, dependencies,
+backend, HTTP server, build step, or deployment. Draw simple original visuals in
+code. Sound is optional, only via WebAudio, and only after a user gesture.
+
+RENDERING:
+- 2D genres: Canvas 2D.
+- Grid-based first-person (maze, dungeon, corridor shooter): a Canvas 2D
+  raycaster is simpler and more robust; prefer it.
+- Free 3D movement (third-person, flight, racing, open-arena first-person):
+  native WebGL (WebGL1, or WebGL2 if useful), with no libraries. Keep it simple:
+  - geometry built in code: boxes, planes, low-poly shapes; no textures
+  - one shader program with vertex colors and flat/Lambert lighting, plus
+    optional fog for depth
+  - small hand-written mat4 helpers (perspective, lookAt, translate, rotate,
+    multiply); keep them correct and minimal
+  - enable depth testing; set the viewport on resize
+  - check shader compile and program link status and console.error the logs
+  - if WebGL is unavailable, show a readable on-screen message, not a blank page
+  - draw HUD and overlays as an HTML layer or a 2D canvas over the WebGL canvas
+
+GAME REQUIREMENTS: the smallest recognizable version of the genre, done well:
+- one compact arena or level
+- essential mechanics and basic AI where needed
+- HUD showing score/health/time or whatever the genre needs
+- controls listed on the start screen
+- win and/or lose condition, with restart (R key and a click/button)
+
+LOOP & INPUT:
+- click-to-start overlay (also satisfies pointer-lock/audio gesture rules)
+- first-person mouse look: Pointer Lock on click, with a sensitivity that
+  feels right by default
+- requestAnimationFrame with delta time, clamped to 0.05s
+- preventDefault on game keys (arrows, Space) so the page doesn't scroll
+- on blur/visibilitychange: pause, clear held inputs, release pointer lock
+- fit the canvas to the window; handle resize and devicePixelRatio
+
+CHECK: extract the inline <script> contents and run `node --check` on them (or
+parse them with `new Function()` if Node is unavailable). If a browser tool is
+already available, do one brief smoke test: load the page, start the game,
+confirm no console errors, and confirm the start overlay appears. For WebGL,
+also confirm the scene is not blank: a screenshot, or gl.readPixels on a few
+points after a frame differs from the clear color. No test suites, no extended
+QA. Fix only what the check finds, within the 2 fix rounds.
+
+HANDOFF:
+- a clickable absolute path to index.html
+- one-sentence concept and concise controls
+- if the agent's built-in browser can open file:// URLs, open it there;
+  otherwise tell the user to open the file in a desktop browser
+- state exactly what was verified (syntax check, smoke test, render check,
+  or none)
+- note that the file is in a temporary location and may be removed by
+  session/system cleanup

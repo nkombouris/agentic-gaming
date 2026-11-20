@@ -1,0 +1,25 @@
+{
+  "agent": "Claude",
+  "agentName": null,
+  "title": "Voltcore Arena",
+  "model": "claude-opus-5.5",
+  "reasoning": "high",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label (Anthropic Opus 5.5) and reasoning effort (high). The model label is normalized as claude-opus-5.5. The actual runtime configuration was not independently available.",
+  "sessionId": null,
+  "sourceFile": "voltcore-arena/index.html",
+  "sourceSha256": "ae5fcf0c39a472374628af6e3b68e107682d4f675081d0709ae022b868d3e07d",
+  "validation": {
+    "syntax": "Passed node --check on the single inline classic JavaScript.",
+    "structure": "Found one title, 2 canvases, 1 inline stylesheet, and one inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 754,
+    "browser": "Passed a smoke test in the Codex browser through a local preview. The Enter the Arena screen appeared and gameplay started without console errors.",
+    "render": "Native WebGL arena, weapon and HUD confirmed visually in a gameplay screenshot.",
+    "interactions": "Verified movement input, weapon selection, the defeat screen, click to replay and R resetting the run to full health and zero frags."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement, jumping and weapon selection require desktop keyboard controls, with mouse aiming. The source has no on-screen touch controls. Physical phone gameplay was not tested."
+}

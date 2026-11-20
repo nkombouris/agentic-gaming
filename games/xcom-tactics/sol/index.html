@@ -1,0 +1,1226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Blackout Relay</title>
+<style>
+  :root {
+    --bg: #090f17;
+    --panel: #101925;
+    --line: #273748;
+    --muted: #96a7ba;
+    --ink: #f1f5f9;
+    --mint: #66eccd;
+    --amber: #f9bf76;
+    --red: #ff8490;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-family: "Geist", "Inter", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 30% -20%, #1c3548, transparent 60%), var(--bg);
+  }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { cursor: default; }
+  button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  [hidden] { display: none !important; }
+  .shell { width: min(1380px, calc(100% - 48px)); margin: 0 auto; padding: 25px 0; }
+  .masthead, .fieldbar, .fieldfoot, .row { display: flex; align-items: center; justify-content: space-between; }
+  .masthead { margin-bottom: 21px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand-mark {
+    width: 43px;
+    aspect-ratio: 1;
+    position: relative;
+    border: 1px solid #487468;
+    background: #153430;
+    clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%);
+  }
+  .brand-mark::before, .brand-mark::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 15px;
+    height: 15px;
+    border: 2px solid var(--mint);
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  .brand-mark::after { width: 4px; height: 4px; background: var(--mint); }
+  h1, h2, h3, p { margin: 0; }
+  h1 { font-size: clamp(23px, 3vw, 32px); line-height: 1; letter-spacing: -.055em; }
+  .eyebrow, .legend, kbd { font: 600 10px/1.4 var(--mono); letter-spacing: .105em; text-transform: uppercase; }
+  .brand .eyebrow { color: var(--muted); margin-top: 6px; }
+  .mast-tools { display: flex; align-items: center; gap: 16px; }
+  .best { color: var(--muted); white-space: nowrap; }
+  .best strong { color: var(--ink); margin-left: 6px; }
+  .quiet, .action, .primary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    background: #162333;
+    padding: 9px 11px;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .quiet:hover, .action:not(:disabled):hover { background: #203548; }
+  kbd {
+    min-width: 20px;
+    padding: 2px 5px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    text-align: center;
+    letter-spacing: .035em;
+  }
+  .quiet kbd, .action kbd { color: var(--muted); }
+  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 15px; align-items: start; }
+  .field, .sidebar { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; min-width: 0; }
+  .field { overflow: hidden; }
+  .fieldbar, .fieldfoot { min-height: 46px; padding: 0 16px; gap: 10px; }
+  .fieldbar { border-bottom: 1px solid var(--line); }
+  .turn-status { display: flex; align-items: center; gap: 11px; }
+  .turn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--mint);
+    background: #15332f;
+    border-radius: 4px;
+    padding: 4px 7px;
+    white-space: nowrap;
+  }
+  .turn-pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .turn-pill.hostile { color: var(--red); background: #3c232e; }
+  .round-label, #breach { color: var(--muted); white-space: nowrap; }
+  #breach.warning { color: var(--amber); }
+  .plot {
+    height: clamp(345px, calc(100vh - 192px), 730px);
+    position: relative;
+    isolation: isolate;
+    background: #09121c;
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .fieldfoot { border-top: 1px solid var(--line); justify-content: flex-start; gap: 15px; flex-wrap: wrap; padding-block: 9px; }
+  .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+  .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }
+  .one { border: 1px solid #5ecaaa; background: #2b655b; }
+  .two { border: 1px dashed #5e9baf; background: #193946; }
+  .wall { border: 1px solid #78879a; background: #3d4c60; }
+  .cover { border: 1px solid var(--amber); background: #725535; }
+  .sidebar { overflow: hidden; }
+  .side-block { padding: 15px 15px 14px; }
+  .side-block + .side-block { border-top: 1px solid var(--line); }
+  .side-block > .eyebrow { color: var(--muted); margin-bottom: 10px; }
+  .agent-name { font-size: 26px; letter-spacing: -.05em; line-height: 1; }
+  .agent-tag { color: var(--mint); }
+  .meter-label { margin: 13px 0 6px; color: var(--muted); }
+  .meter-label > strong { color: var(--ink); }
+  .meter { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .meter i { height: 5px; background: #29394a; border-radius: 1px; }
+  .meter i.active { background: var(--mint); }
+  .meter.danger i.active { background: var(--red); }
+  .objective { display: flex; align-items: center; gap: 9px; min-height: 28px; font-size: 13px; font-weight: 650; }
+  .objective span {
+    display: grid;
+    place-items: center;
+    width: 19px;
+    height: 19px;
+    background: #362d22;
+    border: 1px solid #695337;
+    border-radius: 4px;
+    color: var(--amber);
+    font: 10px var(--mono);
+  }
+  .objective.done span, .objective.open span { color: var(--mint); border-color: #356453; background: #15332f; }
+  .objective.locked { color: var(--muted); }
+  .objective.locked span { color: var(--muted); border-color: var(--line); background: #172331; }
+  .ap-label { color: var(--muted); }
+  .pips { display: flex; gap: 5px; }
+  .pips i { display: block; width: 23px; height: 7px; border-radius: 2px; border: 1px solid #435367; }
+  .pips i.active { background: var(--mint); border-color: var(--mint); }
+  .inspect { margin: 11px 0; padding: 9px 10px; border-radius: 5px; background: #0b1520; min-height: 62px; }
+  #inspectTitle { font-size: 13px; margin-bottom: 4px; }
+  #inspectText { font-size: 12px; line-height: 1.35; color: var(--muted); }
+  .command { display: grid; gap: 7px; }
+  .action:disabled { opacity: .52; }
+  .action.advance { background: #183c36; border-color: #527a6d; color: #bdffec; }
+  .action.advance:not(:disabled):hover, .action.advance.urgent:not(:disabled) { background: var(--mint); color: #09231e; }
+  .action.advance:not(:disabled):hover kbd, .action.advance.urgent:not(:disabled) kbd { color: #153e34; }
+  .feed { list-style: none; padding: 0; margin: 0; min-height: 80px; }
+  .feed li { font: 11px/1.35 var(--mono); display: flex; gap: 7px; padding: 4px 0; color: var(--muted); }
+  .feed li::before { content: ""; margin-top: 5px; width: 4px; height: 4px; flex: none; background: #52697c; }
+  .feed li:first-child { color: var(--ink); }
+  .feed li.good::before { background: var(--mint); }
+  .feed li.bad::before { background: var(--red); }
+  .feed li.warn::before { background: var(--amber); }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: radial-gradient(ellipse at center, #0510187a, #060d17cf);
+    overflow: auto;
+  }
+  .brief {
+    position: relative;
+    width: min(100%, 410px);
+    padding: clamp(17px, 3.2vw, 31px);
+    background: #111d2af7;
+    border: 1px solid #477267;
+    border-radius: 9px;
+    box-shadow: 0 22px 55px #03080dbb;
+  }
+  .brief::before { position: absolute; content: ""; top: -1px; left: 25px; width: 34px; height: 2px; background: var(--mint); }
+  .brief > .eyebrow { color: var(--mint); margin-bottom: 10px; }
+  .brief h2 { font-size: clamp(25px, 4vw, 41px); line-height: 1.02; letter-spacing: -.055em; }
+  .brief p { color: #b6c5d4; font-size: 14px; line-height: 1.45; margin-top: 10px; }
+  .brief dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 13px; margin: 18px 0; font-size: 12px; }
+  .brief dt { color: var(--mint); font: 600 10px/1.6 var(--mono); text-transform: uppercase; }
+  .brief dd { margin: 0; color: #d8e3ee; }
+  .primary { margin-top: 17px; width: 100%; background: var(--mint); color: #09231e; border-color: var(--mint); padding: 11px 13px; }
+  .primary:hover { background: #b1f9e8; }
+  @media (max-width: 950px) {
+    .shell { width: calc(100% - 26px); padding-block: 16px; }
+    .workspace { grid-template-columns: minmax(0, 1fr) 245px; gap: 10px; }
+    .side-block { padding: 12px; }
+    .fieldbar, .fieldfoot { padding-inline: 11px; }
+  }
+  @media (max-width: 680px) {
+    .workspace { grid-template-columns: 1fr; }
+    .plot { height: clamp(330px, 68vh, 510px); }
+    .best { display: none; }
+    .sidebar { display: grid; grid-template-columns: 1fr 1fr; }
+    .side-block + .side-block { border: 0; }
+    .side-block:nth-child(n+3) { border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="masthead">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1>Blackout Relay</h1>
+        <p class="eyebrow">Turn-based infiltration</p>
+      </div>
+    </div>
+    <div class="mast-tools">
+      <span class="best eyebrow">Best score <strong id="bestScore">—</strong></span>
+      <button class="quiet" id="restart" type="button">Restart <kbd>R</kbd></button>
+    </div>
+  </header>
+  <div class="workspace">
+    <section class="field" aria-label="Tactical map">
+      <div class="fieldbar">
+        <div class="turn-status">
+          <span id="phase" class="turn-pill eyebrow">Briefing</span>
+          <span id="round" class="round-label eyebrow">Round 01</span>
+        </div>
+        <span id="breach" class="eyebrow">Breach at round 03</span>
+      </div>
+      <div class="plot">
+        <canvas id="board" aria-label="Top-down grid of the relay facility"></canvas>
+        <div id="overlay" class="overlay">
+          <article class="brief" aria-labelledby="briefTitle">
+            <div id="briefLabel" class="eyebrow">Mission briefing</div>
+            <h2 id="briefTitle">Link up. Get out.</h2>
+            <p id="briefText">Restore the relay, then reach extraction. Use crates for cover. Walls cut line of sight.</p>
+            <dl id="briefControls">
+              <dt>Click tile</dt><dd>Move up to 4 tiles per action</dd>
+              <dt>Click drone</dt><dd>Fire at a visible contact within 7 tiles</dd>
+              <dt>F</dt><dd>Link the relay from its tile or an adjacent tile</dd>
+              <dt>Space</dt><dd>End turn</dd>
+            </dl>
+            <button class="primary" id="overlayButton" type="button">Deploy <kbd>Enter</kbd></button>
+          </article>
+        </div>
+      </div>
+      <div class="fieldfoot" aria-label="Map legend">
+        <span class="legend"><i class="swatch one"></i>Move · 1 AP</span>
+        <span class="legend"><i class="swatch two"></i>Dash · 2 AP</span>
+        <span class="legend"><i class="swatch wall"></i>Wall</span>
+        <span class="legend"><i class="swatch cover"></i>Cover</span>
+      </div>
+    </section>
+    <aside class="sidebar" aria-label="Mission status and commands">
+      <section class="side-block">
+        <h2 class="eyebrow">Operative</h2>
+        <div class="row"><strong class="agent-name">Rook</strong><span class="agent-tag eyebrow">Scout</span></div>
+        <div class="meter-label row eyebrow"><span>Health</span><strong id="health">10 / 10</strong></div>
+        <div class="meter" id="healthMeter" aria-hidden="true"></div>
+      </section>
+      <section class="side-block">
+        <h2 class="eyebrow">Objectives</h2>
+        <div class="objective" id="relayObjective"><span>◇</span>Link the relay</div>
+        <div class="objective locked" id="exitObjective"><span>⇥</span>Reach extraction</div>
+      </section>
+      <section class="side-block">
+        <div class="row"><h2 class="eyebrow ap-label">Action points</h2><div class="pips" id="apMeter" aria-label="2 of 2 action points"></div></div>
+        <div class="inspect" id="inspect">
+          <h3 id="inspectTitle">Two actions per turn</h3>
+          <p id="inspectText">Move into cover or fire at a visible drone.</p>
+        </div>
+        <div class="command">
+          <button type="button" class="action" id="link" disabled><span>Link relay · 1 AP</span><kbd>F</kbd></button>
+          <button type="button" class="action advance" id="endTurn" disabled><span>End turn</span><kbd>Space</kbd></button>
+        </div>
+      </section>
+      <section class="side-block">
+        <h2 class="eyebrow">Field log</h2>
+        <ul id="feed" class="feed" aria-live="polite"></ul>
+      </section>
+    </aside>
+  </div>
+</main>
+<script>
+"use strict";
+
+const floor = [
+  "............",
+  "..+..#...+..",
+  ".....#......",
+  ".#...##..+..",
+  ".#.....##...",
+  "..++...+....",
+  "...##....#..",
+  "......+..#..",
+  "............"
+];
+const columns = floor[0].length;
+const rows = floor.length;
+const relay = {x: 10, y: 7};
+const extraction = {x: 11, y: 1};
+const breaches = [
+  {round: 3, tiles: [{x: 10, y: 0}, {x: 9, y: 0}, {x: 11, y: 0}]},
+  {round: 6, tiles: [{x: 2, y: 0}, {x: 1, y: 0}, {x: 3, y: 0}]}
+];
+const movePerAction = 4;
+const shotRange = 7;
+const maxHealth = 10;
+const accents = {mint: "#66eccd", amber: "#f9bf76", red: "#ff8490"};
+const directions = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+const view = {};
+for (const id of [
+  "board", "bestScore", "restart", "phase", "round", "breach", "health", "healthMeter",
+  "relayObjective", "exitObjective", "apMeter", "inspectTitle", "inspectText", "link",
+  "endTurn", "feed", "overlay", "briefLabel", "briefTitle", "briefText", "briefControls", "overlayButton"
+]) view[id] = document.getElementById(id);
+
+const ctx = view.board.getContext("2d");
+const board = {width: 0, height: 0, ratio: 0, tile: 1, x: 0, y: 0};
+let mode = "title";
+let player, enemies, round, phase, linked, kills, reach, visible, messages;
+let hover, motion, enemyQueue, phaseDelay, effects, simulationTime, shake;
+let previousFrame;
+let best = 0;
+try {
+  best = Number(localStorage.getItem("blackout-relay-best")) || 0;
+} catch {}
+
+function makeDrone(name, x, y, heavy = false) {
+  return {
+    name, x, y, heavy, hp: heavy ? 3 : 2, facing: Math.PI * .75,
+    damage: heavy ? 2 : 1, range: heavy ? 7 : 6, speed: heavy ? 2 : 3, alert: false
+  };
+}
+
+function reset(start = true) {
+  player = {x: 1, y: 7, hp: maxHealth, ap: 2, facing: 0};
+  enemies = [
+    makeDrone("Sentry", 4, 7),
+    makeDrone("Warden", 8, 5, true),
+    makeDrone("Sentry", 10, 2)
+  ];
+  round = 1;
+  phase = "player";
+  linked = false;
+  kills = 0;
+  hover = null;
+  motion = null;
+  enemyQueue = [];
+  phaseDelay = 0;
+  effects = [];
+  simulationTime = 0;
+  shake = 0;
+  mode = start ? "playing" : "title";
+  messages = [{text: start ? "Rook entered the facility." : "Awaiting deployment.", style: "good"}];
+  if (start) view.overlay.hidden = true;
+  refresh();
+}
+
+function distance(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+function sameTile(a, b) {
+  return a.x === b.x && a.y === b.y;
+}
+
+function terrain(x, y) {
+  return floor[y]?.[x];
+}
+
+function key(x, y) {
+  return y * columns + x;
+}
+
+function occupant(x, y, except) {
+  return [player, ...enemies].find(unit => unit !== except && unit.hp > 0 && unit.x === x && unit.y === y);
+}
+
+function pathsFrom(start, walkable, maxSteps = Infinity) {
+  const first = {x: start.x, y: start.y, steps: 0, previous: null};
+  const visited = new Map([[key(start.x, start.y), first]]);
+  const queue = [first];
+  for (let i = 0; i < queue.length; i++) {
+    const point = queue[i];
+    if (point.steps >= maxSteps) continue;
+    for (const [dx, dy] of directions) {
+      const x = point.x + dx;
+      const y = point.y + dy;
+      const id = key(x, y);
+      if (terrain(x, y) !== "." || visited.has(id) || !walkable(x, y)) continue;
+      const next = {x, y, steps: point.steps + 1, previous: point};
+      visited.set(id, next);
+      queue.push(next);
+    }
+  }
+  return visited;
+}
+
+function tracePath(point) {
+  const path = [];
+  for (let tile = point; tile; tile = tile.previous) path.push(tile);
+  return path.reverse();
+}
+
+function lineOfSight(from, to) {
+  let {x, y} = from;
+  const nx = Math.abs(to.x - x);
+  const ny = Math.abs(to.y - y);
+  const sx = Math.sign(to.x - x);
+  const sy = Math.sign(to.y - y);
+  let ix = 0, iy = 0;
+  while (ix < nx || iy < ny) {
+    const crossing = (1 + 2 * ix) * ny - (1 + 2 * iy) * nx;
+    if (crossing === 0) {
+      if (terrain(x + sx, y) === "#" && terrain(x, y + sy) === "#") return false;
+      x += sx;
+      y += sy;
+      ix++;
+      iy++;
+    } else if (crossing < 0) {
+      x += sx;
+      ix++;
+    } else {
+      y += sy;
+      iy++;
+    }
+    if (x === to.x && y === to.y) return true;
+    if (terrain(x, y) === "#") return false;
+  }
+  return true;
+}
+
+function inCover(target, attacker) {
+  const dx = attacker.x - target.x;
+  const dy = attacker.y - target.y;
+  const horizontal = dx && Math.abs(dx) >= Math.abs(dy) * .5;
+  const vertical = dy && Math.abs(dy) >= Math.abs(dx) * .5;
+  return (horizontal && terrain(target.x + Math.sign(dx), target.y) === "+") ||
+    (vertical && terrain(target.x, target.y + Math.sign(dy)) === "+");
+}
+
+function chance(attacker, target) {
+  const isPlayer = attacker === player;
+  const falloff = Math.max(0, distance(attacker, target) - 2) * 6;
+  const coverPenalty = inCover(target, attacker) ? (isPlayer ? 25 : 32) : 0;
+  return Math.max(24, (isPlayer ? 96 : 82) - falloff - coverPenalty);
+}
+
+function canAct() {
+  return mode === "playing" && phase === "player" && !motion;
+}
+
+function canLink() {
+  return canAct() && player.ap > 0 && !linked && distance(player, relay) <= 1;
+}
+
+function note(text, style = "") {
+  messages.unshift({text, style});
+  messages.length = Math.min(messages.length, 4);
+}
+
+function refresh() {
+  visible = new Set();
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      if (lineOfSight(player, {x, y})) visible.add(key(x, y));
+    }
+  }
+  reach = canAct() ? pathsFrom(player, (x, y) => !occupant(x, y, player), player.ap * movePerAction) : new Map();
+
+  const phaseName = {
+    title: "Briefing", paused: "Paused", won: "Extracted", lost: "Signal lost",
+    playing: phase === "player" ? "Your turn" : "Hostile turn"
+  };
+  view.phase.textContent = phaseName[mode];
+  view.phase.classList.toggle("hostile", phase === "enemy" || mode === "lost");
+  view.round.textContent = "Round " + String(round).padStart(2, "0");
+  const incoming = breaches.find(breach => breach.round > round);
+  view.breach.textContent = incoming ? "Breach at round " + String(incoming.round).padStart(2, "0") : "All breaches active";
+  view.breach.classList.toggle("warning", incoming?.round === round + 1 || !incoming);
+  view.bestScore.textContent = best ? best.toLocaleString() : "—";
+
+  view.health.textContent = player.hp + " / " + maxHealth;
+  view.healthMeter.classList.toggle("danger", player.hp <= 3);
+  view.healthMeter.replaceChildren(...Array.from({length: maxHealth}, (_, i) => segment(i < player.hp)));
+  view.apMeter.replaceChildren(segment(player.ap > 0), segment(player.ap > 1));
+  view.apMeter.setAttribute("aria-label", player.ap + " of 2 action points");
+  view.relayObjective.classList.toggle("done", linked);
+  view.relayObjective.firstElementChild.textContent = linked ? "✓" : "◇";
+  view.exitObjective.classList.toggle("locked", !linked);
+  view.exitObjective.classList.toggle("open", linked);
+  view.exitObjective.firstElementChild.textContent = mode === "won" ? "✓" : "⇥";
+
+  view.link.disabled = !canLink();
+  view.link.firstElementChild.textContent = linked ? "Relay linked" : "Link relay · 1 AP";
+  view.endTurn.disabled = !canAct();
+  view.endTurn.classList.toggle("urgent", player.ap === 0);
+  view.feed.replaceChildren(...messages.map(message => {
+    const item = document.createElement("li");
+    item.textContent = message.text;
+    item.className = message.style;
+    return item;
+  }));
+  inspect();
+}
+
+function segment(active) {
+  const element = document.createElement("i");
+  if (active) element.className = "active";
+  return element;
+}
+
+function inspect() {
+  let title = "Two actions per turn";
+  let text = "Select a marked tile to move.";
+  if (mode === "playing" && phase === "enemy") {
+    title = "Hostiles acting";
+    text = "Drones advance or fire once per turn.";
+  } else if (mode === "playing" && player.ap === 0) {
+    title = "Actions spent";
+    text = "Press Space to end your turn.";
+  } else if (hover && mode === "playing") {
+    const {x, y} = hover;
+    const contact = enemies.find(enemy => enemy.hp > 0 && sameTile(enemy, hover));
+    const route = reach.get(key(x, y));
+    if (contact && visible.has(key(x, y))) {
+      title = contact.name + " · " + contact.hp + " HP";
+      text = distance(player, contact) <= shotRange
+        ? chance(player, contact) + "% hit · 2 damage · 1 AP"
+        : "Out of range. Move within 7 tiles.";
+    } else if (sameTile(hover, relay)) {
+      title = linked ? "Relay online" : "Relay";
+      text = linked ? "Extraction is open." : "Stand within one tile and press F to link.";
+    } else if (sameTile(hover, extraction)) {
+      title = "Extraction";
+      text = linked ? "Move onto this tile to escape." : "Link the relay to unlock extraction.";
+    } else if (terrain(x, y) === "#") {
+      title = "Bulkhead";
+      text = "Blocks movement and sight.";
+    } else if (terrain(x, y) === "+") {
+      title = "Cover crate";
+      text = "Stand behind it to reduce incoming hit chance.";
+    } else if (route?.steps) {
+      title = "Move · " + Math.ceil(route.steps / movePerAction) + " AP";
+      text = route.steps + (route.steps === 1 ? " tile" : " tiles") + (adjacentCover(x, y) ? " · Adjacent cover" : "");
+    }
+  } else if (canLink()) {
+    title = "Relay in reach";
+    text = "Press F to link it for 1 AP.";
+  }
+  view.inspectTitle.textContent = title;
+  view.inspectText.textContent = text;
+}
+
+function adjacentCover(x, y) {
+  return directions.some(([dx, dy]) => terrain(x + dx, y + dy) === "+");
+}
+
+function move(actor, destination, done) {
+  const path = tracePath(destination);
+  const steps = path.length - 1;
+  const duration = .11 + steps * .068;
+  motion = {
+    duration, elapsed: 0,
+    update(progress) {
+      const progressInTiles = progress * steps;
+      const index = Math.min(Math.floor(progressInTiles), steps - 1);
+      const from = path[index], to = path[index + 1];
+      const fraction = progressInTiles - index;
+      actor.rx = from.x + (to.x - from.x) * fraction;
+      actor.ry = from.y + (to.y - from.y) * fraction;
+      actor.facing = Math.atan2(to.y - from.y, to.x - from.x);
+    },
+    done() {
+      actor.x = destination.x;
+      actor.y = destination.y;
+      actor.rx = undefined;
+      actor.ry = undefined;
+      done();
+    }
+  };
+}
+
+function burst(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 2.9;
+    const life = .22 + Math.random() * .33;
+    effects.push({
+      type: "spark", x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life, total: life, color
+    });
+  }
+}
+
+function shoot(attacker, target) {
+  const isPlayer = attacker === player;
+  const odds = chance(attacker, target);
+  const hit = Math.random() * 100 < odds;
+  const dx = target.x - attacker.x;
+  const dy = target.y - attacker.y;
+  const length = Math.hypot(dx, dy);
+  const offset = hit ? 0 : (Math.random() < .5 ? -.46 : .46);
+  const color = isPlayer ? accents.mint : accents.red;
+  const damage = isPlayer ? 2 : attacker.damage;
+  attacker.facing = Math.atan2(dy, dx);
+  if (isPlayer) player.ap--;
+  effects.push({
+    type: "beam", x: attacker.x + dx / length * .33, y: attacker.y + dy / length * .33,
+    ex: target.x - dy / length * offset, ey: target.y + dx / length * offset,
+    life: .26, total: .26, color
+  });
+  burst(attacker.x + dx / length * .32, attacker.y + dy / length * .32, color, 5);
+  motion = {
+    duration: .36, elapsed: 0,
+    done() {
+      if (hit) {
+        target.hp = Math.max(0, target.hp - damage);
+        target.flash = simulationTime + .28;
+        shake = isPlayer ? .12 : .23;
+        burst(target.x, target.y, color, target.hp ? 13 : 22);
+      }
+      effects.push({
+        type: "text", x: target.x, y: target.y - .3, text: hit ? "−" + damage : "MISS",
+        color: hit ? color : "#ccdae9", life: .75, total: .75
+      });
+      const name = isPlayer ? "Rook" : attacker.name;
+      note(hit ? name + " hit for " + damage + "." : name + " missed.", hit ? (isPlayer ? "good" : "bad") : "");
+      if (isPlayer && !target.hp) {
+        kills++;
+        note(target.name + " disabled.", "good");
+      }
+      if (player.hp === 0) finish(false);
+      else refresh();
+    }
+  };
+  refresh();
+}
+
+function linkRelay() {
+  if (!canLink()) return;
+  player.ap--;
+  linked = true;
+  burst(relay.x, relay.y, accents.mint, 21);
+  note("Relay online. Extraction unlocked.", "good");
+  if (sameTile(player, extraction)) finish(true);
+  else refresh();
+}
+
+function endTurn() {
+  if (!canAct()) return;
+  phase = "enemy";
+  player.ap = 0;
+  enemyQueue = enemies.filter(enemy => enemy.hp > 0);
+  phaseDelay = .42;
+  note("Hostiles acting.");
+  refresh();
+}
+
+function enemyStep() {
+  const drone = enemyQueue.shift();
+  phaseDelay = .26;
+  if (!drone) {
+    beginRound();
+    return;
+  }
+  const separation = distance(drone, player);
+  if (separation <= drone.range && lineOfSight(drone, player)) {
+    drone.alert = true;
+    shoot(drone, player);
+    return;
+  }
+  if (separation <= 7 || linked || round >= 4) drone.alert = true;
+  if (!drone.alert) return;
+
+  const destinations = pathsFrom(drone, (x, y) => !occupant(x, y, drone), drone.speed);
+  const backtrack = pathsFrom(player, (x, y) => !occupant(x, y, drone));
+  let preferred = null;
+  let bestPosition = Infinity;
+  for (const tile of destinations.values()) {
+    if (!tile.steps) continue;
+    const tilesAway = distance(tile, player);
+    const pathDistance = backtrack.get(key(tile.x, tile.y))?.steps ?? (tilesAway + 16);
+    const canAim = tilesAway <= drone.range && lineOfSight(tile, player);
+    const priority = pathDistance - (canAim ? 1.8 : 0) - (inCover(tile, player) ? .4 : 0);
+    if (priority < bestPosition) {
+      bestPosition = priority;
+      preferred = tile;
+    }
+  }
+  if (preferred) move(drone, preferred, refresh);
+}
+
+function beginRound() {
+  round++;
+  player.ap = 2;
+  phase = "player";
+  const breach = breaches.find(event => event.round === round);
+  if (breach) {
+    const entry = breach.tiles.find(tile => !occupant(tile.x, tile.y));
+    if (entry) {
+      const incoming = makeDrone(round === 3 ? "Interceptor" : "Warden", entry.x, entry.y, round !== 3);
+      incoming.alert = true;
+      enemies.push(incoming);
+      burst(entry.x, entry.y, accents.red, 19);
+      note(incoming.name + " entered from the north.", "warn");
+    }
+  }
+  refresh();
+}
+
+function finish(won) {
+  mode = won ? "won" : "lost";
+  const score = won ? Math.max(0, 1400 + player.hp * 60 + kills * 100 - (round - 1) * 85) : 0;
+  const record = score > best;
+  if (record) {
+    best = score;
+    try {
+      localStorage.setItem("blackout-relay-best", String(best));
+    } catch {}
+  }
+  note(won ? "Rook reached extraction." : "Rook is down.", won ? "good" : "bad");
+  showOverlay(
+    won ? (record ? "New best score" : "Mission complete") : "Mission failed",
+    won ? "Signal restored." : "Rook went dark.",
+    won ? score.toLocaleString() + " points  ·  " + round + " rounds  ·  " + kills + " drones disabled"
+      : "The drones stopped Rook before extraction.",
+    "Deploy again"
+  );
+  refresh();
+}
+
+function showOverlay(label, title, text, action) {
+  view.briefLabel.textContent = label;
+  view.briefTitle.textContent = title;
+  view.briefText.textContent = text;
+  view.briefControls.hidden = true;
+  view.overlayButton.firstChild.nodeValue = action + " ";
+  view.overlay.hidden = false;
+}
+
+function pause() {
+  if (mode !== "playing") return;
+  mode = "paused";
+  hover = null;
+  showOverlay("Mission paused", "Holding position.", "Resume when you’re ready to continue.", "Resume");
+  refresh();
+}
+
+function activateOverlay() {
+  if (mode === "paused") {
+    mode = "playing";
+    view.overlay.hidden = true;
+    refresh();
+  } else if (mode !== "playing") {
+    reset();
+  }
+}
+
+function update(dt) {
+  simulationTime += dt;
+  shake = Math.max(0, shake - dt);
+  for (const effect of effects) {
+    effect.life -= dt;
+    if (effect.type === "spark") {
+      effect.x += effect.vx * dt;
+      effect.y += effect.vy * dt;
+    }
+    if (effect.type === "text") effect.y -= dt * .6;
+  }
+  effects = effects.filter(effect => effect.life > 0);
+  if (motion) {
+    motion.elapsed += dt;
+    motion.update?.(Math.min(motion.elapsed / motion.duration, 1));
+    if (motion.elapsed >= motion.duration) {
+      const complete = motion.done;
+      motion = null;
+      complete();
+    }
+  }
+  if (mode === "playing" && phase === "enemy" && !motion) {
+    phaseDelay -= dt;
+    if (phaseDelay <= 0) enemyStep();
+  }
+}
+
+function resize() {
+  const bounds = view.board.getBoundingClientRect();
+  board.width = bounds.width;
+  board.height = bounds.height;
+  board.ratio = window.devicePixelRatio || 1;
+  view.board.width = Math.max(1, Math.round(board.width * board.ratio));
+  view.board.height = Math.max(1, Math.round(board.height * board.ratio));
+  board.tile = Math.max(1, Math.min((board.width - 47) / columns, (board.height - 51) / rows));
+  board.x = Math.round((board.width - columns * board.tile) / 2);
+  board.y = Math.round((board.height - rows * board.tile) / 2);
+}
+
+function center(x, y) {
+  return [board.x + (x + .5) * board.tile, board.y + (y + .5) * board.tile];
+}
+
+function polygon(points, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(...points[0]);
+  for (const point of points.slice(1)) ctx.lineTo(...point);
+  ctx.closePath();
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+  }
+}
+
+function circle(x, y, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+  }
+}
+
+function drawBackdrop() {
+  ctx.fillStyle = "#09121c";
+  ctx.fillRect(0, 0, board.width, board.height);
+  ctx.strokeStyle = "#132233";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 13.5; x < board.width; x += 22) {
+    for (let y = 11.5; y < board.height; y += 22) {
+      ctx.moveTo(x - 1, y);
+      ctx.lineTo(x + 2, y);
+      ctx.moveTo(x, y - 1);
+      ctx.lineTo(x, y + 2);
+    }
+  }
+  ctx.stroke();
+}
+
+function drawFloor() {
+  const {x: left, y: top, tile: s} = board;
+  ctx.fillStyle = "#60778a";
+  ctx.font = "10px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (let x = 0; x < columns; x++) ctx.fillText(String.fromCharCode(65 + x), center(x, 0)[0], top - 11);
+  for (let y = 0; y < rows; y++) ctx.fillText(String(y + 1).padStart(2, "0"), left - 12, center(0, y)[1]);
+
+  ctx.fillStyle = "#273b50";
+  ctx.fillRect(left - 3, top - 3, columns * s + 6, rows * s + 6);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      const id = key(x, y);
+      const lit = visible.has(id);
+      const leftEdge = left + x * s, topEdge = top + y * s;
+      const variation = (x * 7 + y * 11 + x * y * 3) % 5;
+      const shade = lit ? 24 + variation : 13 + variation;
+      ctx.fillStyle = "rgb(" + shade + " " + (shade + 10) + " " + (shade + 21) + ")";
+      ctx.fillRect(leftEdge, topEdge, s, s);
+      const steps = reach.get(id)?.steps;
+      if (mode === "playing" && steps) {
+        ctx.fillStyle = steps <= movePerAction ? "#57d5b229" : "#59abce18";
+        ctx.fillRect(leftEdge + 1, topEdge + 1, s - 2, s - 2);
+        ctx.strokeStyle = steps <= movePerAction ? "#69d0b44d" : "#6ea3bd3a";
+        ctx.lineWidth = 1;
+        ctx.setLineDash(steps <= movePerAction ? [] : [3, 5]);
+        ctx.strokeRect(leftEdge + 3, topEdge + 3, s - 6, s - 6);
+        ctx.setLineDash([]);
+      }
+      ctx.strokeStyle = lit ? "#0e1b28" : "#0a141f";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(leftEdge, topEdge, s, s);
+      ctx.fillStyle = lit ? "#94a9bf27" : "#687e9621";
+      ctx.fillRect(leftEdge + 5, topEdge + 5, 2, 2);
+      ctx.fillRect(leftEdge + s - 7, topEdge + s - 7, 2, 2);
+      for (let i = 0; i < 6; i++) {
+        const dustX = ((19 * i + id * 11) % 61 + 4) / 68;
+        const dustY = ((13 * i + id * 23) % 59 + 4) / 66;
+        ctx.fillRect(leftEdge + s * dustX, topEdge + s * dustY, 1, 1);
+      }
+    }
+  }
+}
+
+function drawRoute() {
+  if (!hover || !canAct()) return;
+  const route = reach.get(key(hover.x, hover.y));
+  if (!route?.steps || occupant(hover.x, hover.y, player)) return;
+  const points = tracePath(route);
+  const color = route.steps <= movePerAction ? accents.mint : "#8cdbff";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  ctx.moveTo(...center(points[0].x, points[0].y));
+  for (const point of points.slice(1)) ctx.lineTo(...center(point.x, point.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (const point of points.slice(1, -1)) circle(...center(point.x, point.y), 2.7, color);
+  circle(...center(hover.x, hover.y), 6, "#162b36", color);
+}
+
+function drawStructures() {
+  const s = board.tile;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      const kind = terrain(x, y);
+      if (kind === ".") continue;
+      const lit = visible.has(key(x, y));
+      ctx.save();
+      ctx.translate(board.x + x * s, board.y + y * s);
+      ctx.scale(s, s);
+      ctx.lineWidth = 1 / s;
+      ctx.fillStyle = "#050b13ba";
+      if (kind === "#") {
+        ctx.fillRect(.12, .17, .84, .79);
+        const metal = ctx.createLinearGradient(0, .07, 0, .83);
+        metal.addColorStop(0, lit ? "#607489" : "#3d4e64");
+        metal.addColorStop(1, lit ? "#333f51" : "#263548");
+        polygon([[.09,.18],[.2,.07],[.86,.07],[.93,.15],[.93,.77],[.84,.86],[.09,.86]], metal, "#74889b8c");
+        ctx.fillStyle = "#1c2939";
+        ctx.fillRect(.14, .74, .73, .08);
+        ctx.fillStyle = "#91a4b744";
+        ctx.fillRect(.23, .13, .4, .035);
+        ctx.fillStyle = "#283445";
+        ctx.fillRect(.29, .34, .42, .25);
+        ctx.fillStyle = "#98adc656";
+        for (let slit = 0; slit < 4; slit++) ctx.fillRect(.34 + slit * .09, .38, .035, .16);
+        ctx.fillStyle = lit ? "#6ea196" : "#4d686b";
+        ctx.fillRect(.14, .26, .04, .22);
+      } else {
+        ctx.fillRect(.19, .27, .69, .59);
+        polygon([[.16,.28],[.26,.19],[.76,.19],[.85,.29],[.85,.73],[.75,.81],[.16,.81]],
+          lit ? "#70583d" : "#4d433a", "#ba905e");
+        ctx.fillStyle = "#352c2b";
+        ctx.fillRect(.22, .32, .55, .32);
+        ctx.fillStyle = lit ? "#d2a271" : "#977b59";
+        ctx.fillRect(.22, .666, .55, .05);
+        for (let bar = 0; bar < 4; bar++) {
+          const ax = .25 + bar * .12;
+          polygon([[ax,.56],[ax+.095,.37],[ax+.14,.37],[ax+.047,.56]], lit ? "#bf925a" : "#826a4f");
+        }
+        circle(.24, .25, .022, "#dcc5a6");
+        circle(.76, .75, .022, "#dcc5a6");
+      }
+      ctx.restore();
+    }
+  }
+}
+
+function drawMarker(tile, label, color, shape) {
+  const [cx, cy] = center(tile.x, tile.y);
+  const s = board.tile;
+  const pulse = .76 + .2 * Math.sin(simulationTime * 4.1);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.fillStyle = color + "23";
+  ctx.fillRect(-s * .45, -s * .45, s * .9, s * .9);
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = pulse;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  ctx.strokeRect(-s * .43, -s * .43, s * .86, s * .86);
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 13;
+  const r = s * .18;
+  if (shape === "relay") {
+    polygon([[0,-r-4],[r,-4],[0,r-4],[-r,-4]], "#17252f", color);
+    circle(0, -4, r * .36, color);
+  } else {
+    polygon([[-r,-r-4],[r,-r-4],[r,r-4],[-r,r-4]], "#17252f", color);
+    polygon([[-r*.52,-5],[0,-5],[0,-r-2],[r*.7,-4],[0,r-5],[0,-3],[-r*.52,-3]], color);
+  }
+  ctx.shadowBlur = 0;
+  ctx.font = "bold " + Math.max(7, Math.min(10, s * .15)) + "px monospace";
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, 0, s * .29);
+  ctx.restore();
+}
+
+function drawBreach() {
+  const next = breaches.find(event => event.round === round + 1);
+  if (!next) return;
+  const tile = next.tiles[0];
+  const [x, y] = center(tile.x, tile.y);
+  const s = board.tile;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = .65 + .25 * Math.sin(simulationTime * 7);
+  polygon([[-s*.4,-s*.42],[s*.4,-s*.42],[s*.4,s*.42],[-s*.4,s*.42]], "#492729", accents.amber);
+  polygon([[-s*.12,-s*.17],[s*.12,-s*.17],[0,s*.1]], accents.amber);
+  ctx.restore();
+}
+
+function drawUnit(actor) {
+  const x = actor.rx ?? actor.x;
+  const y = actor.ry ?? actor.y;
+  if (actor.hp <= 0 || (actor !== player && !visible.has(key(Math.round(x), Math.round(y))))) return;
+
+  const isPlayer = actor === player;
+  const color = isPlayer ? accents.mint : actor.heavy ? accents.amber : accents.red;
+  const body = actor.flash > simulationTime ? "#fff4ed" : isPlayer ? "#b0c6cf" : "#8594a4";
+  const [cx, cy] = center(x, y);
+  const s = board.tile;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+  ctx.lineWidth = 1.3 / s;
+  circle(0, .05, .35, "#040a11b0");
+  circle(0, 0, .345, isPlayer ? "#153b37" : "#3b2533", color + "8a");
+  if (isPlayer) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, .38, -2.6, -.54);
+    ctx.stroke();
+  }
+  ctx.save();
+  ctx.rotate(actor.facing);
+  if (isPlayer) {
+    polygon([[-.21,-.18],[.02,-.2],[.18,-.10],[.15,.12],[.01,.2],[-.21,.17]], body, "#1d3345");
+    polygon([[-.23,-.12],[-.07,-.1],[-.07,.1],[-.23,.12]], "#567181");
+    ctx.fillStyle = "#375564";
+    ctx.fillRect(-.01, .12, .26, .075);
+    ctx.fillStyle = "#d8e8e8";
+    ctx.fillRect(.11, .12, .15, .055);
+    circle(.07, -.025, .122, "#263c4a", "#ecf5f5");
+    ctx.fillStyle = color;
+    ctx.fillRect(.132, -.1, .038, .144);
+  } else {
+    const wing = actor.heavy ? .28 : .23;
+    polygon([[-.2,-.12],[-.09,-wing],[.1,-wing],[.18,-.11],[.18,.11],[.1,wing],[-.09,wing],[-.2,.1]], body, "#432e42");
+    polygon([[-.16,-.08],[-.06,-.15],[.16,-.1],[.22,0],[.16,.1],[-.06,.15],[-.16,.08]], "#312c39", color + "85");
+    circle(.105, 0, .065, color);
+    ctx.fillStyle = "#4d3d50";
+    ctx.fillRect(-.085, -wing + .02, .115, .04);
+    ctx.fillRect(-.085, wing - .06, .115, .04);
+  }
+  ctx.restore();
+  if (!isPlayer) {
+    const max = actor.heavy ? 3 : 2;
+    for (let n = 0; n < max; n++) {
+      ctx.fillStyle = n < actor.hp ? color : "#404757";
+      ctx.fillRect((n - max / 2) * .13 + .014, -.47, .109, .05);
+    }
+  }
+  ctx.restore();
+}
+
+function drawHover() {
+  if (!hover || !canAct()) return;
+  const contact = occupant(hover.x, hover.y, player);
+  const seen = contact && visible.has(key(hover.x, hover.y));
+  const s = board.tile;
+  const [x, y] = center(hover.x, hover.y);
+  ctx.strokeStyle = seen ? accents.red : "#bddcea94";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x - s * .46, y - s * .46, s * .92, s * .92);
+  if (!seen || !player.ap || distance(player, contact) > shotRange) return;
+  ctx.strokeStyle = "#ff849090";
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+  ctx.moveTo(...center(player.x, player.y));
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const label = chance(player, contact) + "%";
+  ctx.font = "bold 11px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const top = Math.max(board.y + 10, y - s * .69);
+  ctx.fillStyle = "#392532";
+  ctx.fillRect(x - 21, top - 9, 42, 18);
+  ctx.strokeStyle = accents.red;
+  ctx.strokeRect(x - 21, top - 9, 42, 18);
+  ctx.fillStyle = "#ffe3e8";
+  ctx.fillText(label, x, top + .5);
+}
+
+function drawEffects() {
+  for (const effect of effects) {
+    const [x, y] = center(effect.x, effect.y);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, effect.life / effect.total);
+    if (effect.type === "beam") {
+      ctx.strokeStyle = effect.color;
+      ctx.shadowColor = effect.color;
+      ctx.shadowBlur = 15;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(...center(effect.ex, effect.ey));
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#fff";
+      ctx.stroke();
+    } else if (effect.type === "spark") {
+      circle(x, y, 1.6 + effect.life * 2, effect.color);
+    } else {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "bold 15px monospace";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#111923";
+      ctx.strokeText(effect.text, x, y);
+      ctx.fillStyle = effect.color;
+      ctx.fillText(effect.text, x, y);
+    }
+    ctx.restore();
+  }
+}
+
+function render() {
+  ctx.setTransform(board.ratio, 0, 0, board.ratio, 0, 0);
+  drawBackdrop();
+  ctx.save();
+  if (shake > 0) ctx.translate(Math.sin(simulationTime * 105) * shake * 20, Math.cos(simulationTime * 137) * shake * 13);
+  drawFloor();
+  drawRoute();
+  drawStructures();
+  drawBreach();
+  drawMarker(relay, "RELAY", linked ? accents.mint : accents.amber, "relay");
+  drawMarker(extraction, "EXIT", linked ? accents.mint : "#a0b1c5", "exit");
+  drawUnit(player);
+  for (const actor of enemies) drawUnit(actor);
+  drawHover();
+  drawEffects();
+  ctx.restore();
+}
+
+function tileAt(event) {
+  const bounds = view.board.getBoundingClientRect();
+  const x = Math.floor((event.clientX - bounds.left - board.x) / board.tile);
+  const y = Math.floor((event.clientY - bounds.top - board.y) / board.tile);
+  return terrain(x, y) ? {x, y} : null;
+}
+
+view.board.addEventListener("mousemove", event => {
+  const tile = tileAt(event);
+  if (!tile && !hover || tile && hover && sameTile(tile, hover)) return;
+  hover = tile;
+  inspect();
+});
+view.board.addEventListener("mouseleave", () => {
+  hover = null;
+  inspect();
+});
+view.board.addEventListener("click", event => {
+  if (!canAct() || !player.ap) return;
+  const tile = tileAt(event);
+  if (!tile) return;
+  const contact = occupant(tile.x, tile.y, player);
+  if (contact) {
+    if (visible.has(key(tile.x, tile.y)) && distance(player, contact) <= shotRange) shoot(player, contact);
+    return;
+  }
+  if (sameTile(tile, relay) && canLink()) {
+    linkRelay();
+    return;
+  }
+  const destination = reach.get(key(tile.x, tile.y));
+  if (!destination?.steps) return;
+  player.ap -= Math.ceil(destination.steps / movePerAction);
+  move(player, destination, () => {
+    if (linked && sameTile(player, extraction)) finish(true);
+    else refresh();
+  });
+  refresh();
+});
+
+view.overlayButton.addEventListener("click", activateOverlay);
+view.restart.addEventListener("click", () => reset());
+view.endTurn.addEventListener("click", endTurn);
+view.link.addEventListener("click", linkRelay);
+window.addEventListener("keydown", event => {
+  const code = event.code;
+  if (["Space", "ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", "KeyF", "KeyR"].includes(code)) {
+    event.preventDefault();
+  }
+  if (event.repeat) return;
+  if (code === "Space" || (code === "Enter" && !view.overlay.hidden)) {
+    event.preventDefault();
+    if (!view.overlay.hidden) activateOverlay();
+    else endTurn();
+  } else if (code === "KeyF") {
+    linkRelay();
+  } else if (code === "KeyR") {
+    reset();
+  }
+});
+window.addEventListener("blur", pause);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) pause();
+});
+
+function frame(time) {
+  const dt = Math.min((time - (previousFrame ?? time)) / 1000, .05);
+  previousFrame = time;
+  if (board.ratio !== (window.devicePixelRatio || 1)) resize();
+  if (mode === "playing") update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+
+reset(false);
+resize();
+new ResizeObserver(resize).observe(view.board);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "agent": "Claude",
+  "agentName": null,
+  "title": "Last Signal",
+  "model": "claude-fable-5.2",
+  "reasoning": "medium",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label (Anthropic Fable 5.2) and reasoning effort (medium). The model label is normalized as claude-fable-5.2. The actual runtime configuration was not independently available.",
+  "sessionId": null,
+  "sourceFile": "lastsignal/index.html",
+  "sourceSha256": "86804b2ae55d4acd24809ad97fe0bfb2e78666e8c721f1a075ec8ed05c8eed29",
+  "validation": {
+    "syntax": "Passed node --check on the single inline classic JavaScript.",
+    "structure": "Found one title, 1 canvas, 1 inline stylesheet, and one inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 573,
+    "browser": "Passed a smoke test in the Codex browser through a local preview. The Deploy screen appeared and gameplay started without console errors.",
+    "render": "Canvas tactical map and HUD confirmed visually in a gameplay screenshot.",
+    "interactions": "Verified End Turn, enemy movement and attacks, return to player turn 2 with two actions, and R resetting the run to turn 1, full health and zero recovered cores."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "The four command buttons occupy a single non-wrapping row that clips at narrow phone widths. The source also omits a mobile viewport meta tag. Physical phone gameplay was not tested."
+}

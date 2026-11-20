@@ -1,0 +1,27 @@
+{
+  "agent": "Codex",
+  "title": "Afterlight Relay",
+  "model": "gpt-6.2-sol",
+  "reasoning": "max",
+  "startedAt": "2026-11-20T06:17:10Z",
+  "finishedAt": "2026-11-20T06:33:46Z",
+  "elapsedSeconds": 996,
+  "timingBasis": "UTC clock readings from opening the gameplay brief through completion of the JavaScript syntax check",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1f799-e724-7a92-b9b0-93f8d9e89d2a",
+  "mobileSupported": false,
+  "mobileSupportNotes": "Gameplay requires a desktop keyboard and mouse.",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript; independently rechecked by the parent.",
+    "browser": "Passed parent smoke test in the Codex browser through the local project preview. The start screen appeared and gameplay started without console errors.",
+    "interaction": "Start button verified in a real browser. The game displayed its free-cursor aim fallback. A full round was not played.",
+    "render": "WebGL arena confirmed visually in the captured gameplay screenshot."
+  },
+  "agentName": "Lagrange",
+  "prompt": {
+    "file": "game-prompt.txt",
+    "sha256": "2dfa785d974853a28d10fae51e12989999e9eda3f142a30934c309fb6c2718f8",
+    "matchesEarlierRun": true,
+    "earlierSessionId": "01a1e8f6-7198-75e0-8a8c-0ce4b8447508"
+  }
+}

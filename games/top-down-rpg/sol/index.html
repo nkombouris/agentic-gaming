@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101819">
+<title>Fenwake</title>
+<style>
+  :root { color-scheme: dark; --ink: #111a1a; --gold: #efce8b; --ash: #a2b5a6; --edge: #425449 }
+  * { box-sizing: border-box }
+  html, body { margin: 0; width: 100%; height: 100% }
+  body {
+    display: grid; place-items: center; overflow: hidden; color: #e5e5d1;
+    background: radial-gradient(ellipse at 50% 42%, #2a3730, #141e1e 60%, #0b1113);
+    font: 14px system-ui, sans-serif; user-select: none;
+  }
+  main {
+    width: min(calc(100vw - 40px), calc((100dvh - 123px) * 1.6667), 1320px);
+    display: grid; gap: 10px;
+  }
+  .hud, footer { display: flex; justify-content: space-between; align-items: center; padding-inline: 7px }
+  .hud { display: grid; grid-template-columns: 1fr 1fr 1fr; min-height: 42px }
+  .hud > div { display: grid; gap: 7px }
+  .hud > :nth-child(2) { justify-items: center }
+  .hud > :last-child { justify-items: end }
+  .label, footer {
+    color: var(--ash); font-size: 10px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .hearts, .flames { display: flex; gap: 5px; min-height: 15px; align-items: center }
+  .heart {
+    width: 16px; height: 15px; background: #47524a;
+    clip-path: polygon(0 22%, 12% 22%, 12% 7%, 37% 7%, 37% 22%, 63% 22%, 63% 7%,
+      88% 7%, 88% 22%, 100% 22%, 100% 58%, 88% 58%, 88% 72%, 75% 72%,
+      75% 84%, 62% 84%, 62% 96%, 38% 96%, 38% 84%, 25% 84%, 25% 72%, 12% 72%, 12% 58%, 0 58%);
+  }
+  .heart.full { background: linear-gradient(#ffc7a2 0 17%, #ec8171 17% 65%, #b74f58 65%) }
+  .flames { gap: 14px }
+  .flame { width: 8px; height: 8px; transform: rotate(45deg); border: 1px solid #809184 }
+  .flame.lit { background: var(--ward); border-color: var(--ward); box-shadow: 0 0 10px var(--ward) }
+  #clock {
+    color: var(--gold); font: 700 23px/.75 'Courier New', monospace;
+    letter-spacing: .02em; font-variant-numeric: tabular-nums;
+  }
+  #clock.danger { color: #f49882 }
+  #stage {
+    position: relative; width: 100%; aspect-ratio: 5 / 3;
+    border: 1px solid #6b785f; background: #1b3033; box-shadow: 0 14px 65px #0007;
+    isolation: isolate;
+  }
+  #stage::before, #stage::after {
+    content: ''; position: absolute; pointer-events: none; z-index: 3; inset: -4px;
+    border: 1px solid #31433c;
+  }
+  #stage::after {
+    border: 0; inset: -2px;
+    background: conic-gradient(from 90deg at 1px 1px, #b6a478 90deg, transparent 0) 0 0 / 12px 12px no-repeat,
+      conic-gradient(from 180deg at 11px 1px, #b6a478 90deg, transparent 0) 100% 0 / 12px 12px no-repeat,
+      conic-gradient(from 0deg at 1px 11px, #b6a478 90deg, transparent 0) 0 100% / 12px 12px no-repeat,
+      conic-gradient(from 270deg at 11px 11px, #b6a478 90deg, transparent 0) 100% 100% / 12px 12px no-repeat;
+    opacity: .5;
+  }
+  canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated }
+  #overlay {
+    z-index: 2; position: absolute; inset: 0; display: grid; place-items: center;
+    background: radial-gradient(ellipse, #0c151436 5%, #08151455 62%, #060c0dc4 100%);
+  }
+  #overlay[hidden] { display: none }
+  .panel {
+    position: relative; width: min(440px, 88%); text-align: center; padding: clamp(17px, 3.4vh, 33px);
+    background: linear-gradient(145deg, #192923f8, #101b1afc);
+    border: 1px solid #798065; box-shadow: 0 14px 48px #050e0cc4, inset 0 0 0 4px #15221e, inset 0 0 0 5px #3f4b3a;
+  }
+  .seal { width: 15px; height: 15px; margin: 0 auto 14px; border: 1px solid #9b8357; transform: rotate(45deg) }
+  .seal::after { content: ''; display: block; width: 5px; height: 5px; background: var(--gold); margin: 4px }
+  h1 { margin: 0; color: #f6dfab; font: 400 clamp(36px, 7.4vh, 76px)/.92 Georgia, serif; letter-spacing: -.05em }
+  .panel p { margin: 14px auto 18px; max-width: 295px; color: #c2cec2; line-height: 1.48 }
+  button {
+    border: 1px solid #ffdb99; border-bottom-color: #ab7848; padding: 10px 24px;
+    color: #261d16; background: linear-gradient(#f4d599, #dbad70);
+    font: 750 13px system-ui, sans-serif; cursor: pointer; box-shadow: 0 2px 0 #684837;
+  }
+  button:hover { background: #ffe5af }
+  button:focus-visible { outline: 2px solid #f4ecd1; outline-offset: 4px }
+  .keys {
+    display: flex; gap: 13px; justify-content: center; align-items: center; flex-wrap: wrap;
+    margin-top: 21px; color: #b4c3b5; font-size: 11px;
+  }
+  .keys[hidden] { display: none }
+  kbd {
+    font: 700 10px 'Courier New', monospace; color: #e3e6d3;
+    background: #22312a; border: 1px solid #536552; padding: 3px 5px; margin-right: 4px;
+    border-radius: 2px; white-space: nowrap;
+  }
+  #objective { letter-spacing: .045em; text-transform: none; color: #d0d8c2; font-size: 12px }
+  footer { min-height: 23px; gap: 12px }
+  footer > :last-child { flex: none; text-align: right }
+  #dodgeMeter { width: 37px; height: 3px; background: #384840; display: inline-block; vertical-align: middle; margin-left: 6px }
+  #dodgeFill { display: block; height: 100%; background: #a6caa4; transform-origin: left }
+  @media (max-height: 605px) {
+    main { width: min(calc(100vw - 24px), calc((100dvh - 89px) * 1.6667)); gap: 5px }
+    .hud { min-height: 34px }
+    .seal { margin-bottom: 8px }
+    .panel p { margin-block: 9px }
+    .keys { margin-top: 13px }
+  }
+</style>
+</head>
+<body>
+<main aria-label="Fenwake">
+  <header class="hud">
+    <div><span class="label">Life</span><div class="hearts" id="hearts"></div></div>
+    <div><span class="label">Ward flames</span><div class="flames" id="flames"></div></div>
+    <div><span class="label">High tide in</span><div id="clock">02:35</div></div>
+  </header>
+  <section id="stage" aria-label="The drowned estuary">
+    <canvas id="canvas" aria-label="Fenwake game field"></canvas>
+    <div id="overlay">
+      <div class="panel">
+        <div class="seal" aria-hidden="true"></div>
+        <h1 id="title">Fenwake</h1>
+        <p id="message">Reclaim three ward flames and defeat the drowned sentinel before high tide.</p>
+        <button id="action" type="button">Enter the fen</button>
+        <div class="keys" id="keys">
+          <span><kbd>WASD</kbd><kbd>↑↓←→</kbd> Move</span>
+          <span><kbd>Space</kbd> Strike</span>
+          <span><kbd>Shift</kbd> Dodge</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <span id="objective" aria-live="polite">The drowned estuary</span>
+    <span id="record">Best 0</span>
+  </footer>
+</main>
+<script>
+'use strict';
+
+const WIDTH = 480;
+const HEIGHT = 288;
+const ROUND_TIME = 155;
+const TAU = Math.PI * 2;
+const $ = id => document.getElementById(id);
+const canvas = $('canvas');
+const screen = canvas.getContext('2d', { alpha: false });
+const scene = document.createElement('canvas');
+scene.width = WIDTH;
+scene.height = HEIGHT;
+const draw = scene.getContext('2d');
+const ground = document.createElement('canvas');
+ground.width = WIDTH;
+ground.height = HEIGHT;
+const floor = ground.getContext('2d');
+const held = new Set();
+
+const shore = [
+  [54,176],[58,147],[76,121],[96,107],[133,103],[151,89],[178,83],
+  [179,58],[190,42],[215,29],[252,26],[277,32],[296,47],[301,69],
+  [290,80],[317,84],[342,102],[370,105],[401,113],[421,139],
+  [427,170],[424,194],[407,212],[379,227],[351,227],[321,216],
+  [289,225],[278,239],[259,256],[224,263],[206,256],[191,238],
+  [168,224],[138,222],[110,237],[84,237],[63,221],[49,202]
+];
+const routes = [
+  [[239,255],[240,213],[243,145],[241,58]],
+  [[243,145],[203,166],[168,178],[109,179],[84,198]],
+  [[243,145],[285,156],[335,174],[373,177],[394,191]],
+  [[196,110],[164,114],[135,134],[109,179]],
+  [[289,101],[313,116],[346,135],[373,177]]
+];
+const wardSpecs = [
+  { x: 107, y: 177, name: 'Briar Post', tint: '#ffc68a', element: 'briar', foes: ['skitter','skitter','husk'] },
+  { x: 241, y: 62, name: 'Bell Chapel', tint: '#c7adf1', element: 'bell', foes: ['wisp','skitter','husk'] },
+  { x: 372, y: 176, name: 'Salt Court', tint: '#9ce1ce', element: 'salt', foes: ['husk','wisp','skitter'] }
+];
+const beacon = { x: 243, y: 142 };
+const scenery = [
+  ['willow',75,151,14], ['willow',83,135,11], ['stone',112,123,5], ['willow',134,119,15],
+  ['pillar',163,102,12], ['pillar',181,105,7], ['stone',146,151,7],
+  ['willow',66,187,13], ['stone',76,211,7], ['willow',111,218,12], ['willow',132,204,15],
+  ['stone',159,206,6], ['willow',178,197,12], ['stone',190,217,5],
+  ['pillar',207,58,15], ['pillar',216,43,12], ['pillar',267,45,14], ['pillar',278,62,11],
+  ['arch',242,44,16], ['stone',213,83,6], ['stone',268,85,6],
+  ['willow',194,75,11], ['willow',288,69,12], ['willow',209,110,13], ['stone',231,111,6],
+  ['willow',279,108,11], ['stone',308,104,7], ['willow',333,121,13],
+  ['pillar',356,145,13], ['arch',389,149,13], ['pillar',409,159,15],
+  ['pillar',400,197,10], ['pillar',356,205,11], ['willow',383,211,14],
+  ['willow',316,192,13], ['stone',307,207,7], ['willow',291,193,13],
+  ['pillar',226,160,8], ['pillar',259,159,7], ['stone',227,187,5], ['willow',259,207,13],
+  ['stone',213,232,6], ['willow',264,235,9], ['stone',229,248,5]
+];
+const coastGrass = [];
+const ripples = [];
+const seed = makeRandom(208961);
+const terrain = new Uint8Array(WIDTH * HEIGHT);
+let state, paintTime = 0, before = 0, audio;
+let best = 0;
+try { best = Math.max(0, Number(localStorage.getItem('fenwake-best')) || 0); } catch {}
+
+function makeRandom(value) {
+  return () => {
+    value = (Math.imul(value, 1664525) + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+function rand(low, high) { return low + Math.random() * (high - low); }
+function clamp(number, low, high) { return Math.max(low, Math.min(number, high)); }
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function heading(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
+function angleGap(a, b) { return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); }
+
+function fill(ctx, color, x, y, w, h) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), w, h);
+}
+function poly(ctx, color, points) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const x = Math.round(points[i][0]), y = Math.round(points[i][1]);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+function line(ctx, color, width, x, y, x2, y2) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+function ellipse(ctx, x, y, rx, ry, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, TAU);
+  ctx.fill();
+}
+function ring(ctx, x, y, radius, color, size = 1) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, TAU);
+  ctx.stroke();
+}
+function diamond(ctx, x, y, r, color) {
+  poly(ctx, color, [[x,y-r],[x+r*.72,y],[x,y+r],[x-r*.72,y]]);
+}
+function sector(ctx, x, y, radius, direction, halfWidth, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.arc(x, y, radius, direction - halfWidth, direction + halfWidth);
+  ctx.closePath();
+  ctx.fill();
+}
+function glow(ctx, x, y, radius, color) {
+  const light = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  light.addColorStop(0, color);
+  light.addColorStop(1, 'transparent');
+  fill(ctx, light, x-radius, y-radius, radius*2, radius*2);
+}
+
+function contains(points, x, y) {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [ax, ay] = points[i], [bx, by] = points[j];
+    if ((ay > y) !== (by > y) && x < (bx-ax)*(y-ay)/(by-ay)+ax) inside = !inside;
+  }
+  return inside;
+}
+function isLand(x, y) {
+  const tx = Math.floor(x), ty = Math.floor(y);
+  return tx >= 0 && tx < WIDTH && ty >= 0 && ty < HEIGHT && terrain[ty * WIDTH + tx] !== 0;
+}
+function pathDistance(x, y) {
+  let bestDistance = Infinity;
+  for (const route of routes) {
+    for (let i = 1; i < route.length; i++) {
+      const [ax, ay] = route[i-1], [bx, by] = route[i];
+      const dx = bx-ax, dy = by-ay;
+      const t = clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy), 0, 1);
+      bestDistance = Math.min(bestDistance, Math.hypot(x-ax-dx*t,y-ay-dy*t));
+    }
+  }
+  return bestDistance;
+}
+
+function makeMap() {
+  for (let y = 0; y < HEIGHT; y += 3) {
+    for (let x = 0; x < WIDTH; x += 3) {
+      if (!contains(shore, x+1, y+1)) continue;
+      for (let yy = y; yy < Math.min(y+3,HEIGHT); yy++) terrain.fill(1, yy*WIDTH+x, yy*WIDTH+Math.min(x+3,WIDTH));
+    }
+  }
+  const sea = floor.createLinearGradient(0,0,WIDTH,HEIGHT);
+  sea.addColorStop(0,'#172a30');
+  sea.addColorStop(.48,'#2a4443');
+  sea.addColorStop(1,'#152d32');
+  fill(floor, sea, 0,0,WIDTH,HEIGHT);
+
+  for (let y = 0; y < HEIGHT; y += 3) {
+    for (let x = 0; x < WIDTH; x += 3) {
+      const noise = seed();
+      if (!isLand(x,y)) {
+        if (isLand(x,y-3)) fill(floor,'#182e2f',x,y,3,3);
+        else if (isLand(x+3,y) || isLand(x-3,y) || isLand(x,y+3)) fill(floor,'#627368',x,y,3,1);
+        else if (isLand(x+6,y) || isLand(x-6,y) || isLand(x,y+6)) fill(floor,'#3e5750',x,y,3,3);
+        else if (noise > .97) ripples.push({x,y,w:2+seed()*10, phase:seed()*TAU});
+        continue;
+      }
+
+      const edge = !isLand(x+3,y) || !isLand(x-3,y) || !isLand(x,y+3) || !isLand(x,y-3);
+      const path = pathDistance(x,y) + noise * 7;
+      const slab = Math.hypot(x-beacon.x,y-beacon.y) < 32 || wardSpecs.some(ward => Math.hypot(x-ward.x,y-ward.y) < 18);
+      const variation = Math.sin(x*.04+y*.051)+Math.cos(y*.07-x*.06);
+      const earth = variation > .6 ? ['#3b4e40','#425343','#435545'] : ['#334638','#384939','#3b4b3c'];
+      let tile = earth[noise > .9 ? 2 : noise > .3 ? 1 : 0];
+      if (edge) tile = noise > .42 ? '#687352' : '#535e49';
+      else if (slab || path < 8) tile = ['#4e5c4c','#4a584b','#56614f'][Math.floor(noise*3)];
+      else if (path < 12) tile = '#475544';
+      fill(floor, tile, x,y,3,3);
+      if (noise > .969 && !slab && path > 12 && !edge) coastGrass.push([x,y,seed()]);
+      if (noise < .035) fill(floor, edge ? '#8a8b62' : '#62725a',x,y,2,1);
+    }
+  }
+
+  for (const [x,y,r] of [[48,109,10],[31,123,6],[438,107,7],[439,225,11],[450,215,4],[82,249,5],[301,250,5],[155,56,6]]) {
+    ellipse(floor,x,y+2,r+3,r*.39+2,'#344d44');
+    poly(floor,'#4c5d47',[[x-r,y],[x-r*.58,y-4],[x+r*.53,y-3],[x+r,y],[x+r*.48,y+2],[x-r*.81,y+3]]);
+    fill(floor,'#727650',x-r*.5,y-3,r,1);
+  }
+  for (let ix = 0; ix < 10; ix++) {
+    const y = 254+ix*2;
+    const w = ix < 4 ? 17 : 15;
+    fill(floor,'#1d302b',240-w*.5,y+1,w+1,2);
+    fill(floor,ix%3 ? '#7a6950' : '#99815d',240-w*.5,y,w,1);
+  }
+  for (const side of [-1,1]) {
+    fill(floor,'#463e33',240+side*7,256,2,17);
+    fill(floor,'#918364',240+side*7,255,2,2);
+    fill(floor,'#918364',240+side*7,268,2,2);
+  }
+
+  for (const [x,y,look] of coastGrass) {
+    fill(floor,'#304036',x-2,y,5,1);
+    fill(floor,look>.65 ? '#a2a46a' : '#647d50',x,y-4,1,4);
+    line(floor,'#52694c',1,x-2,y-2,x,y);
+    if (look > .8) fill(floor,'#d0b472',x,y-5,1,1);
+  }
+
+  compass(31,245);
+}
+function compass(x,y) {
+  ring(floor,x,y,11,'#6a80725e');
+  poly(floor,'#90a4868f',[[x,y-9],[x+2,y],[x,y+3],[x-2,y]]);
+  poly(floor,'#556f659c',[[x,y+9],[x+2,y],[x,y-3],[x-2,y]]);
+  line(floor,'#718c7e70',1,x-7,y,x+7,y);
+  floor.font = '5px monospace';
+  floor.textAlign = 'center';
+  floor.fillStyle = '#9ca98c';
+  floor.fillText('N',x,y-15);
+}
+
+function canStand(x,y,r) {
+  if (!isLand(x-r,y) || !isLand(x+r,y) || !isLand(x,y-r) || !isLand(x,y+r)) return false;
+  return !scenery.some(([,px,py,size]) => Math.abs(px-x)<size*.31+r && Math.abs(py-y)<size*.20+r);
+}
+function move(actor,dx,dy,r) {
+  if (canStand(actor.x+dx,actor.y,r)) actor.x += dx;
+  if (canStand(actor.x,actor.y+dy,r)) actor.y += dy;
+}
+
+function unlockAudio() {
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return;
+    audio ||= new Audio();
+    if (audio.state === 'suspended') audio.resume().catch(() => {});
+  } catch {}
+}
+function tone(from, to, duration, level, wave='triangle', delay=0) {
+  if (!audio || audio.state !== 'running') return;
+  const time = audio.currentTime+delay;
+  const osc = audio.createOscillator(), gain = audio.createGain();
+  osc.type = wave;
+  osc.frequency.setValueAtTime(from,time);
+  osc.frequency.exponentialRampToValueAtTime(to,time+duration);
+  gain.gain.setValueAtTime(.0001,time);
+  gain.gain.exponentialRampToValueAtTime(level,time+.014);
+  gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
+  osc.connect(gain).connect(audio.destination);
+  osc.start(time);
+  osc.stop(time+duration+.02);
+}
+
+function reset(mode) {
+  held.clear();
+  state = {
+    mode, elapsed: 0, score: 0, seals: 0, boss: null, shake: 0, flash: 0, toastTime: 0, toast: '',
+    wards: wardSpecs.map(spec => ({...spec, progress: 'dormant', group: []})),
+    enemies: [], bolts: [], motes: [], marks: [],
+    player: {
+      x: 241, y: 230, hp: 5, maxHp: 5, strength: 2, reach: 26, face: -Math.PI*.5, step: 0,
+      swing: 0, swingAngle: 0, swung: false, dodge: 0, dodgeCool: 0, dodgeAngle: 0, invulnerable: 0
+    }
+  };
+  refreshHud();
+}
+function start() {
+  unlockAudio();
+  reset('play');
+  $('overlay').hidden = true;
+  tone(294,369,.21,.045);
+  tone(440,587,.38,.028,'sine',.12);
+}
+function pause() {
+  held.clear();
+  if (state.mode !== 'play') return;
+  state.mode = 'pause';
+  overlay('Paused','Take a breath. The tide can wait.','Return to the fen',false);
+}
+function resume() {
+  unlockAudio();
+  held.clear();
+  state.mode = 'play';
+  $('overlay').hidden = true;
+}
+function overlay(title, message, button, controls) {
+  $('title').textContent = title;
+  $('message').textContent = message;
+  $('action').textContent = button;
+  $('keys').hidden = !controls;
+  $('overlay').hidden = false;
+}
+function finish(won, cause) {
+  if (state.mode !== 'play') return;
+  state.mode = won ? 'win' : 'lose';
+  held.clear();
+  if (won) state.score += Math.ceil(ROUND_TIME-state.elapsed)*10;
+  if (state.score > best) {
+    best = state.score;
+    try { localStorage.setItem('fenwake-best',String(best)); } catch {}
+  }
+  refreshHud();
+  overlay(won ? 'Dawn returns' : 'The fen takes you',
+    (won ? 'The beacon holds.' : cause) + '  Score ' + state.score + '  ·  Best ' + best,
+    'Play again · R',false);
+  if (won) {
+    for (const [i,note] of [392,494,587,784].entries()) tone(note,note,.42,.052,'sine',i*.11);
+  } else {
+    tone(155,65,.48,.07);
+  }
+}
+
+function refreshHud() {
+  const {player,wards} = state;
+  $('hearts').innerHTML = Array.from({length:player.maxHp},(_,i) =>
+    '<span class="heart' + (i<player.hp ? ' full' : '') + '" aria-hidden="true"></span>').join('');
+  $('hearts').setAttribute('aria-label',player.hp+' of '+player.maxHp+' life');
+  $('flames').innerHTML = wards.map(ward => '<span class="flame' +
+    (ward.progress === 'lit' ? ' lit' : '') + '" style="--ward:'+ward.tint+'" title="'+ward.name+'"></span>').join('');
+  $('flames').setAttribute('aria-label',state.seals+' of 3 ward flames');
+  $('record').textContent = 'Best ' + best.toLocaleString();
+}
+function setText(el,text) {
+  if (el.textContent !== text) el.textContent = text;
+}
+function updateHud() {
+  const remaining = Math.ceil(Math.max(0,ROUND_TIME-state.elapsed));
+  setText($('clock'),String(Math.floor(remaining/60)).padStart(2,'0')+':'+String(remaining%60).padStart(2,'0'));
+  $('clock').classList.toggle('danger',remaining <= 25);
+  const challenged = state.wards.find(ward => ward.progress === 'active');
+  let objective = 'Approach a ward flame to wake its guard';
+  if (challenged) objective = 'Clear the guard at ' + challenged.name;
+  if (state.seals === 3) objective = 'Return to the central beacon';
+  if (state.boss) objective = 'Defeat the drowned sentinel';
+  if (state.toastTime > 0) objective = state.toast;
+  setText($('objective'),objective);
+}
+function notifyObjective(message) {
+  state.toast = message;
+  state.toastTime = 3.35;
+}
+
+function movement() {
+  const x = Number(held.has('KeyD')||held.has('ArrowRight'))-Number(held.has('KeyA')||held.has('ArrowLeft'));
+  const y = Number(held.has('KeyS')||held.has('ArrowDown'))-Number(held.has('KeyW')||held.has('ArrowUp'));
+  const magnitude = Math.hypot(x,y) || 1;
+  return [x/magnitude,y/magnitude];
+}
+function strike(angle) {
+  const p = state.player;
+  if (state.mode !== 'play' || p.swing > 0 || p.dodge > 0) return;
+  p.swing = .29;
+  p.swingAngle = angle ?? p.face;
+  p.face = p.swingAngle;
+  p.swung = false;
+  tone(260,108,.10,.032,'triangle');
+}
+function dodge() {
+  const p = state.player;
+  if (p.dodgeCool > 0) return;
+  const [dx,dy] = movement();
+  p.dodgeAngle = dx || dy ? Math.atan2(dy,dx) : p.face;
+  p.dodge = .18;
+  p.dodgeCool = .80;
+  p.invulnerable = Math.max(p.invulnerable,.23);
+  p.swing = 0;
+  flecks(p.x,p.y,7,'#9bb99e',32);
+  tone(240,79,.17,.029,'sine');
+}
+function hurt(source) {
+  const p = state.player;
+  if (p.invulnerable > 0 || state.mode !== 'play') return;
+  p.invulnerable = .72;
+  p.hp--;
+  state.shake = 4.5;
+  state.flash = .20;
+  const a = heading(source,p);
+  move(p,Math.cos(a)*9,Math.sin(a)*9,4);
+  flecks(p.x,p.y-5,15,'#ef967a',50);
+  refreshHud();
+  tone(135,71,.19,.072,'sawtooth');
+  if (p.hp <= 0) finish(false,'You fell in the estuary.');
+}
+function inSwing(target, player, extra=0) {
+  const reach = player.reach + extra;
+  const distance = dist(target,player);
+  return distance <= reach && (distance < 10 || angleGap(heading(player,target),player.swingAngle) < 1.23);
+}
+function resolveSwing() {
+  const p = state.player;
+  let hit = false;
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0 || !inSwing(enemy,p,enemy.kind==='warden' ? 6 : 0)) continue;
+    enemy.hp -= p.strength;
+    enemy.flash = .14;
+    hit = true;
+    const a = heading(p,enemy);
+    if (enemy.kind !== 'warden') {
+      move(enemy,Math.cos(a)*8,Math.sin(a)*8,5);
+      if (enemy.kind === 'skitter' || enemy.kind === 'wisp') {
+        enemy.phase = 'recover';
+        enemy.cool = Math.max(.18,enemy.cool);
+      }
+    }
+    flecks(enemy.x,enemy.y-7,10,enemy.color,58);
+    if (enemy.hp <= 0) {
+      state.score += enemy.kind === 'warden' ? 850 : 85;
+      flecks(enemy.x,enemy.y-7,17,'#f1cf8c',67);
+    }
+  }
+  state.bolts = state.bolts.filter(bolt => {
+    if (!inSwing(bolt,p)) return true;
+    flecks(bolt.x,bolt.y-3,6,bolt.color,31);
+    return false;
+  });
+  if (hit) {
+    state.shake = 2.8;
+    tone(107,174,.12,.078,'triangle');
+  }
+}
+function updatePlayer(dt) {
+  const p = state.player;
+  const [dx,dy] = movement();
+  p.invulnerable = Math.max(0,p.invulnerable-dt);
+  p.dodgeCool = Math.max(0,p.dodgeCool-dt);
+  if (held.has('Space') || held.has('KeyJ')) strike();
+  if (p.swing > 0) {
+    p.swing = Math.max(0,p.swing-dt);
+    if (!p.swung && p.swing < .205) {
+      resolveSwing();
+      p.swung = true;
+    }
+  }
+  if (p.dodge > 0) {
+    p.dodge -= dt;
+    move(p,Math.cos(p.dodgeAngle)*179*dt,Math.sin(p.dodgeAngle)*179*dt,4);
+    p.step += dt*23;
+  } else if (dx || dy) {
+    if (p.swing <= 0) p.face = Math.atan2(dy,dx);
+    const speed = p.swing > 0 ? 42 : 92;
+    move(p,dx*speed*dt,dy*speed*dt,4);
+    p.step += dt*12;
+  } else {
+    p.step = 0;
+  }
+}
+
+const foes = {
+  skitter: { hp: 2, speed: 40, reach: 29, wind: .40, color: '#bfcb82', cooldown: .70 },
+  husk: { hp: 4, speed: 28, reach: 23, wind: .55, color: '#eca185', cooldown: .80 },
+  wisp: { hp: 3, speed: 29, reach: 85, wind: .65, color: '#c7a8fa', cooldown: 1.15 },
+  warden: { hp: 24, speed: 36, reach: 32, wind: .64, color: '#f3a97c', cooldown: .72 }
+};
+function spawn(kind,x,y,cool=.28) {
+  const spec = foes[kind];
+  if (!canStand(x,y,5)) {
+    for (const offset of [[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]]) {
+      if (!canStand(x+offset[0],y+offset[1],5)) continue;
+      x += offset[0];
+      y += offset[1];
+      break;
+    }
+  }
+  const enemy = { ...spec, maxHp: spec.hp, kind, x, y, cool, phase: 'recover', face: Math.PI/2,
+    flash: 0, jitter: rand(0,TAU), pattern: 0, attackStyle: 'sweep', windTotal: 0, tagged: false };
+  state.enemies.push(enemy);
+  flecks(x,y-4,11,spec.color,42);
+  return enemy;
+}
+function awaken(ward) {
+  const pressure = state.wards.filter(node => node.progress !== 'dormant').length;
+  const pack = [...ward.foes];
+  if (pressure > 0) pack.push(pressure > 1 ? 'husk' : 'skitter');
+  const positions = [[-20,10],[22,9],[0,-16],[7,26]];
+  ward.progress = 'active';
+  ward.group = pack.map((kind,i) => spawn(kind,ward.x+positions[i][0],ward.y+positions[i][1],.35+i*.19));
+  tone(149,111,.35,.055,'sine');
+}
+function kindle(ward) {
+  const p = state.player;
+  ward.progress = 'lit';
+  state.seals++;
+  state.score += 250;
+  let upgrade;
+  if (ward.element === 'briar') {
+    p.maxHp++;
+    p.hp++;
+    upgrade = 'Briar flame · +1 max life';
+  } else if (ward.element === 'bell') {
+    p.strength++;
+    upgrade = 'Bell flame · stronger sword';
+  } else {
+    p.reach += 6;
+    upgrade = 'Salt flame · wider reach';
+  }
+  p.hp = Math.min(p.maxHp,p.hp+2);
+  flecks(ward.x,ward.y-12,31,ward.tint,65);
+  notifyObjective(state.seals===3 ? upgrade+' · The beacon is open' : upgrade+' · Life restored');
+  refreshHud();
+  tone(330,392,.20,.045);
+  tone(494,659,.40,.046,'sine',.14);
+}
+
+function moveEnemy(enemy,angle,speed,dt) {
+  let dx = Math.cos(angle)*speed, dy = Math.sin(angle)*speed;
+  for (const other of state.enemies) {
+    if (other === enemy || other.hp <= 0) continue;
+    const distance = dist(other,enemy);
+    if (distance >= 13 || distance < .1) continue;
+    dx += (enemy.x-other.x)/distance*(13-distance)*3.2;
+    dy += (enemy.y-other.y)/distance*(13-distance)*3.2;
+  }
+  const oldX = enemy.x, oldY = enemy.y;
+  move(enemy,dx*dt,dy*dt,enemy.kind==='warden' ? 6 : 4);
+  if (Math.hypot(enemy.x-oldX,enemy.y-oldY) < speed*dt*.21) {
+    const around = angle + (enemy.jitter < Math.PI ? 1 : -1)*1.17;
+    move(enemy,Math.cos(around)*speed*dt,Math.sin(around)*speed*dt,4);
+  }
+}
+function bolt(x,y,angle,speed,color) {
+  state.bolts.push({x,y,angle,speed,color,life:2.3});
+}
+function beginWind(enemy, angle, pace, attackStyle) {
+  enemy.phase = 'wind';
+  enemy.face = angle;
+  enemy.attackStyle = attackStyle;
+  enemy.cool = enemy.windTotal = enemy.wind / pace;
+}
+function releaseAttack(enemy) {
+  const player = state.player;
+  enemy.phase = 'recover';
+  enemy.cool = enemy.cooldown;
+  const distance = dist(player,enemy), angle = heading(enemy,player);
+  if (enemy.kind === 'skitter') {
+    enemy.phase = 'lunge';
+    enemy.cool = .19;
+    enemy.tagged = false;
+  } else if (enemy.kind === 'wisp') {
+    bolt(enemy.x,enemy.y,enemy.face,81,enemy.color);
+    tone(390,195,.20,.022,'sine');
+  } else if (enemy.attackStyle === 'volley') {
+    const angry = enemy.hp <= enemy.maxHp*.5;
+    const count = angry ? 12 : 8;
+    for (let i=0;i<count;i++) bolt(enemy.x,enemy.y,enemy.face+i*TAU/count,angry ? 87 : 70,'#ffd18d');
+    state.marks.push({x:enemy.x,y:enemy.y,life:.26,total:.26,radius:22,color:enemy.color});
+    tone(220,90,.31,.055,'triangle');
+  } else if (enemy.attackStyle === 'ring') {
+    if (distance < 40) hurt(enemy);
+    state.marks.push({x:enemy.x,y:enemy.y,life:.32,total:.32,radius:40,color:enemy.color});
+    state.shake = 4;
+    tone(96,56,.25,.075);
+  } else {
+    const range = enemy.kind === 'warden' ? 34 : 26;
+    if (distance < range && angleGap(enemy.face,angle) < 1.13) hurt(enemy);
+    state.marks.push({x:enemy.x,y:enemy.y,life:.18,total:.18,radius:range,color:enemy.color,angle:enemy.face});
+    flecks(enemy.x+Math.cos(enemy.face)*15,enemy.y+Math.sin(enemy.face)*15,7,enemy.color,35);
+    tone(219,89,.15,.037);
+  }
+}
+function updateEnemy(enemy,dt) {
+  if (enemy.hp <= 0) return;
+  enemy.flash = Math.max(0,enemy.flash-dt);
+  enemy.cool -= dt;
+  const p = state.player;
+  if (enemy.phase === 'wind') {
+    if (enemy.cool <= 0) releaseAttack(enemy);
+    return;
+  }
+  if (enemy.phase === 'lunge') {
+    move(enemy,Math.cos(enemy.face)*132*dt,Math.sin(enemy.face)*132*dt,4);
+    if (dist(p,enemy) < 9 && !enemy.tagged) {
+      hurt(enemy);
+      enemy.tagged = true;
+    }
+    if (enemy.cool <= 0) {
+      enemy.phase = 'recover';
+      enemy.cool = enemy.cooldown;
+    }
+    return;
+  }
+  const distance = dist(p,enemy), angle = heading(enemy,p);
+  enemy.face = angle;
+  const pace = 1 + state.seals*.065 + state.elapsed*.0018;
+  if (enemy.kind === 'warden') {
+    const style = ['sweep','volley','ring'][enemy.pattern%3];
+    const reach = {sweep:32,volley:102,ring:47}[style];
+    if (enemy.cool <= 0 && distance <= reach) {
+      enemy.pattern++;
+      beginWind(enemy,angle,pace,style);
+      return;
+    }
+  } else if (enemy.cool <= 0 && distance < enemy.reach) {
+    beginWind(enemy,angle,pace,enemy.kind);
+    return;
+  }
+  if (enemy.kind === 'wisp' && distance < 40) moveEnemy(enemy,angle+Math.PI,enemy.speed*pace,dt);
+  else if (distance > (enemy.kind==='wisp' ? 53 : 14)) moveEnemy(enemy,angle,enemy.speed*pace,dt);
+}
+function updateBolts(dt) {
+  for (const b of state.bolts) {
+    b.x += Math.cos(b.angle)*b.speed*dt;
+    b.y += Math.sin(b.angle)*b.speed*dt;
+    b.life -= dt;
+    if (!isLand(b.x,b.y)) b.life = 0;
+    if (b.life > 0 && dist(b,state.player) < 7) {
+      hurt(b);
+      b.life = 0;
+      flecks(b.x,b.y,5,b.color,28);
+    }
+  }
+  state.bolts = state.bolts.filter(b => b.life > 0);
+}
+function flecks(x,y,count,color,speed) {
+  for (let i=0;i<count;i++) {
+    const angle = rand(0,TAU), strength = rand(speed*.28,speed), life = rand(.16,.59);
+    state.motes.push({x,y,dx:Math.cos(angle)*strength,dy:Math.sin(angle)*strength-12,life,total:life,color,
+      size:Math.random() < .22 ? 2 : 1});
+  }
+}
+function update(dt) {
+  state.elapsed = Math.min(ROUND_TIME,state.elapsed+dt);
+  if (state.elapsed >= ROUND_TIME) {
+    updateHud();
+    finish(false,'High tide covered the beacon.');
+    return;
+  }
+  state.toastTime = Math.max(0,state.toastTime-dt);
+  state.shake = Math.max(0,state.shake-dt*20);
+  state.flash = Math.max(0,state.flash-dt);
+  updatePlayer(dt);
+  for (const enemy of state.enemies) {
+    updateEnemy(enemy,dt);
+    if (state.mode !== 'play') return;
+  }
+  updateBolts(dt);
+  if (state.mode !== 'play') return;
+  state.enemies = state.enemies.filter(enemy => enemy.hp>0);
+  const p = state.player;
+  for (const ward of state.wards) {
+    if (ward.progress === 'dormant' && dist(p,ward)<34) awaken(ward);
+    if (ward.progress === 'active' && ward.group.every(enemy => enemy.hp<=0)) kindle(ward);
+  }
+  if (state.seals === 3 && !state.boss && dist(p,beacon)<25) {
+    state.boss = spawn('warden',beacon.x,beacon.y,.72);
+    state.shake = 4;
+    flecks(beacon.x,beacon.y,29,'#f3cb92',50);
+    notifyObjective('The drowned sentinel rises');
+    tone(79,62,.52,.09);
+  }
+  if (state.boss?.hp <= 0) {
+    finish(true);
+    return;
+  }
+  for (const m of state.motes) {
+    m.x += m.dx*dt;
+    m.y += m.dy*dt;
+    m.dy += 40*dt;
+    m.life -= dt;
+  }
+  for (const mark of state.marks) mark.life -= dt;
+  state.motes = state.motes.filter(m => m.life>0);
+  state.marks = state.marks.filter(mark => mark.life>0);
+  updateHud();
+}
+
+function reedTree(x,y,s) {
+  ellipse(draw,x+3,y+2,s*.84,s*.23,'#1c2d295b');
+  poly(draw,'#302e25',[[x-3,y+1],[x-1,y-9],[x-4,y-17],[x+1,y-17],[x+4,y-8],[x+3,y-1],[x+6,y+1]]);
+  line(draw,'#776954',1,x-2,y,x+1,y-10);
+  const top = y-s*1.05;
+  poly(draw,'#242f2a',[[x-s-2,top+2],[x-s*.73,top-8],[x-3,top-11],[x+s*.43,top-9],[x+s,top-5],
+    [x+s+2,top+3],[x+s*.6,top+6],[x-s*.3,top+7],[x-s,top+5]]);
+  poly(draw,'#405747',[[x-s,top],[x-s*.65,top-7],[x-2,top-10],[x+s*.38,top-9],[x+s*.84,top-5],
+    [x+s,top],[x+s*.4,top+2],[x-s*.37,top+3]]);
+  poly(draw,'#5c7354',[[x-s*.77,top-3],[x-s*.52,top-7],[x+1,top-8],[x+s*.41,top-7],
+    [x+s*.72,top-4],[x+s*.1,top-5],[x-s*.12,top-2]]);
+  for (let i=0;i<6;i++) {
+    const xx = x-s*.81+i*s*.31;
+    const offset = Math.sin(i*7+s)*2;
+    line(draw,i%2 ? '#425c47' : '#354b3c',1,xx,top+offset,xx-1,top+7+i%3);
+    fill(draw,'#71815a',xx,top-4+offset,2,1);
+  }
+}
+function prop([kind,x,y,s]) {
+  if (kind==='willow') {
+    reedTree(x,y,s);
+  } else if (kind==='stone') {
+    ellipse(draw,x+2,y+1,s+1,s*.43,'#23372d8d');
+    poly(draw,'#53655e',[[x-s,y],[x-s+1,y-3],[x-1,y-s],[x+s-2,y-s+2],[x+s,y],[x+1,y+2]]);
+    poly(draw,'#768376',[[x-s+1,y-3],[x-1,y-s],[x+s-2,y-s+2],[x+1,y-2]]);
+    fill(draw,'#90916c',x-2,y-s+1,3,1);
+  } else {
+    const height = kind==='arch' ? s+4 : s;
+    const width = kind==='arch' ? 15 : 6;
+    ellipse(draw,x+2,y+2,width*.68,3,'#26372d94');
+    fill(draw,'#465756',x-width*.5,y-height,width,height);
+    fill(draw,'#7a8270',x-width*.5-1,y-height,width+2,2);
+    fill(draw,'#616f64',x-width*.5,y-height+2,2,height-2);
+    fill(draw,'#364b43',x-width*.5-1,y-2,width+2,3);
+    if (kind==='arch') {
+      poly(draw,'#263c36',[[x-4,y+1],[x-4,y-height+8],[x,y-height+4],[x+4,y-height+8],[x+4,y+1]]);
+      line(draw,'#a69874',1,x-4,y-height+7,x,y-height+3);
+      line(draw,'#748373',1,x,y-height+3,x+4,y-height+7);
+    } else {
+      fill(draw,'#838979',x-2,y-height+4,2,3);
+    }
+  }
+}
+
+function runeCircle(x,y,r,color) {
+  for (let i=0;i<8;i++) {
+    const a = (i+.5)*TAU/8, b = (i+1.5)*TAU/8;
+    line(draw,color,1,x+Math.cos(a)*r,y+Math.sin(a)*r*.64,x+Math.cos(b)*r,y+Math.sin(b)*r*.64);
+  }
+}
+function plinth(x,y,tint,isLit,small) {
+  const radius = small ? 13 : 30;
+  ellipse(draw,x,y+1,radius+3,(radius+3)*.65,'#293f36');
+  ellipse(draw,x,y,radius,radius*.65,'#4d5e53');
+  runeCircle(x,y,radius-2,isLit ? tint : '#818d72');
+  runeCircle(x,y,radius-6,isLit ? '#d6c29880' : '#687b69');
+  for (let i=0;i<8;i++) {
+    const a = i*TAU/8;
+    const xx = x+Math.cos(a)*(radius-4), yy = y+Math.sin(a)*(radius-4)*.63;
+    fill(draw,isLit ? tint : '#a3a685',xx,yy,1,1);
+  }
+}
+function altar(ward,t) {
+  const {x,y,tint,progress} = ward;
+  plinth(x,y,tint,progress==='lit',true);
+  fill(draw,'#324743',x-5,y-6,10,6);
+  fill(draw,'#728274',x-4,y-9,8,3);
+  fill(draw,'#485e54',x-3,y-12,6,4);
+  const bob = Math.sin(t*3+x*.2)*1.6;
+  if (progress!=='active') {
+    if (progress==='lit') glow(draw,x,y-13,18,tint+'52');
+    diamond(draw,x,y-14+bob,progress==='lit' ? 6 : 4,tint);
+    fill(draw,'#fff0c4',x,y-15+bob,1,2);
+  }
+  if (progress==='dormant') {
+    draw.font = 'bold 7px monospace';
+    draw.textAlign = 'center';
+    const width = Math.ceil(draw.measureText(ward.name).width)+8;
+    fill(draw,'#1a2b26d7',x-width/2,y+12,width,10);
+    draw.fillStyle = tint;
+    draw.fillText(ward.name,x,y+19);
+  }
+}
+function centerBeacon(t) {
+  const {x,y} = beacon;
+  const ready = state.seals === 3;
+  const lit = state.mode === 'win';
+  plinth(x,y,'#e7be83',ready,false);
+  if (state.boss && !lit) return;
+  fill(draw,'#364b43',x-7,y-11,14,12);
+  fill(draw,'#718476',x-6,y-12,12,3);
+  poly(draw,'#263935',[[x-7,y-12],[x-5,y-17],[x+5,y-17],[x+7,y-12],[x,y-9]]);
+  fill(draw,'#8c947e',x-4,y-16,8,1);
+  if (ready) {
+    const pulse = (Math.sin(t*5)+1)*.5;
+    glow(draw,x,y-14,27,'#fac68177');
+    poly(draw,'#ffce87',[[x-4,y-13],[x-3,y-20],[x+1,y-22-pulse*7],[x+4,y-18],[x+5,y-13],[x,y-10]]);
+    diamond(draw,x,y-15,3,'#fff2bc');
+  }
+}
+function windup(enemy) {
+  if (enemy.phase!=='wind') return;
+  const {x,y,face,kind,attackStyle}=enemy;
+  const charge = 1-clamp(enemy.cool/enemy.windTotal,0,1);
+  if (attackStyle==='volley' || attackStyle==='ring') {
+    const radius = attackStyle==='ring' ? 40 : 17;
+    ellipse(draw,x,y,radius,radius,'#f58a6441');
+    ring(draw,x,y,radius,'#f9b280a8');
+    ring(draw,x,y,Math.max(2,charge*radius),'#ffcd91af');
+  } else if (kind==='wisp' || kind==='skitter') {
+    const length = kind==='wisp' ? 67 : 31;
+    const px=x+Math.cos(face)*length, py=y+Math.sin(face)*length;
+    draw.setLineDash([2,3]);
+    line(draw,kind==='wisp' ? '#e8b9ffb1' : '#eec88aaa',1,x,y,px,py);
+    draw.setLineDash([]);
+    diamond(draw,px,py,3,'#ffcd91b0');
+  } else {
+    const reach = kind==='warden' ? 34 : 26;
+    sector(draw,x,y,reach,face,1.13,'#e9896350');
+    draw.strokeStyle = '#ffc08daf';
+    draw.lineWidth = 1;
+    draw.beginPath();
+    draw.arc(x,y,reach,face-1.13,face+1.13);
+    draw.stroke();
+  }
+  diamond(draw,x,y-22,2+charge,'#ffe1a1');
+}
+
+function enemySprite(enemy,t) {
+  const {x,y,kind,flash,face}=enemy;
+  const hit = flash > .04;
+  ellipse(draw,x,y+1,kind==='warden' ? 12 : 7,3,'#142523aa');
+  if (kind==='skitter') {
+    const pulse = Math.sin(t*10+enemy.jitter);
+    poly(draw,hit?'#fff0c7':'#294132',[[x-8,y-1],[x-7,y-6],[x-3,y-10-pulse],[x+4,y-10-pulse],
+      [x+7,y-5],[x+8,y-1],[x+4,y+1],[x-4,y+1]]);
+    poly(draw,hit?'#fffef1':'#86a968',[[x-6,y-3],[x-5,y-6],[x-2,y-9-pulse],[x+2,y-9-pulse],[x+6,y-4],[x+4,y-2]]);
+    fill(draw,'#d7ce8a',x-4,y-7-pulse,3,1);
+    fill(draw,'#273c31',x-2+Math.cos(face)*2,y-4,5,2);
+    fill(draw,'#ffd9a1',x-2+Math.cos(face)*2,y-4,1,1);
+    fill(draw,'#ffd9a1',x+1+Math.cos(face)*2,y-4,1,1);
+  } else if (kind==='wisp') {
+    const lift = Math.sin(t*5+enemy.jitter)*2;
+    glow(draw,x,y-9+lift,12,'#d2a1ff47');
+    poly(draw,hit?'#fff2e4':'#8e78ac',[[x,y-19+lift],[x+4,y-15+lift],[x+5,y-8+lift],
+      [x+8,y-4+lift],[x-8,y-4+lift],[x-5,y-8+lift],[x-4,y-15+lift]]);
+    poly(draw,hit?'#fffdee':'#d0b7ef',[[x,y-17+lift],[x+2,y-12+lift],[x+4,y-6+lift],[x-4,y-6+lift],[x-3,y-12+lift]]);
+    fill(draw,'#534368',x-5,y-6+lift,10,2);
+    diamond(draw,x,y-3+lift,3,'#ffe3ba');
+  } else {
+    const large = kind==='warden';
+    const s = large ? 1.55 : 1;
+    const color = hit ? '#fff2d5' : large ? '#ad7c68' : '#a2947a';
+    const side = Math.cos(face) < 0 ? -1 : 1;
+    draw.save();
+    draw.translate(Math.round(x),Math.round(y));
+    draw.scale(s*side,s);
+    poly(draw,'#252f2d',[[-7,0],[-7,-9],[-5,-13],[-5,-16],[0,-18],[5,-16],[5,-13],[8,-9],[7,0],[1,-1],[-2,0]]);
+    fill(draw,'#3c4c47',-4,-5,3,5);
+    fill(draw,'#3c4c47',2,-5,3,5);
+    poly(draw,color,[[-7,-10],[-4,-12],[4,-12],[7,-10],[4,-4],[-4,-4]]);
+    fill(draw,'#555b4e',-2,-11,4,6);
+    poly(draw,color,[[-5,-12],[-5,-16],[0,-18],[4,-16],[5,-13],[1,-11]]);
+    fill(draw,'#3b3e35',0,-15,5,2);
+    fill(draw,large?'#ffe194':'#f7bc8d',2,-15,2,1);
+    if (large) {
+      poly(draw,'#e6be91',[[-5,-14],[-8,-19],[-7,-22],[-4,-17],[0,-16],[3,-17],[6,-22],[7,-18],[4,-14]]);
+      fill(draw,'#f1cb91',-1,-9,2,4);
+    }
+    line(draw,'#403d33',2,6,-7,9,-3);
+    line(draw,large?'#f0c38a':'#aaa48a',2,9,-3,12,-12);
+    draw.restore();
+  }
+  if (kind!=='warden' && enemy.hp<enemy.maxHp) {
+    fill(draw,'#21332c',x-7,y-19,14,2);
+    fill(draw,enemy.color,x-7,y-19,Math.ceil(14*enemy.hp/enemy.maxHp),1);
+  }
+}
+function playerSprite(p,t) {
+  const {x,y}=p;
+  const rolling = p.dodge>0, swing = p.swing>0;
+  const side = Math.cos(p.face) < -.12 ? -1 : 1;
+  const flicker = p.invulnerable>.23 && Math.floor(t*25)%2;
+  ellipse(draw,x,y+1,7,2.5,'#122520c6');
+  if (rolling) {
+    const offset = Math.sin(t*44)*3;
+    poly(draw,'#67533e',[[x-8,y-2],[x-6,y-8],[x,y-10],[x+7,y-6],[x+7,y-1],[x+1,y+1]]);
+    line(draw,'#ffdca1',2,x-4+offset,y-8,x+4+offset,y-3);
+    return;
+  }
+  draw.save();
+  draw.globalAlpha = flicker ? .53 : 1;
+  draw.translate(Math.round(x),Math.round(y));
+  draw.scale(side,1);
+  const step = Math.round(Math.sin(p.step)*1.5);
+  fill(draw,'#182c2a',-4,-3+step,3,4);
+  fill(draw,'#182c2a',2,-3-step,3,4);
+  fill(draw,'#b68e66',-4,step,3,1);
+  fill(draw,'#b68e66',2,-step,3,1);
+  poly(draw,'#263a32',[[-6,-2],[-5,-11],[-3,-13],[-1,-16],[3,-16],[6,-12],[6,-6],[5,-2]]);
+  poly(draw,'#ad6548',[[-6,-2],[-5,-10],[-3,-12],[4,-11],[5,-7],[4,-3],[-2,-4]]);
+  poly(draw,'#e3a767',[[-5,-3],[-4,-10],[-2,-11],[1,-9],[-1,-4]]);
+  fill(draw,'#fff0b4',-3,-10,2,1);
+  poly(draw,'#efc57f',[[-3,-10],[-2,-14],[1,-16],[4,-14],[5,-11],[2,-9]]);
+  fill(draw,'#f8daa0',-1,-14,4,1);
+  if (Math.sin(p.face)>-.52) {
+    fill(draw,'#614539',1,-12,4,3);
+    fill(draw,'#fde1b1',1,-12,3,2);
+    fill(draw,'#27362c',3,-12,1,1);
+  }
+  if (!swing) {
+    line(draw,'#372f29',2,4,-7,8,-5);
+    line(draw,'#c8d7c2',1,7,-5,12,-11);
+    fill(draw,'#fff0c0',11,-11,1,2);
+  }
+  draw.restore();
+
+  if (swing) {
+    const progress = 1-p.swing/.29;
+    const angle = p.swingAngle-1+progress*2;
+    const radius = p.reach*(.74+Math.sin(progress*Math.PI)*.22);
+    draw.lineWidth = 3;
+    draw.strokeStyle = progress>.73 ? '#f5c88b55' : '#ffda969d';
+    draw.beginPath();
+    draw.arc(x,y-4,radius,angle-.87,angle+.44);
+    draw.stroke();
+    draw.strokeStyle = '#fff5c8';
+    draw.lineWidth = 1;
+    draw.beginPath();
+    draw.arc(x,y-4,radius+1,angle-.38,angle+.42);
+    draw.stroke();
+    line(draw,'#f5e5bb',2,x+Math.cos(angle)*7,y-5+Math.sin(angle)*7,
+      x+Math.cos(angle)*17,y-5+Math.sin(angle)*17);
+  }
+  const width = Math.max(0,Math.round(12*(1-p.dodgeCool/.8)));
+  if (p.dodgeCool>0) {
+    fill(draw,'#243731',x-6,y+6,12,1);
+    fill(draw,'#c8d2a7',x-6,y+6,width,1);
+  }
+}
+
+function bossBar() {
+  if (!state.boss || state.boss.hp<=0) return;
+  const x = WIDTH*.5, y = 271;
+  draw.textAlign = 'center';
+  draw.font = 'bold 6px monospace';
+  draw.fillStyle = '#ffe0ab';
+  draw.fillText('DROWNED SENTINEL',x,y-3);
+  fill(draw,'#263b36',x-61,y,122,5);
+  fill(draw,'#855f56',x-60,y+1,120,3);
+  fill(draw,'#f3a17d',x-60,y+1,Math.ceil(120*state.boss.hp/state.boss.maxHp),3);
+  diamond(draw,x-61,y+2,3,'#d3ae83');
+  diamond(draw,x+61,y+2,3,'#d3ae83');
+}
+function render(t) {
+  const xOffset = state.shake ? Math.round(rand(-state.shake,state.shake)) : 0;
+  const yOffset = state.shake ? Math.round(rand(-state.shake,state.shake)*.72) : 0;
+  fill(draw,'#1a3032',0,0,WIDTH,HEIGHT);
+  draw.save();
+  draw.translate(xOffset,yOffset);
+  draw.drawImage(ground,0,0);
+  for (const ripple of ripples) {
+    const alpha = .14+Math.sin(t*1.1+ripple.phase)*.12;
+    draw.globalAlpha = alpha;
+    const x = ripple.x+Math.sin(t*.6+ripple.phase)*3;
+    fill(draw,'#88a99a',x,ripple.y,Math.ceil(ripple.w),1);
+  }
+  draw.globalAlpha = 1;
+  centerBeacon(t);
+  for (const ward of state.wards) altar(ward,t);
+  for (const enemy of state.enemies) windup(enemy);
+  for (const mark of state.marks) {
+    draw.globalAlpha = .8*mark.life/mark.total;
+    if (mark.angle===undefined) ring(draw,mark.x,mark.y,1+mark.radius*(1-mark.life/mark.total),mark.color,2);
+    else sector(draw,mark.x,mark.y,mark.radius,mark.angle,1.13,mark.color);
+  }
+  draw.globalAlpha = 1;
+  const objects = scenery.map(item => [item[2],() => prop(item)]);
+  for (const enemy of state.enemies) objects.push([enemy.y,() => enemySprite(enemy,t)]);
+  if (state.player.hp>0) objects.push([state.player.y,() => playerSprite(state.player,t)]);
+  objects.sort((a,b) => a[0]-b[0]);
+  for (const [,paint] of objects) paint();
+  for (const b of state.bolts) {
+    glow(draw,b.x,b.y-4,7,b.color+'60');
+    line(draw,b.color,1,b.x-Math.cos(b.angle)*7,b.y-4-Math.sin(b.angle)*7,b.x,b.y-4);
+    diamond(draw,b.x,b.y-4,3,b.color);
+    fill(draw,'#fff1ce',b.x,b.y-5,1,2);
+  }
+  for (const m of state.motes) {
+    draw.globalAlpha = Math.min(1,m.life/m.total*1.8);
+    fill(draw,m.color,m.x,m.y,m.size,m.size);
+  }
+  draw.globalAlpha = 1;
+  for (let i=0;i<16;i++) {
+    const x = 61+(i*73)%366+Math.sin(t*.57+i*2)*7;
+    const y = 40+(i*47)%208+Math.cos(t*.65+i)*5;
+    draw.globalAlpha = (Math.sin(t*1.7+i*1.3)+1)*.31;
+    fill(draw,'#ffdb90',x,y,1,1);
+  }
+  draw.globalAlpha = 1;
+  draw.restore();
+  const vignette = draw.createRadialGradient(243,144,109,240,144,266);
+  vignette.addColorStop(0,'#10192000');
+  vignette.addColorStop(1,'#0b1b22b0');
+  fill(draw,vignette,0,0,WIDTH,HEIGHT);
+  if (state.elapsed>ROUND_TIME-25) {
+    const tide = draw.createLinearGradient(0,HEIGHT*.7,0,HEIGHT);
+    tide.addColorStop(0,'#a1c6bb00');
+    tide.addColorStop(1,'#a1c6bb46');
+    fill(draw,tide,0,HEIGHT*.7,WIDTH,HEIGHT*.3);
+  }
+  if (state.flash>0) fill(draw,'rgba(227,99,80,'+state.flash*.82+')',0,0,WIDTH,HEIGHT);
+  bossBar();
+  screen.drawImage(scene,0,0,canvas.width,canvas.height);
+}
+
+const gameKeys = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD',
+  'KeyJ','ShiftLeft','ShiftRight','KeyK','KeyR','Escape']);
+window.addEventListener('keydown',event => {
+  if (gameKeys.has(event.code)) event.preventDefault();
+  if (event.code==='Escape' && state.mode==='play') {
+    pause();
+    return;
+  }
+  if (event.code==='KeyR' && !event.repeat && state.mode!=='ready') {
+    start();
+    return;
+  }
+  if (state.mode!=='play') {
+    if (!event.repeat && event.code==='Space') {
+      if (state.mode==='pause') resume();
+      else start();
+    }
+    return;
+  }
+  held.add(event.code);
+  if (!event.repeat && ['ShiftLeft','ShiftRight','KeyK'].includes(event.code)) dodge();
+});
+window.addEventListener('keyup',event => held.delete(event.code));
+window.addEventListener('blur',pause);
+document.addEventListener('visibilitychange',() => { if (document.hidden) pause(); });
+$('action').addEventListener('click',() => state.mode==='pause' ? resume() : start());
+canvas.addEventListener('pointerdown',event => {
+  if (event.button!==0 || state.mode!=='play') return;
+  const bounds = canvas.getBoundingClientRect();
+  const aim = {x:(event.clientX-bounds.left)*WIDTH/bounds.width,y:(event.clientY-bounds.top)*HEIGHT/bounds.height};
+  strike(heading(state.player,aim));
+});
+function resize() {
+  const bounds = canvas.getBoundingClientRect(), scale = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1,Math.round(bounds.width*scale));
+  canvas.height = Math.max(1,Math.round(bounds.height*scale));
+  screen.imageSmoothingEnabled = false;
+}
+function frame(time) {
+  const dt = before ? Math.min(.05,(time-before)/1000) : 0;
+  before = time;
+  if (state.mode!=='pause') paintTime += dt;
+  if (state.mode==='play') update(dt);
+  render(paintTime);
+  requestAnimationFrame(frame);
+}
+
+makeMap();
+reset('ready');
+resize();
+window.addEventListener('resize',resize);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

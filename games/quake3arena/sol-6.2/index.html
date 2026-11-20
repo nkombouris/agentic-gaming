@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b161b">
+  <title>Afterlight Relay</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #edf3ec;
+      --muted: #aabbb6;
+      --mint: #9ef3d3;
+      --orange: #ffa458;
+      --line: rgba(201, 236, 223, .25);
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden }
+    body { background: #0b161b; color: var(--ink); font: 16px/1.5 system-ui, sans-serif }
+    button { color: inherit; font: inherit }
+    [hidden] { display: none !important }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; outline: none }
+    #damage, #shade { position: fixed; inset: 0; pointer-events: none }
+    #shade { background: radial-gradient(ellipse at 50% 44%, transparent 46%, rgba(3, 9, 13, .65) 100%) }
+    #damage { background: radial-gradient(ellipse at center, transparent 32%, #ff4429 140%); opacity: 0 }
+    #screen {
+      position: fixed; inset: 0; display: grid; align-items: center; overflow: auto;
+      background: linear-gradient(90deg, #091418 0%, rgba(9, 20, 24, .98) 25%, rgba(9, 20, 24, .8) 40%, transparent 78%);
+    }
+    #screen[data-state="pause"], #screen[data-state="end"], #screen[data-state="error"] {
+      background: linear-gradient(90deg, #091418 0%, rgba(9, 20, 24, .85) 49%, rgba(9, 20, 24, .38) 100%);
+    }
+    .brief { padding: 42px 0 42px clamp(28px, 7vw, 115px); max-width: min(680px, 100vw - 28px) }
+    .eyebrow, .label, kbd, .control, #start, #notice, #feedback {
+      font-family: var(--mono); text-transform: uppercase; font-weight: 700; letter-spacing: .12em;
+    }
+    .eyebrow { display: flex; align-items: center; gap: 14px; color: var(--orange); font-size: 12px }
+    .eyebrow::before {
+      content: ""; height: 16px; width: 25px; background: currentColor;
+      clip-path: polygon(13% 0, 52% 0, 39% 28%, 23% 28%, 11% 71%, 27% 71%, 20% 100%, 0 100%, 0 44%, 13% 44%, 13% 0, 68% 0, 100% 0, 100% 51%, 87% 51%, 87% 100%, 47% 100%, 59% 71%, 77% 71%, 89% 28%, 57% 28%, 68% 0);
+    }
+    h1 {
+      font-size: clamp(64px, 8.1vw, 122px); font-weight: 900; line-height: .84; letter-spacing: -.085em;
+      margin: 25px 0 26px;
+    }
+    h1 span { display: block; color: var(--mint) }
+    #screen[data-state]:not([data-state="ready"]) h1 { font-size: clamp(47px, 6.8vw, 94px); line-height: .94 }
+    #summary { max-width: 360px; color: #c4d5ce; margin: 0 0 26px; font-size: 16px; line-height: 1.6 }
+    .bindings {
+      margin: 0 0 28px; padding-block: 15px; border-block: 1px solid var(--line);
+      display: grid; grid-template-columns: auto auto; max-width: 385px; gap: 10px 20px;
+    }
+    .control { display: flex; align-items: center; gap: 9px; font-size: 10px; color: var(--muted); white-space: nowrap }
+    kbd {
+      font-size: 10px; line-height: 1.5; letter-spacing: .06em; min-width: 51px; text-align: center;
+      border: 1px solid var(--line); padding: 4px 6px; color: var(--ink); background: rgba(156, 247, 218, .07);
+    }
+    #start {
+      border: 0; padding: 0 20px; height: 51px; min-width: 215px; cursor: pointer; font-size: 12px;
+      display: inline-flex; align-items: center; justify-content: space-between; gap: 30px;
+      background: var(--mint); color: #10221f; clip-path: polygon(0 0, 100% 0, 100% 76%, 94% 100%, 0 100%);
+      transition: background .15s;
+    }
+    #start::after { content: "↗"; font-size: 18px; line-height: 1 }
+    #start:hover, #start:focus-visible { background: #d4ffe7 }
+    #start:focus-visible { box-shadow: inset 0 0 0 2px #10221f }
+    #results { display: flex; gap: 36px; margin: 0 0 26px }
+    #results strong { display: block; margin-top: 3px; font: 800 26px/1 var(--mono) }
+    #hud { position: fixed; inset: 0; pointer-events: none; font-variant-numeric: tabular-nums }
+    .label { color: var(--muted); font-size: 10px; line-height: 1.2; white-space: nowrap }
+    .top, .bottom { position: absolute; left: clamp(16px, 3vw, 44px); right: clamp(16px, 3vw, 44px); display: flex; justify-content: space-between }
+    .top { top: clamp(16px, 3.6vh, 34px); align-items: start }
+    .bottom { bottom: clamp(16px, 4.5vh, 40px); align-items: end }
+    .readout { background: rgba(7, 19, 23, .77); border: 1px solid var(--line); padding: 12px 16px; box-shadow: inset 0 2px 0 rgba(160, 235, 217, .18) }
+    .clock { text-align: center; position: absolute; left: 50%; transform: translateX(-50%); min-width: 151px }
+    #time { display: block; color: var(--ink); font: 750 31px/.96 var(--mono); margin-top: 5px; letter-spacing: -.055em }
+    #phase { color: var(--orange); margin-top: 7px }
+    .score { min-width: 113px }
+    .score strong, .integrity strong { color: var(--mint); font: bold 32px/1.1 var(--mono); letter-spacing: -.065em }
+    .score .label, .integrity .label { display: block; margin-bottom: 4px }
+    .score small { font: 700 10px var(--mono); display: block; color: var(--muted); margin-top: 6px; text-transform: uppercase }
+    .radar-wrap { background: rgba(7, 19, 23, .72); border: 1px solid var(--line); padding: 4px 4px 8px; text-align: center }
+    #radar { display: block; width: 102px; height: 102px }
+    .integrity { width: min(230px, 31vw) }
+    .readout-head { display: flex; justify-content: space-between; gap: 10px; align-items: end; margin-bottom: 8px }
+    .meter { height: 6px; overflow: hidden; background: rgba(148, 200, 192, .23) }
+    .meter b { display: block; width: 100%; height: 100%; background: var(--mint); box-shadow: 0 0 8px var(--mint) }
+    .integrity[data-low="true"] #health, .integrity[data-low="true"] .meter b { color: var(--orange); background-color: var(--orange) }
+    .integrity[data-low="true"] #health { background: transparent }
+    .weapon { width: min(188px, 30vw) }
+    .weapon .readout-head { align-items: center; margin-bottom: 9px }
+    #pulse { font: 700 10px var(--mono); color: var(--mint) }
+    .weapon .meter { height: 3px }
+    #reticle {
+      position: absolute; top: 50%; left: 50%; translate: -50% -50%; width: 26px; height: 26px;
+      background:
+        linear-gradient(currentColor, currentColor) center 1px / 2px 6px no-repeat,
+        linear-gradient(currentColor, currentColor) center 19px / 2px 6px no-repeat,
+        linear-gradient(currentColor, currentColor) 1px center / 6px 2px no-repeat,
+        linear-gradient(currentColor, currentColor) 19px center / 6px 2px no-repeat,
+        radial-gradient(circle, currentColor 1px, transparent 1.8px) center / 6px 6px no-repeat;
+      color: #e1fff5; filter: drop-shadow(0 1px 2px #061515);
+    }
+    #reticle[data-hit="true"] { transform: rotate(45deg); color: var(--orange) }
+    #feedback, #notice {
+      position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; text-align: center;
+      color: var(--mint); text-shadow: 0 2px 6px #030b0d; font-size: 11px;
+    }
+    #feedback { top: calc(50% + 33px) }
+    #notice { bottom: 6.5vh; color: var(--muted) }
+    @media (max-width: 620px) {
+      #screen { background: linear-gradient(90deg, rgba(9, 20, 24, .98), rgba(9, 20, 24, .78)) }
+      h1 { font-size: clamp(48px, 13vw, 80px) }
+      .radar-wrap { display: none }
+      .clock { left: auto; right: 0; transform: none }
+      #notice { bottom: 16vh; white-space: normal; width: 90% }
+    }
+    @media (max-height: 520px) {
+      .brief { padding-block: 20px }
+      h1 { font-size: 63px; margin: 12px 0 }
+      .bindings, #summary { margin-bottom: 14px }
+    }
+  </style>
+</head>
+<body>
+<canvas id="scene" tabindex="-1" aria-label="3D arena"></canvas>
+<div id="shade"></div>
+<div id="damage"></div>
+<div id="hud" hidden>
+  <div class="top">
+    <div class="readout score">
+      <span class="label">Frags</span><strong id="frags">00</strong>
+      <small>Best <span id="best">00</span></small>
+    </div>
+    <div class="readout clock">
+      <div class="label">Extraction in</div><strong id="time">01:30</strong>
+      <div class="label" id="phase">Breach 01</div>
+    </div>
+    <div class="radar-wrap">
+      <canvas id="radar" width="204" height="204"></canvas>
+      <div class="label">Proximity</div>
+    </div>
+  </div>
+  <div id="reticle"></div>
+  <div id="feedback"></div>
+  <div id="notice"></div>
+  <div class="bottom">
+    <div class="readout integrity" id="integrity">
+      <div class="readout-head"><span class="label">Integrity</span><strong id="health">100</strong></div>
+      <div class="meter"><b id="health-meter"></b></div>
+    </div>
+    <div class="readout weapon">
+      <div class="readout-head"><span class="label">Arc pulse</span><span id="pulse">Ready</span></div>
+      <div class="meter"><b id="pulse-meter"></b></div>
+    </div>
+  </div>
+</div>
+<div id="screen" data-state="ready">
+  <main class="brief" aria-labelledby="headline">
+    <div class="eyebrow" id="eyebrow">Survive the breach</div>
+    <h1 id="headline">Afterlight<span>Relay</span></h1>
+    <p id="summary">A relay station overrun by drones. Hold the chamber for 90 seconds until extraction.</p>
+    <div class="bindings" id="bindings">
+      <div class="control"><kbd>W A S D</kbd> Move</div>
+      <div class="control"><kbd>Mouse</kbd> Aim</div>
+      <div class="control"><kbd>Space</kbd> Jump</div>
+      <div class="control"><kbd>Left</kbd> Fire</div>
+      <div class="control"><kbd>R</kbd> Restart</div>
+      <div class="control"><kbd>Right</kbd> Arc pulse</div>
+    </div>
+    <div id="results" hidden>
+      <div><div class="label">Frags</div><strong id="result-frags">00</strong></div>
+      <div><div class="label">Best</div><strong id="result-best">00</strong></div>
+      <div><div class="label">Time held</div><strong id="result-time">00:00</strong></div>
+    </div>
+    <button id="start" type="button">Enter arena</button>
+  </main>
+</div>
+<script>
+(() => {
+  "use strict";
+  const byId = id => document.getElementById(id);
+  const canvas = byId("scene");
+  const screen = byId("screen");
+  const startButton = byId("start");
+  const hud = byId("hud");
+  const radar = byId("radar").getContext("2d");
+  const gl = canvas.getContext("webgl", { alpha: false, antialias: true });
+  const TWO_PI = Math.PI * 2;
+  const ROUND = 90;
+  const PULSE_TIME = 3.25;
+  const WORLD_FOG = [0.046, 0.077, 0.102];
+  const MINT = [0.34, 1.0, 0.76];
+  const GOLD = [1.0, 0.46, 0.17];
+  const RED = [1.0, 0.23, 0.17];
+  const STEEL = [0.24, 0.35, 0.39];
+  const GRAPHITE = [0.10, 0.16, 0.19];
+  const WHITE = [0.84, 0.94, 0.88];
+  const UP = [0, 1, 0];
+  const ORIGIN = [0, 0, 0];
+
+  function failed(message) {
+    screen.dataset.state = "error";
+    byId("eyebrow").textContent = "Display unavailable";
+    byId("headline").textContent = "Afterlight Relay";
+    byId("summary").textContent = message;
+    byId("bindings").hidden = true;
+    startButton.hidden = true;
+  }
+
+  if (!gl) {
+    failed("Afterlight Relay requires WebGL. Open this file in a desktop browser with hardware acceleration enabled.");
+    return;
+  }
+
+  const vertex = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec4 aColor;
+    attribute float aEmission;
+    uniform mat4 uProjection;
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    varying vec4 vColor;
+    varying float vEmission;
+    void main() {
+      vPosition = aPosition;
+      vNormal = aNormal;
+      vColor = aColor;
+      vEmission = aEmission;
+      gl_Position = uProjection * vec4(aPosition, 1.0);
+    }
+  `;
+  const fragment = `
+    precision mediump float;
+    uniform vec3 uEye;
+    uniform vec3 uFog;
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    varying vec4 vColor;
+    varying float vEmission;
+    void main() {
+      vec3 normal = normalize(vNormal);
+      float key = max(dot(normal, vec3(-0.38, 0.86, 0.34)), 0.0);
+      float edge = max(dot(normal, vec3(0.6, 0.34, -0.72)), 0.0);
+      vec3 light = vec3(0.38, 0.45, 0.51) + key * vec3(0.57, 0.57, 0.49) + edge * vec3(0.2, 0.24, 0.23);
+      vec3 toCore = vec3(0.0, 5.8, -5.0) - vPosition;
+      float warm = max(dot(normal, normalize(toCore + vec3(0.01))), 0.0) / (1.0 + 0.045 * dot(toCore, toCore));
+      light += warm * vec3(0.62, 0.23, 0.08);
+      vec3 color = mix(vColor.rgb * light, vColor.rgb * 1.13, vEmission);
+      float haze = smoothstep(20.0, 95.0, distance(vPosition, uEye)) * (0.75 - vEmission * 0.24);
+      gl_FragColor = vec4(mix(color, uFog, haze), vColor.a);
+    }
+  `;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  const vertexShader = compile(gl.VERTEX_SHADER, vertex);
+  const fragmentShader = compile(gl.FRAGMENT_SHADER, fragment);
+  if (!vertexShader || !fragmentShader) {
+    failed("The arena renderer could not start. Try another desktop browser or update your graphics driver.");
+    return;
+  }
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(program));
+    failed("The arena renderer could not start. Try another desktop browser or update your graphics driver.");
+    return;
+  }
+  gl.useProgram(program);
+  gl.enable(gl.DEPTH_TEST);
+  gl.clearColor(...WORLD_FOG, 1);
+  const attribs = [
+    [gl.getAttribLocation(program, "aPosition"), 3, 0],
+    [gl.getAttribLocation(program, "aNormal"), 3, 12],
+    [gl.getAttribLocation(program, "aColor"), 4, 24],
+    [gl.getAttribLocation(program, "aEmission"), 1, 40]
+  ];
+  const projectionLocation = gl.getUniformLocation(program, "uProjection");
+  const eyeLocation = gl.getUniformLocation(program, "uEye");
+  gl.uniform3fv(gl.getUniformLocation(program, "uFog"), WORLD_FOG);
+  for (const [location] of attribs) gl.enableVertexAttribArray(location);
+
+  const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const subtract = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const unit = a => scale(a, 1 / (Math.hypot(...a) || 1));
+  const blend = (a, b, t) => a.map((value, i) => value + (b[i] - value) * t);
+  const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+
+  function perspective(fov, aspect, near, far) {
+    const f = 1 / Math.tan(fov / 2);
+    return new Float32Array([
+      f / aspect, 0, 0, 0, 0, f, 0, 0,
+      0, 0, (far + near) / (near - far), -1,
+      0, 0, 2 * far * near / (near - far), 0
+    ]);
+  }
+  function cameraMatrix(eye, forward, right, up) {
+    const back = scale(forward, -1);
+    return [
+      right[0], up[0], back[0], 0, right[1], up[1], back[1], 0, right[2], up[2], back[2], 0,
+      -dot(right, eye), -dot(up, eye), -dot(back, eye), 1
+    ];
+  }
+  function product(a, b) {
+    const result = new Float32Array(16);
+    for (let col = 0; col < 4; col++) {
+      for (let row = 0; row < 4; row++) {
+        result[col * 4 + row] = a[row] * b[col * 4] + a[4 + row] * b[col * 4 + 1] +
+          a[8 + row] * b[col * 4 + 2] + a[12 + row] * b[col * 4 + 3];
+      }
+    }
+    return result;
+  }
+
+  class Mesh {
+    constructor(size = 65536) {
+      this.data = new Float32Array(size);
+      this.count = 0;
+    }
+    push(p, n, c, glow, alpha) {
+      if (this.count + 11 > this.data.length) {
+        const expanded = new Float32Array(this.data.length * 2);
+        expanded.set(this.data);
+        this.data = expanded;
+      }
+      let i = this.count;
+      const out = this.data;
+      out[i++] = p[0]; out[i++] = p[1]; out[i++] = p[2];
+      out[i++] = n[0]; out[i++] = n[1]; out[i++] = n[2];
+      out[i++] = c[0]; out[i++] = c[1]; out[i++] = c[2];
+      out[i++] = alpha; out[i++] = glow;
+      this.count = i;
+    }
+    triangle(a, b, c, color, glow = 0, alpha = 1) {
+      const n = unit(cross(subtract(b, a), subtract(c, a)));
+      this.push(a, n, color, glow, alpha);
+      this.push(b, n, color, glow, alpha);
+      this.push(c, n, color, glow, alpha);
+    }
+    quad(a, b, c, d, color, glow = 0, alpha = 1) {
+      this.triangle(a, b, c, color, glow, alpha);
+      this.triangle(a, c, d, color, glow, alpha);
+    }
+    vertices() { return this.data.subarray(0, this.count); }
+    clear() { this.count = 0; }
+  }
+
+  function place(x, y, z, localX, localY, localZ, yaw) {
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    return [x + localX * c - localZ * s, y + localY, z + localX * s + localZ * c];
+  }
+  const BOX_FACES = [[0, 3, 2, 1], [4, 5, 6, 7], [0, 4, 7, 3], [1, 2, 6, 5], [3, 7, 6, 2], [0, 1, 5, 4]];
+  const BOX_CORNERS = [[-1,-1,-1], [1,-1,-1], [1,1,-1], [-1,1,-1], [-1,-1,1], [1,-1,1], [1,1,1], [-1,1,1]];
+  function box(mesh, x, y, z, w, h, d, color, yaw = 0, glow = 0) {
+    const points = BOX_CORNERS.map(([a, b, c]) => place(x, y, z, a*w/2, b*h/2, c*d/2, yaw));
+    for (const [a, b, c, d] of BOX_FACES) mesh.quad(points[a], points[b], points[c], points[d], color, glow);
+  }
+  function prism(mesh, x, z, base, top, r0, r1, sides, rotation, color, glow = 0, caps = true) {
+    const step = TWO_PI / sides;
+    for (let i = 0; i < sides; i++) {
+      const a = rotation + i * step;
+      const b = a + step;
+      const lowA = [x + r0 * Math.cos(a), base, z + r0 * Math.sin(a)];
+      const lowB = [x + r0 * Math.cos(b), base, z + r0 * Math.sin(b)];
+      const highA = [x + r1 * Math.cos(a), top, z + r1 * Math.sin(a)];
+      const highB = [x + r1 * Math.cos(b), top, z + r1 * Math.sin(b)];
+      mesh.quad(lowA, highA, highB, lowB, color, glow);
+      if (caps) {
+        mesh.triangle([x, top, z], highB, highA, color, glow);
+        mesh.triangle([x, base, z], lowA, lowB, color, glow);
+      }
+    }
+  }
+  function band(mesh, x, z, y, outer, inner, sides, rotation, color, glow = 0, alpha = 1) {
+    for (let i = 0; i < sides; i++) {
+      const a = rotation + i * TWO_PI / sides;
+      const b = rotation + (i + 1) * TWO_PI / sides;
+      const point = (r, angle) => [x + r * Math.cos(angle), y, z + r * Math.sin(angle)];
+      mesh.quad(point(inner, a), point(inner, b), point(outer, b), point(outer, a), color, glow, alpha);
+    }
+  }
+  function crystal(mesh, x, y, z, rx, ry, rz, rotation, color, glow = 0) {
+    const points = [[rx,0], [0,rz], [-rx,0], [0,-rz]].map(([a,b]) => place(x, y, z, a, 0, b, rotation));
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      mesh.triangle([x, y+ry, z], points[j], points[i], color, glow);
+      mesh.triangle([x, y-ry, z], points[i], points[j], color, glow);
+    }
+  }
+  function rod(mesh, a, b, width, color, glow = 0) {
+    const along = unit(subtract(b, a));
+    const side = scale(unit(cross(along, Math.abs(along[1]) > .94 ? [1,0,0] : UP)), width / 2);
+    const above = cross(along, side);
+    const ends = [add(side, above), subtract(side, above), scale(add(side, above), -1), subtract(above, side)];
+    for (let i = 0; i < 4; i++) {
+      const j = (i+1) % 4;
+      mesh.quad(add(a, ends[i]), add(b, ends[i]), add(b, ends[j]), add(a, ends[j]), color, glow);
+    }
+  }
+  function halo(mesh, center, radius, right, up, color, alpha) {
+    const n = cross(right, up);
+    for (let i = 0; i < 12; i++) {
+      const a = i * TWO_PI / 12;
+      const b = (i + 1) * TWO_PI / 12;
+      const point = angle => add(center, add(scale(right, radius * Math.cos(angle)), scale(up, radius * Math.sin(angle))));
+      mesh.push(center, n, color, 1, alpha);
+      mesh.push(point(a), n, color, 1, 0);
+      mesh.push(point(b), n, color, 1, 0);
+    }
+  }
+
+  const staticMesh = new Mesh(262144);
+  const dynamicMesh = new Mesh();
+  const glowMesh = new Mesh();
+  const gunMesh = new Mesh(16384);
+  const staticBuffer = gl.createBuffer();
+  const dynamicBuffer = gl.createBuffer();
+  const glowBuffer = gl.createBuffer();
+  const gunBuffer = gl.createBuffer();
+  const solids = [];
+  const pads = [[-18, 17], [18, 17], [-20, -18], [20, -18]];
+  const cells = [[-25, 9], [25, 9], [0, -18]].map(([x, z]) => ({ x, z, timer: 0 }));
+  const gates = [[-20,-25], [0,-25], [20,-25], [-29,-10], [29,-10], [-28,16], [28,16], [-13,25], [13,25]];
+  const core = { x: 0, z: -5 };
+  const bounds = { x: 31.3, z: 27.25 };
+
+  function solid(x, z, w, h, d) {
+    solids.push({ min: [x - w/2, 0, z - d/2], max: [x + w/2, h, z + d/2] });
+  }
+
+  function buildArena() {
+    const m = staticMesh;
+    const rim = [0.31, 0.43, 0.44];
+    const copper = [0.59, 0.26, 0.125];
+    box(m, 0, -.35, 0, 65, .70, 57, [0.17, 0.24, 0.26]);
+    for (let x = -28; x <= 28; x += 4) {
+      box(m, x, .003, 0, .044, .004, 55, [0.29, 0.38, 0.39]);
+    }
+    for (let z = -24; z <= 24; z += 4) {
+      box(m, 0, .004, z, 63, .004, .045, [0.29, 0.38, 0.39]);
+    }
+    for (const sign of [-1, 1]) {
+      const x = sign * 31.8, z = sign * 27.75;
+      box(m, x, 4.8, 0, 1, 9.6, 56.8, GRAPHITE);
+      box(m, 0, 4.8, z, 65, 9.6, 1, GRAPHITE);
+      solid(x, 0, 1, 9.6, 57);
+      solid(0, z, 65, 9.6, 1);
+      for (let p = -24; p <= 24; p += 8) {
+        box(m, x - sign*.13, 5.2, p, 1.3, 8.9, 7.7, p % 3 ? [0.18, 0.26, 0.30] : STEEL);
+        box(m, x - sign*.82, 6.7, p, .23, 4.8, .8, GRAPHITE);
+        box(m, x - sign*.95, 7.6, p, .06, 2.7, .19, p % 3 ? MINT : GOLD, 0, .83);
+        rod(m, [x-sign*.9,2.4,p-3.5], [x-sign*.9,5.4,p], .20, rim);
+        rod(m, [x-sign*.9,5.4,p], [x-sign*.9,2.4,p+3.5], .20, rim);
+      }
+      for (let p = -28; p <= 28; p += 8) {
+        box(m, p, 5.2, z - sign*.13, 7.7, 8.9, 1.3, p % 3 ? [0.20, 0.29, 0.33] : STEEL);
+        box(m, p-3.5, 4.9, z - sign*.93, .60, 8.5, .61, GRAPHITE);
+        box(m, p-3.5, 7.2, z - sign*1.25, .23, 2.9, .06, p % 3 ? MINT : GOLD, 0, .83);
+        box(m, p+.3, 5.7, z - sign*.88, 5.4, 2.0, .25, GRAPHITE);
+        for (let tread = 0; tread < 3; tread++) {
+          box(m, p+.3, 5.0 + .6*tread, z - sign*1.04, 4.9, .09, .04, STEEL);
+        }
+      }
+      box(m, x-sign*.55, .63, 0, .30, .18, 56, GOLD, 0, .83);
+      box(m, 0, .63, z-sign*.55, 64, .18, .30, GOLD, 0, .83);
+      box(m, x-sign*.66, 9.8, 0, .8, .47, 57, rim);
+      box(m, 0, 9.8, z-sign*.65, 65, .47, .8, rim);
+      box(m, x-sign*3.65, .014, 0, .15, .018, 53, copper, 0, .36);
+      box(m, 0, .014, z-sign*3.65, 60, .018, .15, copper, 0, .36);
+      for (let mark = -22; mark <= 22; mark += 2) {
+        box(m, x-sign*3.2, .015, mark, .79, .02, .095, GOLD, 0, .41);
+      }
+      for (const offset of [-1, 1]) {
+        const tx = sign * 26, tz = offset * 22;
+        rod(m, [tx, 0, tz], [sign*31, 12, tz], .51, rim);
+        rod(m, [sign*31, 12, tz], [sign*22, 14, tz], .53, STEEL);
+        rod(m, [sign*31, 11.5, tz+.32], [sign*23, 13.23, tz+.32], .085, GOLD, .9);
+      }
+    }
+    for (const [x, z] of gates) {
+      const side = Math.abs(x) > 26;
+      const yaw = side ? Math.PI / 2 : 0;
+      const toward = side ? Math.sign(x) : Math.sign(z);
+      const at = (a, h, b) => place(x, 0, z, a, h, b, yaw);
+      const back = side ? -toward : toward;
+      box(m, ...at(0, 2.2, back*.28), 4.5, 4.4, .55, GRAPHITE, yaw);
+      box(m, ...at(0, 3.05, -back*.02), 3.1, .17, .64, GOLD, yaw, .88);
+      for (const s of [-1,1]) {
+        rod(m, at(s*1.75,.05,0), at(s*1.75,2.48,0), .42, STEEL);
+        rod(m, at(s*1.75,2.48,0), at(s*1.34,3.10,0), .38, STEEL);
+        box(m, ...at(s*1.48, 1.45, -back*.19), .07, 2.25, .11, RED, yaw, .94);
+      }
+    }
+    const covers = [
+      [-15,6,5.6,3.8,6.0,MINT], [15,6,5.6,3.8,6.0,MINT],
+      [-13,-13,6.2,3.1,4.1,GOLD], [13,-13,6.2,3.1,4.1,GOLD],
+      [-23,-2,3.5,4.8,7.5,GOLD], [23,-2,3.5,4.8,7.5,GOLD],
+      [1,13,7.6,1.24,3.3,MINT]
+    ];
+    for (const [x,z,w,h,d,light] of covers) {
+      solid(x,z,w,h,d);
+      box(m,x,h/2,z,w,h,d,STEEL);
+      box(m,x,.28,z,w+.14,.51,d+.14,GRAPHITE);
+      box(m,x,h-.12,z,w+.12,.23,d+.12,rim);
+      for (const s of [-1,1]) {
+        box(m,x+s*w*.44,h/2,z,.28,h+.035,d+.16,GRAPHITE);
+        box(m,x,h*.39,z+s*(d/2+.005),w*.77,h*.44,.12,GRAPHITE);
+        box(m,x,h*.68,z+s*(d/2+.013),w*.70,.084,.18,light,0,.92);
+        box(m,x+s*(w/2+.01),h*.68,z,.18,.084,d*.66,light,0,.92);
+        for (let i = -2; i <= 2; i++) {
+          box(m,x+i*(w/7),h*.4,z+s*(d/2+.11),w*.043,h*.35,.095,rim,0,.30);
+        }
+      }
+    }
+    solid(core.x,core.z,7.3,8.25,7.3);
+    prism(m,core.x,core.z,0,.17,6.8,6.55,12,Math.PI/12,GRAPHITE);
+    prism(m,core.x,core.z,.17,.46,6.30,5.99,12,Math.PI/12,STEEL);
+    prism(m,core.x,core.z,.47,1.52,5.65,4.62,12,Math.PI/12,GRAPHITE);
+    prism(m,core.x,core.z,1.52,1.63,4.62,4.62,12,Math.PI/12,GOLD,.94);
+    prism(m,core.x,core.z,1.63,2.0,4.62,4.32,12,Math.PI/12,rim);
+    band(m,core.x,core.z,.022,7.34,7.13,48,0,GOLD,.72);
+    band(m,core.x,core.z,.023,8.06,8,48,0,STEEL,.55);
+    for (let j = 0; j < 8; j++) {
+      const angle = j * TWO_PI / 8 + Math.PI / 8;
+      const base = [core.x + 4.75*Math.cos(angle), 1.15, core.z + 4.75*Math.sin(angle)];
+      const top = [core.x + 3.67*Math.cos(angle), 8.1, core.z + 3.67*Math.sin(angle)];
+      rod(m, base, top, .44, STEEL);
+      rod(m, add(base,[.01,.36,0]), add(top,[.01,-.35,0]), .12, [0.70,0.40,0.24], .7);
+      rod(m, top, [core.x + 2.9*Math.cos(angle), 9.23, core.z + 2.9*Math.sin(angle)], .33, STEEL);
+    }
+    prism(m,core.x,core.z,8,8.29,3.92,3.92,12,Math.PI/12,GRAPHITE,.15,false);
+    prism(m,core.x,core.z,8.29,8.40,3.96,3.96,12,Math.PI/12,GOLD,.98,false);
+    prism(m,core.x,core.z,9.23,9.42,3.1,3.1,12,Math.PI/12,rim,.15,false);
+    for (const [x,z] of pads) {
+      prism(m,x,z,.0,.08,2.15,1.97,8,Math.PI/8,GRAPHITE);
+      band(m,x,z,.085,1.98,1.71,8,Math.PI/8,MINT,.94);
+      band(m,x,z,.093,1.45,1.37,8,Math.PI/8,MINT,.55);
+      for (let j = -1; j <= 1; j++) {
+        rod(m,[x-.56,.1,z+.39*j+.22],[x,.1,z+.39*j-.08],.11,MINT,.9);
+        rod(m,[x,.1,z+.39*j-.08],[x+.56,.1,z+.39*j+.22],.11,MINT,.9);
+      }
+    }
+    for (const [x,z] of gates) {
+      band(m,x,z,.019,1.63,1.55,20,0,RED,.65);
+      band(m,x,z,.020,1.36,1.32,20,0,RED,.5);
+    }
+    for (let i = 0; i < 116; i++) {
+      const yaw = i * 2.39996323;
+      const height = 14 + (i * 19.9 % 1) * 35;
+      const r = 53 + i % 19;
+      box(m,Math.cos(yaw)*r,height,Math.sin(yaw)*r,.065+i%4*.02,.072,.072,WHITE,0,.88);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, m.vertices(), gl.STATIC_DRAW);
+  }
+  buildArena();
+
+  const types = {
+    scout: { name: "Skimmer", health: 34, radius: .68, speed: 6.5, color: GOLD },
+    lancer: { name: "Lancer", health: 54, radius: .90, speed: 4.65, color: [0.48,.78,1.0] },
+    heavy: { name: "Bulwark", health: 105, radius: 1.18, speed: 3.1, color: [1.0,.34,.64] }
+  };
+  const keys = new Set();
+  const gameKeys = new Set(["KeyW","KeyA","KeyS","KeyD","Space","KeyR","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"]);
+  const mouse = new Set();
+  let mode = "ready";
+  let player, drones, bolts, traces, sparks, shockwaves;
+  let elapsed, frags, spawnTimer, phase, sinceShot, pulseLeft, flash, hitmark, shake, redness;
+  let noticeTime, stickyNotice, messageTime, hudDelay;
+  let locked = false, freeCursor = false;
+  let lockAttempt = 0;
+  let best = 0;
+  try { best = Math.max(0, Number(localStorage.getItem("afterlight-relay-frags")) || 0); } catch {}
+  let audio, master, noise;
+
+  function startAudio() {
+    try {
+      if (!audio) {
+        const Audio = window.AudioContext || window.webkitAudioContext;
+        if (!Audio) return;
+        audio = new Audio();
+        master = audio.createGain();
+        master.gain.value = .23;
+        master.connect(audio.destination);
+        noise = audio.createBuffer(1, audio.sampleRate * .22 | 0, audio.sampleRate);
+        const samples = noise.getChannelData(0);
+        for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+      }
+      if (audio.state !== "running") audio.resume().catch(() => {});
+    } catch {}
+  }
+  function tone(from, to, seconds, loudness, type = "triangle", delay = 0) {
+    if (!audio || audio.state !== "running") return;
+    const t = audio.currentTime + delay;
+    const osc = audio.createOscillator(), envelope = audio.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, t);
+    osc.frequency.exponentialRampToValueAtTime(to, t + seconds);
+    envelope.gain.setValueAtTime(loudness, t);
+    envelope.gain.exponentialRampToValueAtTime(.001, t + seconds);
+    osc.connect(envelope).connect(master);
+    osc.start(t);
+    osc.stop(t + seconds);
+  }
+  function burst(seconds, pitch, loudness) {
+    if (!audio || audio.state !== "running" || !noise) return;
+    const t = audio.currentTime;
+    const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+    source.buffer = noise;
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(pitch, t);
+    filter.frequency.exponentialRampToValueAtTime(pitch * .36, t + seconds);
+    gain.gain.setValueAtTime(loudness, t);
+    gain.gain.exponentialRampToValueAtTime(.001, t + seconds);
+    source.connect(filter).connect(gain).connect(master);
+    source.start(t);
+    source.stop(t + seconds);
+  }
+  function say(message, seconds = 2.6) {
+    byId("feedback").textContent = message;
+    messageTime = seconds;
+  }
+  function clockText(seconds) {
+    const t = Math.max(0, seconds);
+    return Math.floor(t / 60).toString().padStart(2, "0") + ":" + (t % 60).toString().padStart(2, "0");
+  }
+  const countText = value => String(value).padStart(2, "0");
+
+  function reset() {
+    player = { x: -12.5, y: 0, z: 19.4, vx: 0, vy: 0, vz: 0, yaw: .31, pitch: .032,
+      hp: 100, grounded: true, padLock: 0, stride: 0, kick: 0 };
+    drones = []; bolts = []; traces = []; sparks = []; shockwaves = [];
+    elapsed = frags = phase = sinceShot = pulseLeft = flash = hitmark = shake = redness = 0;
+    noticeTime = messageTime = hudDelay = 0;
+    stickyNotice = "";
+    spawnTimer = 2.8;
+    for (const cell of cells) cell.timer = 0;
+    spawn("scout", -9, 1.9, true);
+    spawn("scout", 17, -2.8, true);
+    spawn("lancer", 3, -16, true);
+    byId("feedback").textContent = "";
+    byId("notice").textContent = "";
+  }
+  function toast(message, time) {
+    noticeTime = time;
+    byId("notice").textContent = message;
+  }
+  function clearInputs() {
+    keys.clear();
+    mouse.clear();
+  }
+  function useFreeCursor(id) {
+    if (id !== lockAttempt || locked || mode !== "play") return;
+    freeCursor = true;
+    stickyNotice = "Cursor free · Mouse or arrow keys to aim";
+    toast(stickyNotice, 0);
+  }
+  function requestLock() {
+    const id = ++lockAttempt;
+    if (document.pointerLockElement === canvas) {
+      locked = true;
+      freeCursor = false;
+      return;
+    }
+    locked = freeCursor = false;
+    if (!canvas.requestPointerLock) {
+      useFreeCursor(id);
+      return;
+    }
+    try {
+      const pending = canvas.requestPointerLock();
+      if (pending && pending.catch) pending.catch(() => useFreeCursor(id));
+      setTimeout(() => useFreeCursor(id), 450);
+    } catch {
+      useFreeCursor(id);
+    }
+  }
+  function releaseLock() {
+    lockAttempt++;
+    locked = freeCursor = false;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+  function begin(restart) {
+    if (mode === "error") return;
+    if (restart) reset();
+    clearInputs();
+    mode = "play";
+    screen.hidden = true;
+    hud.hidden = false;
+    startAudio();
+    canvas.focus({ preventScroll: true });
+    requestLock();
+    if (restart) {
+      toast("Mint pads launch you over cover", 4.0);
+      tone(172, 342, .24, .45, "sine");
+    }
+    updateHud();
+  }
+  function pause() {
+    if (mode !== "play") return;
+    mode = "pause";
+    clearInputs();
+    releaseLock();
+    screen.dataset.state = "pause";
+    screen.hidden = false;
+    byId("eyebrow").textContent = "Run paused";
+    byId("headline").textContent = "Hold position";
+    byId("summary").textContent = "Resume the defense or press R to restart the round.";
+    byId("bindings").hidden = true;
+    byId("results").hidden = true;
+    startButton.textContent = "Resume";
+  }
+  function finish(won) {
+    mode = "end";
+    clearInputs();
+    releaseLock();
+    hud.hidden = true;
+    screen.dataset.state = "end";
+    screen.hidden = false;
+    byId("eyebrow").textContent = won ? "Extraction confirmed" : "Signal lost";
+    byId("headline").textContent = won ? "Relay held" : "Relay overrun";
+    byId("summary").textContent = won ? "You kept the chamber online until extraction." : "The drones breached your defenses.";
+    byId("bindings").hidden = true;
+    byId("results").hidden = false;
+    byId("result-frags").textContent = countText(frags);
+    byId("result-best").textContent = countText(best);
+    byId("result-time").textContent = clockText(Math.floor(elapsed));
+    startButton.textContent = "Run again";
+    tone(won ? 290 : 122, won ? 520 : 45, .75, .42, "sine");
+    if (won) tone(390, 630, .62, .30, "sine", .13);
+  }
+
+  startButton.addEventListener("click", () => begin(mode !== "pause"));
+  document.addEventListener("pointerlockchange", () => {
+    if (document.pointerLockElement === canvas) {
+      if (mode !== "play") { releaseLock(); return; }
+      locked = true;
+      freeCursor = false;
+      stickyNotice = "";
+      if (noticeTime <= 0) byId("notice").textContent = "";
+    } else if (locked) {
+      locked = false;
+      pause();
+    }
+  });
+  document.addEventListener("pointerlockerror", () => useFreeCursor(lockAttempt));
+  window.addEventListener("blur", pause);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+  document.addEventListener("keydown", event => {
+    if (!gameKeys.has(event.code) && event.code !== "Escape") return;
+    if (mode === "play" && gameKeys.has(event.code)) event.preventDefault();
+    if (event.code === "KeyR" && !event.repeat && mode !== "ready") { begin(true); return; }
+    if (mode !== "play") return;
+    if (event.code === "Escape" && !locked) { pause(); return; }
+    keys.add(event.code);
+  });
+  document.addEventListener("keyup", event => keys.delete(event.code));
+  document.addEventListener("mousemove", event => {
+    if (mode !== "play" || (!locked && (!freeCursor || event.target !== canvas))) return;
+    player.yaw += clamp(event.movementX, -180, 180) * .00235;
+    player.pitch = clamp(player.pitch - clamp(event.movementY, -150, 150) * .00235, -1.39, 1.39);
+  });
+  canvas.addEventListener("mousedown", event => {
+    if (mode !== "play") return;
+    event.preventDefault();
+    mouse.add(event.button);
+    if (event.button === 0 && sinceShot <= 0) fire(false);
+    if (event.button === 2 && pulseLeft <= 0) fire(true);
+  });
+  window.addEventListener("mouseup", event => mouse.delete(event.button));
+  canvas.addEventListener("contextmenu", event => event.preventDefault());
+
+  function blocked(x, z, feet, radius) {
+    if (Math.abs(x) + radius > bounds.x || Math.abs(z) + radius > bounds.z) return true;
+    for (const obstacle of solids) {
+      if (feet >= obstacle.max[1] - .005) continue;
+      const dx = x - clamp(x, obstacle.min[0], obstacle.max[0]);
+      const dz = z - clamp(z, obstacle.min[2], obstacle.max[2]);
+      if (dx*dx + dz*dz < radius*radius) return true;
+    }
+    return false;
+  }
+  function floorAt(x, z, height, radius) {
+    let floor = 0;
+    for (const obstacle of solids) {
+      const top = obstacle.max[1];
+      if (height < top - .01 || top < floor) continue;
+      const dx = x - clamp(x, obstacle.min[0], obstacle.max[0]);
+      const dz = z - clamp(z, obstacle.min[2], obstacle.max[2]);
+      if (dx*dx + dz*dz < radius*radius) floor = top;
+    }
+    return floor;
+  }
+  function rayBox(origin, direction, limit, solidBox) {
+    let near = 0, far = limit;
+    for (let axis = 0; axis < 3; axis++) {
+      const d = direction[axis], o = origin[axis];
+      if (Math.abs(d) < .00001) {
+        if (o < solidBox.min[axis] || o > solidBox.max[axis]) return limit;
+        continue;
+      }
+      const a = (solidBox.min[axis] - o) / d;
+      const b = (solidBox.max[axis] - o) / d;
+      near = Math.max(near, Math.min(a, b));
+      far = Math.min(far, Math.max(a, b));
+      if (near > far) return limit;
+    }
+    return near;
+  }
+  function wallDistance(origin, direction, limit) {
+    for (const obstacle of solids) limit = rayBox(origin, direction, limit, obstacle);
+    if (direction[1] < -.00001) limit = Math.min(limit, Math.max(0, -origin[1] / direction[1]));
+    return limit;
+  }
+  function raySphere(origin, direction, center, radius) {
+    const delta = subtract(center, origin);
+    const forward = dot(delta, direction);
+    const remainder = radius*radius - (dot(delta, delta) - forward*forward);
+    if (remainder < 0) return Infinity;
+    const depth = Math.sqrt(remainder);
+    return forward + depth >= 0 ? Math.max(0, forward - depth) : Infinity;
+  }
+
+  function direction() {
+    const pitch = Math.cos(player.pitch);
+    return [Math.sin(player.yaw)*pitch, Math.sin(player.pitch), -Math.cos(player.yaw)*pitch];
+  }
+  function eyePosition() {
+    const bob = Math.min(1, Math.hypot(player.vx, player.vz) / 7) * Math.sin(player.stride * 2) * .036;
+    return [player.x, player.y + 1.67 + (player.grounded ? bob : 0), player.z];
+  }
+  function movePlayer(dt) {
+    const side = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
+    const advance = Number(keys.has("KeyW")) - Number(keys.has("KeyS"));
+    player.yaw += (Number(keys.has("ArrowRight")) - Number(keys.has("ArrowLeft"))) * 1.75 * dt;
+    player.pitch = clamp(player.pitch + (Number(keys.has("ArrowUp")) - Number(keys.has("ArrowDown"))) * 1.2 * dt, -1.39, 1.39);
+    const s = Math.sin(player.yaw), c = Math.cos(player.yaw);
+    const speed = 10.4 / Math.max(1, Math.hypot(side, advance));
+    const driveX = (advance*s + side*c) * speed, driveZ = (-advance*c + side*s) * speed;
+    if (player.grounded || side || advance) {
+      const response = 1 - Math.exp(-dt * (player.grounded ? 12 : 2.6));
+      player.vx += (driveX - player.vx) * response;
+      player.vz += (driveZ - player.vz) * response;
+    }
+    player.padLock -= dt;
+    if (player.grounded && keys.has("Space")) {
+      player.vy = 7.7;
+      player.grounded = false;
+      tone(91, 142, .10, .16, "sine");
+    }
+    const nextX = player.x + player.vx * dt;
+    if (!blocked(nextX, player.z, player.y, .43)) player.x = nextX;
+    else player.vx = 0;
+    const nextZ = player.z + player.vz * dt;
+    if (!blocked(player.x, nextZ, player.y, .43)) player.z = nextZ;
+    else player.vz = 0;
+    const floor = floorAt(player.x, player.z, player.y, .43);
+    player.vy -= 23 * dt;
+    player.y += player.vy * dt;
+    player.grounded = player.y <= floor && player.vy <= 0;
+    if (player.grounded) {
+      player.y = floor;
+      player.vy = 0;
+    }
+    player.stride += Math.hypot(player.vx, player.vz) * dt * 1.1;
+    if (player.y <= .14 && player.padLock <= 0) {
+      for (const [x,z] of pads) {
+        if (Math.hypot(x-player.x,z-player.z) > 1.58) continue;
+        player.vy = 14.7;
+        player.padLock = .92;
+        player.grounded = false;
+        shockwaves.push({ x, z, y: .1, life: .46, full: .46, size: 3.6, color: MINT });
+        tone(135, 390, .36, .34, "triangle");
+        break;
+      }
+    }
+    for (const cell of cells) {
+      cell.timer = Math.max(0, cell.timer - dt);
+      if (cell.timer > 0 || player.hp >= 100 || player.y > 1.14 || Math.hypot(player.x-cell.x,player.z-cell.z) > 1.28) continue;
+      player.hp = Math.min(100, player.hp + 34);
+      cell.timer = 10;
+      say("Integrity restored");
+      tone(250, 635, .24, .30, "sine");
+    }
+  }
+
+  function spawn(type, x, z, immediate = false) {
+    const stats = types[type];
+    drones.push({ type, stats, x, z, yaw: 0, hp: stats.health, flash: 0, firing: 0,
+      delay: immediate ? 0 : .65, attack: rand(.8, 1.65), side: Math.random() < .5 ? -1 : 1, drift: rand(0, 7) });
+  }
+  function spawnWave() {
+    const available = gates.filter(([x,z]) => Math.hypot(player.x-x,player.z-z) > 14
+      && !drones.some(drone => Math.hypot(drone.x-x,drone.z-z) < 2.3));
+    if (!available.length) return;
+    const [x,z] = available[Math.floor(Math.random() * available.length)];
+    const chance = Math.random();
+    const type = phase === 2 && chance < .28 ? "heavy" : chance < .36 + .11*phase ? "lancer" : "scout";
+    spawn(type, x, z);
+    shockwaves.push({ x, z, y: .035, life: .67, full: .67, size: 2.8, color: types[type].color });
+  }
+  function droneY(drone) {
+    const height = drone.type === "heavy" ? 1.42 : 1.28;
+    return height + Math.sin(elapsed * 4.1 + drone.drift) * .13 - drone.delay * 1.4;
+  }
+  function pursue(drone, dt) {
+    drone.flash = Math.max(0, drone.flash - dt);
+    drone.firing = Math.max(0, drone.firing - dt);
+    if (drone.delay > 0) { drone.delay -= dt; return; }
+    drone.attack -= dt;
+    const dx = player.x-drone.x, dz = player.z-drone.z, range = Math.hypot(dx, dz) || 1;
+    drone.yaw = Math.atan2(dx, -dz);
+    const position = [drone.x, droneY(drone), drone.z];
+    const target = [player.x, player.y + 1.05, player.z];
+    const offset = subtract(target, position);
+    const distance = Math.hypot(...offset);
+    const straight = wallDistance(position, unit(offset), distance) >= distance - .004;
+    const scout = drone.type === "scout";
+    let forward = 1, strafe = 0;
+    if (scout && range < 1.43 && straight && Math.abs(offset[1]) < 1.22) {
+      forward = 0;
+      if (drone.attack <= 0) {
+        hurt(12 + phase*2);
+        drone.firing = .18;
+        drone.attack = .74;
+      }
+    }
+    if (!scout && straight && range < 24) {
+      forward = range > 14 ? .51 : range < 7 ? -.78 : .05;
+      strafe = drone.side * .86;
+      if (drone.attack <= 0) {
+        const heavy = drone.type === "heavy";
+        const lead = add(target, [player.vx*.10, .04, player.vz*.10]);
+        const direct = unit(subtract(lead, position));
+        for (const angle of heavy ? [-.115, 0, .115] : [0]) {
+          const velocity = scale(place(0,0,0,...direct,angle), heavy ? 12.5 : 18);
+          const origin = add(position, scale(unit(velocity), drone.stats.radius * .7));
+          bolts.push({ position: origin, velocity, life: 3.1, color: drone.stats.color, size: heavy ? .24 : .15, damage: heavy ? 10 : 12 });
+        }
+        drone.firing = .22;
+        drone.attack = (heavy ? 1.84 : 1.47) + rand(0, .71) - phase*.13;
+        if (range < 20) tone(235, 88, .12, .15, "sine");
+      }
+    }
+    let mx = (dx*forward - dz*strafe) / range;
+    let mz = (dz*forward + dx*strafe) / range;
+    for (const other of drones) {
+      if (other === drone) continue;
+      const ax = drone.x-other.x, az = drone.z-other.z;
+      const gap = Math.hypot(ax,az);
+      if (gap > .01 && gap < drone.stats.radius+other.stats.radius+.25) {
+        mx += .49 * ax/gap;
+        mz += .49 * az/gap;
+      }
+    }
+    const velocity = Math.min(1, Math.hypot(mx,mz)) * (drone.stats.speed + phase*.26) * dt;
+    if (velocity < .001) return;
+    const heading = Math.atan2(mx, -mz);
+    for (const angle of [0, .52, -.52, 1.01, -1.01, 1.53, -1.53, 2.1, -2.1]) {
+      const yaw = heading + angle * drone.side;
+      const s = Math.sin(yaw), c = -Math.cos(yaw);
+      if (blocked(drone.x+s*.48,drone.z+c*.48,.4,drone.stats.radius)) continue;
+      drone.x += s * velocity;
+      drone.z += c * velocity;
+      break;
+    }
+  }
+  function hurt(amount) {
+    player.hp = Math.max(0, player.hp - amount);
+    shake = Math.min(1, shake + .64);
+    redness = Math.min(.84, redness + .46);
+    burst(.12, 620, .36);
+    tone(85, 47, .19, .34, "triangle");
+    if (player.hp === 0) finish(false);
+  }
+  function sparkBurst(position, color, count, force) {
+    for (let i = 0; i < count; i++) {
+      const life = rand(.18, .58);
+      sparks.push({ p: position.slice(), v: scale(unit([rand(-1,1),rand(-.30,1),rand(-1,1)]),rand(.6,force)),
+        life, full: life, color, width: rand(.027,.088) });
+    }
+  }
+  function hit(drone, damage) {
+    drone.hp -= damage;
+    drone.flash = .125;
+    hitmark = .15;
+    const spot = [drone.x,droneY(drone),drone.z];
+    if (drone.hp <= 0) {
+      drones.splice(drones.indexOf(drone), 1);
+      frags++;
+      if (frags > best) {
+        best = frags;
+        try { localStorage.setItem("afterlight-relay-frags", String(best)); } catch {}
+      }
+      sparkBurst(spot, drone.stats.color, 26, 9);
+      shockwaves.push({ x: drone.x, z: drone.z, y: .054, life: .40, full: .40, size: drone.stats.radius*3.2, color: drone.stats.color });
+      say(drone.stats.name + " down", 1.2);
+      tone(184, 70, .23, .40, "triangle");
+    } else {
+      sparkBurst(spot, drone.stats.color, 5, 4);
+      tone(457, 261, .08, .22, "sine");
+    }
+  }
+  function fire(pulse) {
+    const eye = eyePosition();
+    const dir = direction();
+    const right = [Math.cos(player.yaw), 0, Math.sin(player.yaw)];
+    const up = cross(right, dir);
+    const muzzle = add(eye, add(scale(right, .29), add(scale(up, -.26), scale(dir, .84))));
+    let range = wallDistance(eye, dir, pulse ? 29 : 77);
+    let nearest = null;
+    for (const drone of drones) {
+      if (drone.delay > .12) continue;
+      const d = raySphere(eye, dir, [drone.x,droneY(drone),drone.z], drone.stats.radius * 1.10);
+      if (d < range) { range = d; nearest = drone; }
+    }
+    const end = add(eye, scale(dir, range));
+    const color = pulse ? [0.30,1,0.74] : [1,.72,.34];
+    const life = pulse ? .22 : .085;
+    traces.push({ a: muzzle, b: end, color, life, full: life, width: pulse ? .15 : .038 });
+    flash = pulse ? .16 : .082;
+    player.kick = pulse ? .22 : Math.min(.14, player.kick + .082);
+    shake = Math.max(shake, pulse ? .45 : .12);
+    if (pulse) {
+      pulseLeft = PULSE_TIME;
+      shockwaves.push({ x: end[0], y: Math.max(.05,end[1]), z: end[2], life: .45, full: .45, size: 5.1, color });
+      const center = add(eye, scale(dir, Math.max(0, range-.075)));
+      for (const drone of drones.slice()) {
+        const delta = subtract([drone.x,droneY(drone),drone.z], center);
+        const gap = Math.hypot(...delta);
+        if (drone === nearest || (gap < 5.1 && wallDistance(center, unit(delta), gap) >= gap - .01)) {
+          hit(drone, drone === nearest ? 77 : 66 * (1 - .59*gap/5.1));
+        }
+      }
+      sparkBurst(end, color, 32, 10);
+      tone(151, 45, .36, .55, "sawtooth");
+      burst(.19, 3200, .65);
+    } else {
+      sinceShot = .153;
+      if (nearest) hit(nearest, 19);
+      if (range < 76.9) sparkBurst(end, color, nearest ? 4 : 6, 4);
+      tone(110, 57, .09, .50, "triangle");
+      burst(.073, 2500, .55);
+    }
+  }
+
+  function advance(dt) {
+    elapsed = Math.min(ROUND, elapsed + dt);
+    if (elapsed >= ROUND) { finish(true); return; }
+    const nextPhase = Math.floor(elapsed/30);
+    if (phase !== nextPhase) {
+      phase = nextPhase;
+      say(phase === 1 ? "Breach intensifying" : "Bulwarks inbound", 2.5);
+      tone(113, 215, .46, .35, "sine");
+    }
+    movePlayer(dt);
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      if (drones.length < 6 + phase*4) spawnWave();
+      spawnTimer = rand(2.2,3.0) - phase*.45 - elapsed*.003;
+    }
+    sinceShot -= dt;
+    pulseLeft = Math.max(0, pulseLeft - dt);
+    flash = Math.max(0, flash - dt);
+    hitmark = Math.max(0, hitmark - dt);
+    shake = Math.max(0, shake - dt*3.5);
+    redness = Math.max(0, redness - dt*1.65);
+    player.kick = Math.max(0, player.kick - dt*1.45);
+    if (mouse.has(0) && sinceShot <= 0) fire(false);
+    if (mouse.has(2) && pulseLeft <= 0) fire(true);
+    for (const drone of drones) {
+      pursue(drone, dt);
+      if (mode !== "play") return;
+    }
+    for (let i = bolts.length-1; i >= 0; i--) {
+      const bolt = bolts[i];
+      bolt.life -= dt;
+      const step = scale(bolt.velocity, dt);
+      const travel = Math.hypot(...step);
+      const aim = unit(step);
+      const impact = wallDistance(bolt.position,aim,travel+.005);
+      const target = raySphere(bolt.position,aim,[player.x,player.y+1.02,player.z],.66+bolt.size);
+      if (target <= travel && target < impact) {
+        bolts.splice(i,1);
+        hurt(bolt.damage);
+        if (mode !== "play") return;
+      } else if (impact <= travel || bolt.life <= 0) {
+        if (impact <= travel) sparkBurst(add(bolt.position,scale(aim,impact)),bolt.color,5,4.8);
+        bolts.splice(i,1);
+      } else bolt.position = add(bolt.position,step);
+    }
+    for (let i = sparks.length-1; i >= 0; i--) {
+      const spark = sparks[i];
+      spark.life -= dt;
+      if (spark.life <= 0) { sparks.splice(i,1); continue; }
+      spark.v[1] -= 10 * dt;
+      spark.p = add(spark.p, scale(spark.v,dt));
+      if (spark.p[1] < .02) {
+        spark.p[1] = .02;
+        spark.v[1] = Math.abs(spark.v[1])*.27;
+      }
+    }
+    for (const list of [traces, shockwaves]) {
+      for (let i = list.length-1; i >= 0; i--) {
+        list[i].life -= dt;
+        if (list[i].life <= 0) list.splice(i,1);
+      }
+    }
+    if (noticeTime > 0) {
+      noticeTime -= dt;
+      if (noticeTime <= 0) byId("notice").textContent = stickyNotice;
+    }
+    if (messageTime > 0) {
+      messageTime -= dt;
+      if (messageTime <= 0) byId("feedback").textContent = "";
+    }
+    hudDelay -= dt;
+    if (hudDelay <= 0) { updateHud(); hudDelay = .075; }
+  }
+
+  function updateHud() {
+    byId("frags").textContent = countText(frags);
+    byId("best").textContent = countText(best);
+    byId("time").textContent = clockText(Math.ceil(ROUND - elapsed));
+    byId("phase").textContent = "Breach 0" + (phase + 1);
+    byId("health").textContent = player.hp;
+    byId("integrity").dataset.low = String(player.hp < 32);
+    byId("health-meter").style.width = player.hp + "%";
+    byId("pulse").textContent = pulseLeft <= 0 ? "Ready" : pulseLeft.toFixed(1) + "s";
+    byId("pulse-meter").style.width = 100*(1-pulseLeft/PULSE_TIME) + "%";
+    if (radar) drawRadar();
+  }
+  function drawRadar() {
+    radar.clearRect(0,0,204,204);
+    radar.strokeStyle = "rgba(158,243,211,.24)";
+    radar.lineWidth = 2;
+    for (const r of [30,62,91]) {
+      radar.beginPath(); radar.arc(102,102,r,0,TWO_PI); radar.stroke();
+    }
+    radar.beginPath();
+    radar.moveTo(102,10); radar.lineTo(102,194); radar.moveTo(10,102); radar.lineTo(194,102); radar.stroke();
+    const c = Math.cos(player.yaw), s = Math.sin(player.yaw);
+    function mark(x,z,color,r) {
+      const dx = x-player.x, dz = z-player.z;
+      if (Math.hypot(dx,dz) > 24) return;
+      radar.fillStyle = color;
+      radar.beginPath(); radar.arc(102+(dx*c+dz*s)*3.75,102+(dz*c-dx*s)*3.75,r,0,TWO_PI); radar.fill();
+    }
+    for (const cell of cells) if (cell.timer === 0) mark(cell.x,cell.z,"#9ef3d3",4);
+    for (const drone of drones) mark(drone.x,drone.z,drone.type === "heavy" ? "#ff5899" : "#ffa458",drone.type === "heavy" ? 6 : 4);
+    radar.fillStyle = "#eafff7";
+    radar.beginPath(); radar.moveTo(102,93); radar.lineTo(108,109); radar.lineTo(96,109); radar.closePath(); radar.fill();
+  }
+
+  function drawDrone(drone, right, up) {
+    const m = dynamicMesh, x = drone.x, y = droneY(drone), z = drone.z, yaw = drone.yaw;
+    const r = drone.stats.radius;
+    const color = drone.stats.color;
+    const shell = drone.flash > 0 ? WHITE : blend(STEEL, color, .22);
+    const body = (dx, dy, dz) => place(x,y,z,dx*r,dy*r,dz*r,yaw);
+    const part = (dx,dy,dz,w,h,d,paint,glow = 0, twist = 0) =>
+      box(m,...body(dx,dy,dz),w*r,h*r,d*r,paint,yaw+twist,glow);
+    const scout = drone.type === "scout";
+    crystal(m,x,y,z,r*.82,r*.46,r*.93,yaw,shell);
+    crystal(m,x,y+.18*r,z,r*.62,r*.28,r*.67,yaw,GRAPHITE);
+    part(0,.00,-.61,scout ? .85 : 1.14,.24,.58,GRAPHITE);
+    part(0,.055,-.925,scout ? .63 : .77,.12,.18,color,1);
+    for (const sign of [-1,1]) {
+      rod(m,body(sign*.36,.02,.14),body(sign*1.04,-.19,.11),.21*r,shell);
+      part(sign*.91,-.14,.12,.32,.28,scout ? 1.31 : 1.08,shell,0,sign*.16);
+      part(sign*.92,-.29,.02,.20,.11,.84,color,.95,sign*.16);
+      if (!scout) part(sign*.53,-.23,-.46,.24,.25,.8,GRAPHITE);
+      if (drone.type === "heavy") part(sign*.55,-.18,-.92,.13,.14,.19,color,.87);
+    }
+    const beam = drone.firing > 0 ? .44 : .16;
+    halo(glowMesh,body(0,.06,-.96),r*(drone.firing > 0 ? 1.05 : .64),right,up,color,beam);
+    band(glowMesh,x,z,.043+(.001*drone.drift),r*1.29,r*1.07,14,0,color,1,.25);
+  }
+  function drawCore(now, right, up) {
+    const m = dynamicMesh, x = core.x, z = core.z;
+    const height = 5.52 + Math.sin(now*1.8)*.21;
+    crystal(m,x,height,z,1.24,2.5,1.24,now*.54,GOLD,.92);
+    crystal(m,x,height,z,1.03,2.62,1.03,-now*.41,[1,.64,.26],.90);
+    prism(m,x,z,2.46,2.61,3.33,3.34,12,now*.23,GOLD,.92,false);
+    prism(m,x,z,7.60,7.68,3.21,3.21,12,-now*.16,GOLD,.92,false);
+    for (let i = 0; i < 6; i++) {
+      const a = now*.61+i*TWO_PI/6;
+      const px = x+Math.cos(a)*2.32, pz = z+Math.sin(a)*2.32;
+      const py = height + Math.sin(a*2+now)*1.31;
+      crystal(m,px,py,pz,.25,.71,.25,-now,GOLD,.96);
+      halo(glowMesh,[px,py,pz],.97,right,up,GOLD,.20);
+    }
+    halo(glowMesh,[x,height,z],5.9,right,up,GOLD,.23);
+    halo(glowMesh,[x,2.55,z],4.2,right,up,GOLD,.16);
+  }
+  function drawPickups(now, right, up) {
+    for (const cell of cells) {
+      if (cell.timer > 0) continue;
+      const y = .96 + Math.sin(now*4 + cell.x)*.17;
+      const yaw = now*1.47;
+      crystal(dynamicMesh,cell.x,y,cell.z,.54,.64,.54,yaw,[.14,.41,.36],.37);
+      for (const sign of [-1,1]) {
+        box(dynamicMesh,...place(cell.x,y,cell.z,0,0,sign*.36,yaw),.53,.115,.10,MINT,yaw,.98);
+        box(dynamicMesh,...place(cell.x,y,cell.z,0,0,sign*.36,yaw),.115,.56,.10,MINT,yaw,.98);
+      }
+      halo(glowMesh,[cell.x,y,cell.z],1.4,right,up,MINT,.23);
+      band(dynamicMesh,cell.x,cell.z,.026,.89,.76,14,-yaw,MINT,.85);
+    }
+    for (const [x,z] of pads) {
+      const r = 1.62 + Math.sin(now*3.25+x)*.12;
+      band(glowMesh,x,z,.115,r,r-.17,16,now*.33,MINT,1,.21);
+      halo(glowMesh,[x,.20,z],2.3,right,up,MINT,.09);
+    }
+  }
+  function drawGun(now) {
+    const m = gunMesh;
+    const s = Math.min(1, Math.hypot(player.vx,player.vz)/9);
+    const x = .292 + Math.sin(player.stride)*.020*s;
+    const y = -.284 + Math.sin(player.stride*2)*.013*s + player.kick*.13;
+    const z = -.59 + player.kick;
+    const body = [.26,.35,.36];
+    const part = (dx,dy,dz,w,h,d,color,glow=0,rot=0) =>
+      box(m,x+dx,y+dy,z+dz,w,h,d,color,rot,glow);
+    part(.035,-.24,.25,.30,.24,.37,[.15,.27,.28],0,.1);
+    part(.033,-.16,.15,.20,.20,.26,[.32,.48,.46],0,.12);
+    part(0,-.04,.055,.25,.202,.49,GRAPHITE);
+    part(0,.053,-.045,.245,.118,.50,body);
+    part(0,.112,.115,.139,.05,.22,STEEL);
+    part(0,.143,.166,.06,.045,.035,MINT,.92);
+    part(0,.015,-.319,.198,.143,.193,GRAPHITE);
+    part(0,.040,-.410,.185,.118,.092,[.16,.25,.27]);
+    part(0,.032,-.457,.116,.071,.028,[.032,.068,.079],0);
+    part(0,.092,-.396,.067,.027,.049,GOLD,.85);
+    if (pulseLeft <= 0) part(-.114,.064,-.165,.016,.025,.19,MINT,.96);
+    for (const side of [-1,1]) {
+      part(side*.121,.012,.07,.032,.105,.31,STEEL);
+      part(side*.124,.027,-.20,.020,.019,.13,GOLD,.86);
+      for (let i = 0; i < 5; i++) part(side*.13,.012,-.081+i*.045,.009,.065,.016,GRAPHITE);
+    }
+    if (flash > 0) {
+      const power = Math.min(1, flash/.07);
+      crystal(m,x,y+.031,z-.53,.11*power,.095*power,.17*power,now*19,[1,.67,.27],1);
+      crystal(m,x,y+.031,z-.59,.065*power,.065*power,.22*power,0,WHITE,1);
+    }
+  }
+
+  let projection;
+  function resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(canvas.clientWidth*dpr));
+    const h = Math.max(1, Math.round(canvas.clientHeight*dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    gl.viewport(0,0,w,h);
+    projection = perspective(1.16,w/h,.065,131);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  function draw(buffer, count) {
+    if (count === 0) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+    for (const [location,size,offset] of attribs) gl.vertexAttribPointer(location,size,gl.FLOAT,false,44,offset);
+    gl.drawArrays(gl.TRIANGLES,0,count / 11);
+  }
+  function drawDynamic(buffer, mesh) {
+    if (!mesh.count) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,mesh.vertices(),gl.DYNAMIC_DRAW);
+    draw(buffer,mesh.count);
+  }
+  function render(now) {
+    dynamicMesh.clear(); glowMesh.clear(); gunMesh.clear();
+    let eye, dir;
+    if (mode === "ready") {
+      eye = [-24 + Math.sin(now*.31)*1.05, 7.8 + Math.sin(now*.38)*.27, 20.4];
+      dir = unit(subtract([-6.0,4.45,-5],eye));
+    } else {
+      eye = eyePosition();
+      eye[0] += Math.sin(now*99)*shake*.070;
+      eye[1] += Math.sin(now*81)*shake*.065;
+      dir = direction();
+    }
+    const right = unit(cross(dir,UP));
+    const up = cross(right,dir);
+    drawCore(now,right,up);
+    drawPickups(now,right,up);
+    if (mode !== "ready") {
+      for (const drone of drones) drawDrone(drone,right,up);
+    } else {
+      drawDrone({x:9.5,z:5.5,yaw:-1.5,type:"lancer",stats:types.lancer,dust:0,drift:1.7,delay:0},right,up);
+      drawDrone({x:3.7,z:10,yaw:-.88,type:"scout",stats:types.scout,drift:3.1,delay:0},right,up);
+    }
+    for (const bolt of bolts) {
+      const p = bolt.position, r = bolt.size;
+      crystal(dynamicMesh,...p,r,r,r,now*4,bolt.color,1);
+      rod(dynamicMesh,p,subtract(p,scale(unit(bolt.velocity),.71)),r*.53,bolt.color,1);
+      halo(glowMesh,p,r*4.6,right,up,bolt.color,.65);
+    }
+    for (const trail of traces) {
+      const amount = trail.life/trail.full;
+      if (Math.hypot(...subtract(trail.a,trail.b)) > .035) {
+        rod(dynamicMesh,trail.a,trail.b,trail.width*(.26+.74*amount),trail.color,.98);
+      }
+      halo(glowMesh,trail.b,.37+amount*.64,right,up,trail.color,amount*.35);
+    }
+    for (const spark of sparks) {
+      const v = spark.life/spark.full;
+      const width = spark.width*(.3+.7*v);
+      box(dynamicMesh,...spark.p,width,width*1.4,width,spark.color,now*7,.9);
+    }
+    for (const wave of shockwaves) {
+      const t = 1-wave.life/wave.full;
+      const r = .35+wave.size*t;
+      band(glowMesh,wave.x,wave.z,wave.y,r,Math.max(.1,r-.17),24,t,wave.color,1,(1-t)*.62);
+      halo(glowMesh,[wave.x,wave.y,wave.z],r*.76,right,up,wave.color,(1-t)*.19);
+    }
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv(projectionLocation,false,product(projection,cameraMatrix(eye,dir,right,up)));
+    gl.uniform3fv(eyeLocation,eye);
+    draw(staticBuffer,staticMesh.count);
+    drawDynamic(dynamicBuffer,dynamicMesh);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+    gl.depthMask(false);
+    drawDynamic(glowBuffer,glowMesh);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+    if (mode === "play" || mode === "pause") {
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+      gl.uniformMatrix4fv(projectionLocation,false,projection);
+      gl.uniform3fv(eyeLocation,ORIGIN);
+      drawGun(now);
+      drawDynamic(gunBuffer,gunMesh);
+    }
+    byId("damage").style.opacity = mode === "play" || mode === "end" ? redness : 0;
+    byId("reticle").dataset.hit = String(hitmark > 0);
+  }
+
+  reset();
+  let previous = performance.now();
+  let sizeRatio = window.devicePixelRatio;
+  let ambience = 0;
+  function frame(time) {
+    const dt = clamp((time-previous)/1000,0,.05);
+    previous = time;
+    if (window.devicePixelRatio !== sizeRatio) {
+      sizeRatio = window.devicePixelRatio;
+      resize();
+    }
+    if (mode === "play" || mode === "ready") ambience += dt;
+    if (mode === "play" && dt > 0) {
+      const steps = Math.ceil(dt/.018);
+      for (let i = 0; i < steps && mode === "play"; i++) advance(dt/steps);
+    }
+    render(ambience);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

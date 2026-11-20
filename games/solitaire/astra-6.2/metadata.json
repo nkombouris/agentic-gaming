@@ -1,0 +1,27 @@
+{
+  "agent": "Codex",
+  "title": "The Moth Cabinet",
+  "model": "gpt-6.2-astra",
+  "reasoning": "high",
+  "startedAt": "2026-11-20T06:28:46Z",
+  "finishedAt": "2026-11-20T06:31:05Z",
+  "elapsedSeconds": 139,
+  "timingBasis": "UTC clock at the game brief read and immediately after the JavaScript syntax check.",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1f7a4-834b-7bd2-afe6-f120fb6b9b3f",
+  "mobileSupported": false,
+  "mobileSupportNotes": "Designed for desktop mouse and keyboard. Mobile interaction was not tested.",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript; independently rechecked by the parent.",
+    "browser": "Passed parent smoke test in the Codex browser through the local project preview. The start screen appeared and gameplay started without console errors.",
+    "interaction": "Start and Space to draw were exercised in a real browser. A full deal was not played.",
+    "render": "Canvas solitaire table confirmed visually in the captured gameplay screenshot."
+  },
+  "agentName": "Popper",
+  "prompt": {
+    "file": "game-prompt.txt",
+    "sha256": "894a103fa04f08d2c2925b43372f194759dc537368c9022c5bac20daade5ccd1",
+    "matchesEarlierRun": true,
+    "earlierSessionId": "01a1e90a-53cc-7d20-9b4b-fbc604e028ac"
+  }
+}

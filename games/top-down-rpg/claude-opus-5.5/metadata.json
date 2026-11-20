@@ -1,0 +1,25 @@
+{
+  "agent": "Claude",
+  "agentName": null,
+  "title": "Sunshard Vale",
+  "model": "claude-opus-5.5",
+  "reasoning": "high",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label (Anthropic Opus 5.5) and reasoning effort (high). The model label is normalized as claude-opus-5.5. The actual runtime configuration was not independently available.",
+  "sessionId": null,
+  "sourceFile": "sunshard-vale/index.html",
+  "sourceSha256": "a4b66ba565d48c8b4b4acade4ee5315141a703309ac37828c9d955155f1b5f0d",
+  "validation": {
+    "syntax": "Passed node --check on the single inline classic JavaScript.",
+    "structure": "Found one title, 1 canvas, 1 inline stylesheet, and one inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 675,
+    "browser": "Passed a smoke test in the Codex browser through a local preview. The Begin Quest screen appeared and gameplay started without console errors.",
+    "render": "Canvas forest scene, player, enemies and HUD confirmed visually in a gameplay screenshot.",
+    "interactions": "Exercised keyboard movement, sword and fire spell input. Verified R resetting the run to full health and magic, level 1, zero score and zero elapsed time."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard. The source has no on-screen movement controls. Physical phone gameplay was not tested."
+}

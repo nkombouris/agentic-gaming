@@ -1,0 +1,20 @@
+{
+  "agent": "Codex",
+  "agentName": "Heisenberg",
+  "title": "Rift Kiln",
+  "model": "gpt-6.1-sol",
+  "reasoning": "max",
+  "startedAt": "2026-11-17T10:03:48Z",
+  "finishedAt": "2026-11-17T10:15:09Z",
+  "elapsedSeconds": 681,
+  "timingBasis": "Subagent UTC clock from reading the shared game brief through completion of game checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e8f6-58a6-7c51-920d-e1bf3feda060",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "Headless Chrome exited before navigation on both launch attempts",
+    "render": "WebGL rendering remains unverified"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard and aiming uses mouse input. The game has no on-screen equivalents."
+}

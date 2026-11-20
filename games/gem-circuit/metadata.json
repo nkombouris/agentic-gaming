@@ -1,0 +1,21 @@
+{
+  "id": "gem-circuit",
+  "runId": "standalone-match3-001",
+  "genre": "match-3",
+  "agent": "Codex session",
+  "model": null,
+  "reasoning": null,
+  "status": "integration-sample",
+  "generationDate": "2026-11-16",
+  "integrationDate": "2026-11-17",
+  "promptKind": "User template with clarified match-3 / Bejeweled-style genre",
+  "exactSubmittedPrompt": null,
+  "resolvedBrief": "generation-prompt.txt",
+  "originalArtifact": "original/index.html",
+  "originalSha256": "9258a28862f83bd491109534020925af44301d9e191326d23503b13277a3a4b0",
+  "notes": "Original standalone game created from the user-supplied template after genre clarification. Not a controlled model comparison.",
+  "integrationEdits": "Extracted modular game logic, renderer, input, UI and SCSS; added the site palette protocol and localized site pages. Original standalone output preserved unchanged.",
+  "validation": "See game-rule tests and build verification. Browser/device QA reported separately.",
+  "mobileSupported": true,
+  "mobileSupportNotes": "The responsive board handles taps and swipes with pointer events. Pause, resume, and restart have on-screen buttons."
+}

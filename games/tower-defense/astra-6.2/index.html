@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173e39">
+<title>Kingfisher Lock</title>
+<style>
+:root{--ink:#183b33;--paper:#f4efda;--muted:#697565;--line:#b8bba0;--orange:#b94223;--forest:#21483e;--gold:#e3bb63}
+*{box-sizing:border-box}
+html{min-height:100%;background:#153d37}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Georgia,'Times New Roman',serif;background:radial-gradient(ellipse at 38% 16%,#386257 0%,#20463e 44%,#123830 95%);display:grid;place-items:center;padding:20px 24px}
+main{width:min(1060px,100%);background:var(--paper);border:1px solid #092d26;box-shadow:0 14px 42px #08271e77;position:relative}
+header{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:18px 24px 16px;border-bottom:3px double var(--ink)}
+.identity{display:flex;align-items:center;gap:13px}
+.crest{width:55px;height:55px;flex-shrink:0}
+h1{font-size:clamp(29px,4vw,48px);line-height:1.04;margin:0;font-weight:normal;letter-spacing:-.07em}
+.kicker,.label,.tag,.padcost,.key,.mapfoot,.best,.type,.number,.hud em,.tool small{font:700 10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;text-transform:uppercase;letter-spacing:.115em}
+.kicker{color:var(--orange);font-size:9px;margin:0 0 3px}
+.statuses{display:flex;gap:0}.hud{min-width:75px;text-align:center;padding:0 13px;border-left:1px solid var(--line)}
+.hud em{display:block;font-style:normal;color:#586956;font-size:9px}.hud b{font-size:26px;font-weight:normal;display:block;line-height:1.14}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 252px}
+.chart{min-width:0;display:flex;flex-direction:column;justify-content:center;background:#d0d0ae;position:relative}
+canvas#map{display:block;width:100%;aspect-ratio:640/455;touch-action:manipulation;outline-offset:-4px}
+.mapfoot{display:flex;justify-content:space-between;align-items:center;background:#e5e2c9;padding:7px 16px;border-top:1px solid #8e9b81;font-size:8px;color:#526353}
+.mapfoot i{background:#477e74;display:inline-block;width:16px;height:4px;margin:0 5px 2px 0}
+.mapfoot b{font-weight:normal}
+aside{padding:20px 17px 16px;border-left:1px solid #8f9c83;display:flex;flex-direction:column;gap:13px;background:linear-gradient(115deg,#f6f0da,#ede8d0)}
+#phase{display:flex;align-items:center;gap:8px;color:var(--orange)}
+#phase:before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 0 2px #ead4ae}
+h2{font-size:30px;font-weight:normal;line-height:1.02;letter-spacing:-.055em;margin:6px 0 7px}
+p{margin:0}.copy{font:14px/1.4 Georgia,serif;color:#3e5547}
+button{appearance:none;border:1px solid #82917a;color:var(--ink);cursor:pointer;font:inherit;background:#f7f1db;border-radius:3px;touch-action:manipulation}
+button:focus-visible,canvas:focus-visible{outline:3px solid #d87729;outline-offset:2px}
+button:active{transform:translateY(1px)}
+#start,#action{width:100%;background:var(--orange);color:#fff8dd;border-color:#88331c;font:700 13px/1 system-ui,sans-serif;padding:13px 8px;box-shadow:0 2px 0 #773b24}
+#start span{margin-left:10px}
+.controls{border-top:1px solid var(--line);padding-top:12px}
+.label{color:#5d6c58;display:block;font-size:9px;margin-bottom:7px}
+.tools{display:flex;gap:5px}
+.tool{flex:1;text-align:left;padding:7px 7px 6px;position:relative;min-width:0}
+.tool[aria-pressed="true"]{background:#244e42;color:#fff5d7;border-color:#183c32}
+.tool b{display:block;font-size:17px;font-weight:normal;line-height:1.15}
+.tool small{display:block;font-size:8px;letter-spacing:.065em;margin-top:3px}
+.icon{width:38px;height:26px;display:block;margin-bottom:5px}
+#details{font-size:13px;line-height:1.35;min-height:34px;margin-top:7px}
+#action{margin-top:6px;background:#315848;border-color:#214436;box-shadow:none;font-size:12px;padding:10px 7px}
+[hidden]{display:none!important}
+.record{margin-top:auto;display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:9px;color:#566751}
+footer{display:flex;justify-content:space-between;gap:12px;padding:8px 17px;border-top:3px double var(--ink);font:10px/1.35 ui-monospace,monospace;color:#53614f}
+@media(max-width:760px){
+body{padding:8px;align-items:start}main{max-width:640px}.layout{grid-template-columns:1fr}.chart{display:block}header{padding:10px 12px}.crest{width:42px;height:42px}.identity{gap:7px}.hud{min-width:47px;padding:0 7px}.hud b{font-size:21px}.hud em{font-size:8px}.kicker{font-size:7px}
+aside{border-left:0;border-top:1px solid #899981;display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;padding:12px}
+.intro{grid-column:1}.controls{grid-column:2;grid-row:1 / span 2;padding-top:0;border-top:0;border-left:1px solid var(--line);padding-left:12px}
+#start{align-self:start;grid-column:1}.record{grid-column:1/-1;margin-top:0;padding-top:6px}h2{font-size:25px}.copy{font-size:13px}.tool b{font-size:16px}.mapfoot{padding:4px 9px}footer{padding:6px 11px;font-size:8px}.best{font-size:8px}
+}
+@media(max-width:420px){body{padding:3px}.crest{width:32px;height:32px}header{gap:4px;padding:9px 7px}.hud{min-width:36px;padding:0 4px}.kicker{letter-spacing:.06em}.hud b{font-size:18px}h1{font-size:27px}.tools{gap:4px}.tool{padding:5px}.icon{width:30px;height:21px}.tool b{font-size:14px}.tool small{font-size:7px}.controls{padding-left:8px}aside{padding:9px;gap:9px}#details{font-size:12px}.mapfoot{font-size:7px}}
+@media(min-width:761px) and (max-height:680px){body{padding:8px}main{width:min(940px,100%)}aside{padding:13px;gap:9px}header{padding:10px 18px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="identity">
+<svg class="crest" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="28" fill="#e6e2c7" stroke="#284a3a" stroke-width="1.5"/><circle cx="30" cy="30" r="24.5" fill="none" stroke="#82927b" stroke-dasharray="1 3"/><path d="M12 40L18 27 33 15 42 18 52 21 39 23 34 36 25 39 16 47 18 39Z" fill="#1a5852"/><path d="M21 33L32 20 38 22 32 36 24 39Z" fill="#bf5835"/><path d="M15 39L20 28 31 24 25 33Z" fill="#71a9a4"/><path d="M37 19L44 20 38 21Z" fill="#eee7c8"/><circle cx="36" cy="18.7" r="1.2" fill="#122e28"/></svg>
+<div><p class="kicker">Estuary tower defense</p><h1>Kingfisher Lock</h1></div></div>
+<div class="statuses"><div class="hud"><em>Wave</em><b id="wave">0/5</b></div><div class="hud"><em>Brass</em><b id="cash">75</b></div><div class="hud"><em>Gate</em><b id="hp">8</b></div></div>
+</header>
+<div class="layout">
+<section class="chart" aria-label="Kingfisher canal chart"><canvas id="map" tabindex="0" aria-label="Canal defense map. Select a tower then tap a numbered platform. Use arrow keys and Enter with a keyboard."></canvas><div class="mapfoot"><span><i></i>Tidal channel</span><b>⊕ &nbsp;Gun platform</b><span>1 : 6,400</span></div></section>
+<aside>
+<div class="intro"><div class="tag" id="phase">Awaiting orders</div><h2 id="headline">Hold the lock.</h2><p class="copy" id="message">Stop five waves of salvage boats before they breach the lock gate.</p></div>
+<button id="start">Take command <span>→</span></button>
+<div class="controls"><span class="label">Battery selection</span><div class="tools">
+<button id="bolt" class="tool" aria-pressed="true"><svg class="icon" viewBox="0 0 42 28" aria-hidden="true"><path d="M6 22L13 17H25L30 22V25H6Z" fill="#c39d62" stroke="currentColor"/><circle cx="18" cy="15" r="6" fill="#94b3a0" stroke="currentColor"/><path d="M17 13L34 4 37 8 20 17Z" fill="#d9cba3" stroke="currentColor"/></svg><b>Bolt gun</b><small>25 brass</small></button>
+<button id="mortar" class="tool" aria-pressed="false"><svg class="icon" viewBox="0 0 42 28" aria-hidden="true"><path d="M7 23L12 17H26L31 23V25H7Z" fill="#c39d62" stroke="currentColor"/><path d="M13 15L22 4 31 9 23 20Z" fill="#af7153" stroke="currentColor"/><ellipse cx="26.3" cy="6.8" rx="5.4" ry="2.4" transform="rotate(30 26 7)" fill="#384c40" stroke="currentColor"/></svg><b>Mortar</b><small>40 brass</small></button>
+</div><p class="copy" id="details">Select a battery, then tap a numbered platform to build. Tap a built tower to upgrade.</p><button id="action" hidden></button></div>
+<div class="record best"><span id="score">Score 0000</span><span id="record">Best 0000</span></div>
+</aside></div>
+<footer><span>1 / 2 select &nbsp; · &nbsp; ← → platform &nbsp; · &nbsp; Enter build</span><span>R restart</span></footer>
+</main>
+<script>
+'use strict';
+const byId=id=>document.getElementById(id);
+const c=byId('map'), g=c.getContext('2d'), W=640,H=455;
+const map=document.createElement('canvas');map.width=W*2;map.height=H*2;
+const m=map.getContext('2d');m.scale(2,2);
+let seed=12691;
+function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+const path=[[-45,128]];
+function bend(x1,y1,x2,y2,x3,y3){
+ const [x,y]=path[path.length-1];
+ for(let i=1;i<=45;i++){const t=i/45,s=1-t;path.push([s*s*s*x+3*s*s*t*x1+3*s*t*t*x2+t*t*t*x3,s*s*s*y+3*s*s*t*y1+3*s*t*t*y2+t*t*t*y3])}
+}
+bend(35,128,84,102,142,132);bend(205,165,151,282,236,310);bend(327,345,355,247,369,187);
+bend(387,108,445,112,477,152);bend(507,188,469,284,530,319);bend(566,341,605,338,663,342);
+const lengths=[0];for(let i=1;i<path.length;i++)lengths.push(lengths[i-1]+Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]));
+const end=lengths[path.length-1]-62;
+function pos(d){
+ let lo=0,hi=lengths.length-1;
+ while(hi-lo>1){const mid=(lo+hi)>>1;if(lengths[mid]<d)lo=mid;else hi=mid}
+ const a=path[lo],b=path[hi],v=Math.min(1,Math.max(0,(d-lengths[lo])/(lengths[hi]-lengths[lo])));
+ return {x:a[0]+(b[0]-a[0])*v,y:a[1]+(b[1]-a[1])*v,a:Math.atan2(b[1]-a[1],b[0]-a[0])}
+}
+function line(ctx,pts,color,width=1,close=false){
+ ctx.beginPath();ctx.moveTo(...pts[0]);for(let i=1;i<pts.length;i++)ctx.lineTo(...pts[i]);if(close)ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()
+}
+function poly(ctx,pts,fill,edge='',w=1){
+ ctx.beginPath();ctx.moveTo(...pts[0]);for(let i=1;i<pts.length;i++)ctx.lineTo(...pts[i]);ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(edge){ctx.strokeStyle=edge;ctx.lineWidth=w;ctx.stroke()}
+}
+function ellipse(ctx,x,y,rx,ry,color,stroke='',w=1){
+ ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();if(stroke){ctx.lineWidth=w;ctx.strokeStyle=stroke;ctx.stroke()}
+}
+function label(ctx,s,x,y,size=10,color='#526b54',font='Georgia',italic=true){ctx.save();ctx.fillStyle=color;ctx.textAlign='center';ctx.font=(italic?'italic ':'')+size+'px '+font;ctx.fillText(s,x,y);ctx.restore()}
+function plotRiver(w,color){m.lineJoin='round';m.lineCap='round';line(m,path,color,w)}
+function pine(x,y,s){
+ m.save();m.translate(x,y);m.scale(s,s);
+ ellipse(m,3,1,6.5,2.6,'#52654d44');
+ line(m,[[0,1],[0,-9]],'#5b6249',1.4);
+ poly(m,[[-5.5,-3],[ -2.5,-8],[-4.4,-7],[0,-17],[3,-10],[2,-10],[5.2,-5],[3.3,-5],[5.8,-2]],'#839575','#566e52',.7);
+ line(m,[[0,-14],[.4,-4],[-3.5,-3]],'#536c52',.6);m.restore()
+}
+function house(x,y,s){
+ m.save();m.translate(x,y);m.scale(s,s);
+ poly(m,[[-8,0],[1,-4],[11,1],[2,6]],'#71806977');
+ poly(m,[[-7,-6],[2,-10],[2,1],[-7,5]],'#e6d5ab','#5b6450');
+ poly(m,[[2,-10],[8,-7],[8,4],[2,1]],'#a99874','#5b6450');
+ poly(m,[[-10,-6],[-6,-12],[3,-16],[10,-8],[2,-4]],'#995c43','#575745');
+ line(m,[[-6,-12],[1,-6],[10,-9]],'#d39a67',1);m.fillStyle='#526252';m.fillRect(-4,-2,2,4);m.restore()
+}
+function landscape(){
+ m.fillStyle='#d9dbb7';m.fillRect(0,0,W,H);
+ for(let i=0;i<280;i++){const x=rand()*W,y=rand()*H,s=5+rand()*29;ellipse(m,x,y,s,s*.38,['#cdd2ae','#d1d6b0','#c2cba6','#dfe0be'][i%4])}
+ for(let i=0;i<85;i++){const x=rand()*W,y=rand()*H;const a=10+rand()*25;for(let j=0;j<3;j++){m.beginPath();m.ellipse(x,y,a+j*4,(a+j*4)*.43,-.2,2.5,5.7);m.strokeStyle='#9faa835c';m.lineWidth=.65;m.stroke()}}
+ for(let i=0;i<4400;i++){const x=rand()*W,y=rand()*H;m.fillStyle=i%2?'#6f826228':'#ffffe34a';m.fillRect(x,y,1+rand()*2,.8)}
+ for(let i=0;i<490;i++){const x=rand()*W,y=rand()*H;line(m,[[x-2,y-1],[x,y+.3],[x+1,y-2.9]],'#82937479',.7)}
+ // Survey lanes and tree belts follow the contours of the floodplain.
+ for(const tr of [[[0,236],[61,246],[110,287],[136,347],[158,455]],[[248,0],[247,76],[280,107],[300,163]],[[640,187],[594,170],[569,124],[541,0]]]){
+ line(m,tr,'#abb38d',4);m.setLineDash([3,4]);line(m,tr,'#f1e7bd',2.2);m.setLineDash([])}
+ for(const [cx,cy,r,n] of [[43,49,50,45],[233,55,38,39],[60,284,36,45],[107,407,49,59],[351,383,35,40],[425,51,32,38],[597,116,45,51],[590,405,30,35],[305,186,22,19]]){
+ const trees=[];for(let i=0;i<n;i++){const a=rand()*Math.PI*2,b=Math.sqrt(rand())*r;trees.push([cx+Math.cos(a)*b,cy+Math.sin(a)*b*.63,.65+rand()*.48])}trees.sort((a,b)=>a[1]-b[1]);for(const t of trees)pine(...t)}
+ plotRiver(78,'#a6b393');plotRiver(72,'#bfbd94');plotRiver(65,'#7f8f75');plotRiver(61,'#dfd8ae');plotRiver(55,'#617e71');plotRiver(52,'#88aca0');plotRiver(45,'#709d96');plotRiver(36,'#68958e');
+ for(let i=0;i<940;i++){const d=rand()*lengths[lengths.length-1],p=pos(d),offset=(rand()-.5)*46;const x=p.x-Math.sin(p.a)*offset,y=p.y+Math.cos(p.a)*offset;
+ m.save();m.translate(x,y);m.rotate(p.a);line(m,[[-2,0],[0,-.4],[2+rand()*4,-.25]],i%5?'#c3d3b573':'#376f6c55',.7);m.restore()}
+ for(let i=0;i<195;i++){const d=rand()*lengths[lengths.length-1],p=pos(d),offset=(rand()>.5?1:-1)*(28+rand()*3),x=p.x-Math.sin(p.a)*offset,y=p.y+Math.cos(p.a)*offset;
+ line(m,[[x-1,y],[x-2.3,y-4],[x,y],[x+1.5,y-5]],'#6e805b',.8)}
+ for(const [x,y,s] of [[37,199,.8],[53,193,1],[66,204,.75],[238,117,.85],[253,110,.75],[167,391,1],[181,381,.85],[191,396,.7],[567,300,.8],[583,294,1.1]])house(x,y,s);
+ label(m,'Alder Marsh',100,365,15);label(m,'Siltwater Reach',315,68,13);label(m,'North Weir',554,48,12);
+ // Timber lock with stone piers and red tile roofs.
+ for(const y of [304,368]){
+ m.fillStyle='#5b6653';m.fillRect(588,y,40,10);m.fillStyle='#c5c2a1';m.fillRect(586,y-3,39,9);
+ for(let i=0;i<6;i++)line(m,[[588+i*6,y-2],[588+i*6,y+4]],'#8a9077',1);
+ house(608,y-2,1.25)}
+ for(let i=0;i<3;i++)line(m,[[603+i*3,312],[603+i*3,369]],i===1?'#d0aa70':'#735e48',2);
+ for(let i=0;i<8;i++)line(m,[[601,314+i*7],[612,316+i*7]],'#705d45',1.4);
+ label(m,'LOCK GATE',594,389,8,'#4a604b','monospace',false);
+ m.save();m.translate(600,50);line(m,[[0,-15],[0,17]],'#4b6450',1);line(m,[[-11,0],[11,0]],'#4b6450',1);
+ poly(m,[[0,-13],[-4,4],[0,0]],'#345a4a');poly(m,[[0,-13],[4,4],[0,0]],'#e9dfb4','#345a4a',.6);label(m,'N',0,-20,9,'#315341','Georgia',false);m.restore();
+ m.strokeStyle='#5e775d70';m.lineWidth=.8;m.strokeRect(6,6,W-12,H-12);
+ for(let x=25;x<W-8;x+=20){line(m,[[x,6],[x,9]],'#78876c',.7);line(m,[[x,H-6],[x,H-9]],'#78876c',.7)}
+}
+landscape();
+const pads=[[86,65],[115,194],[245,205],[242,375],[318,119],[419,223],[490,75],[552,226],[468,336]].map(([x,y])=>({x,y,tower:null}));
+const specs={bolt:{cost:25,range:111,delay:.73,damage:19},mortar:{cost:40,range:133,delay:1.87,damage:36}};
+let mode='ready', selected='bolt',focus=-1,cash=75,health=8,wave=0,score=0,best=0,elapsed=0,nextWave=0,spawnLeft=0,spawnTime=0,spawnCount=0;
+let boats=[],shots=[],particles=[],rings=[],clock=0,last=0,shake=0,toast='',toastTimer=0;
+try{best=Number(localStorage.getItem('kingfisher-lock.record'))||0}catch{}
+function ui(){
+ const playing=mode==='play';
+ byId('cash').textContent=cash;byId('hp').textContent=health;byId('wave').textContent=wave+'/5';
+ byId('score').textContent='Score '+String(score).padStart(4,'0');byId('record').textContent='Best '+String(best).padStart(4,'0');
+ byId('bolt').setAttribute('aria-pressed',String(selected==='bolt'));byId('mortar').setAttribute('aria-pressed',String(selected==='mortar'));
+ const titles={ready:['Awaiting orders','Hold the lock.','Stop five waves of salvage boats before they breach the lock gate.','Take command'],pause:['Watch suspended','Watch paused.','Resume command when you are ready.','Resume watch'],win:['Channel secured','The gate holds.','Your batteries have cleared the estuary. Final score '+score+'.','Stand watch again'],lose:['Gate breached','Lock overrun.','The salvage fleet broke through. Final score '+score+'.','Try again']};
+ const title=titles[mode]||['Watch in progress',wave?'Wave '+wave+' of 5':'Deploy batteries.',wave===5?'Hold until the last boat is gone.':wave?'Next fleet in '+Math.max(0,Math.ceil(nextWave-elapsed))+' seconds.':'First boats arrive in '+Math.max(0,Math.ceil(nextWave-elapsed))+' seconds.',''];
+ byId('phase').textContent=title[0];byId('headline').textContent=title[1];byId('message').textContent=title[2];byId('start').hidden=playing;if(!playing)byId('start').innerHTML=title[3]+' <span>→</span>';
+ const p=pads[focus],t=p&&p.tower,btn=byId('action');btn.hidden=!playing||!t||t.level>=3;
+ if(t)btn.textContent='Upgrade · '+(t.level===1?25:40)+' brass';
+ const info=selected==='bolt'?'Fast, precise fire.':'Shells damage boats in a cluster.';
+ byId('details').textContent=toastTimer>0?toast:!playing?'Select a battery, then tap a numbered platform to build. Tap a built tower to upgrade.':t?(t.type==='bolt'?'Bolt gun':'Mortar')+' · Rank '+t.level+(t.level===3?' · Fully upgraded.':'. Upgrade for more damage and range.'):info+' Tap a platform to build.';
+}
+function notice(s){toast=s;toastTimer=2;ui()}
+function restart(){
+ cash=75;health=8;wave=0;score=0;elapsed=0;nextWave=6;spawnLeft=0;spawnTime=0;spawnCount=0;boats=[];shots=[];particles=[];rings=[];
+ for(const p of pads)p.tower=null;mode='play';focus=-1;selected='bolt';toastTimer=0;shake=0;last=0;ui()
+}
+function finish(won){
+ mode=won?'win':'lose';if(won)score+=health*50;
+ if(score>best){best=score;try{localStorage.setItem('kingfisher-lock.record',String(best))}catch{}}
+ toastTimer=0;ui()
+}
+function toggleStart(){if(mode==='pause'){mode='play';last=0;ui()}else restart()}
+byId('start').addEventListener('click',toggleStart);
+function choose(type){selected=type;focus=-1;toastTimer=0;ui()}
+byId('bolt').onclick=()=>choose('bolt');byId('mortar').onclick=()=>choose('mortar');
+function build(i,upgrade=false){
+ if(mode!=='play')return;
+ focus=i;const p=pads[i],t=p.tower;
+ if(t&&!upgrade){toastTimer=0;ui();return}
+ if(t&&t.level>=3){notice('This battery is fully upgraded.');return}
+ const price=t?(t.level===1?25:40):specs[selected].cost;
+ if(cash<price){notice('Need '+(price-cash)+' more brass.');return}
+ cash-=price;if(t)t.level++;else p.tower={type:selected,level:1,cool:.2,angle:-.7,kick:0};
+ burst(p.x,p.y,'#f4ce7e',10);notice(t?'Battery upgraded.':'Battery ready.');ui()
+}
+byId('action').onclick=()=>{if(focus>=0)build(focus,true)};
+c.addEventListener('pointerdown',e=>{
+ if(mode!=='play')return;e.preventDefault();const b=c.getBoundingClientRect(),x=(e.clientX-b.left)*W/b.width,y=(e.clientY-b.top)*H/b.height;
+ let idx=-1,min=36;for(let i=0;i<pads.length;i++){const d=Math.hypot(x-pads[i].x,y-pads[i].y);if(d<min){min=d;idx=i}}
+ if(idx>=0)build(idx);else{focus=-1;toastTimer=0;ui()}
+});
+document.addEventListener('keydown',e=>{
+ if(!['1','2','r','R','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter',' '].includes(e.key))return;
+ if((e.key==='Enter'||e.key===' ')&&document.activeElement?.tagName==='BUTTON')return;
+ e.preventDefault();if(e.repeat)return;
+ if(e.key.toLowerCase()==='r'){restart();return}
+ if(mode!=='play'){if(e.key==='Enter'||e.key===' ')toggleStart();return}
+ if(e.key==='1'||e.key==='2'){choose(e.key==='1'?'bolt':'mortar');return}
+ if(e.key.startsWith('Arrow')){focus=(focus+(e.key==='ArrowLeft'||e.key==='ArrowUp'?-1:1)+pads.length)%pads.length;toastTimer=0;ui();return}
+ if(focus<0)focus=0;build(focus,!!pads[focus].tower)
+});
+function pause(){if(mode==='play'){mode='pause';last=0;ui()}}
+window.addEventListener('blur',pause);document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+function burst(x,y,col,num){
+ for(let i=0;i<num;i++){const a=Math.random()*Math.PI*2,v=6+Math.random()*40;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.25+Math.random()*.3,col})}
+}
+function spawn(){
+ const type=wave>=3&&spawnCount%5===4?'barge':wave>=2&&spawnCount%3===1?'skiff':'cutter';
+ const hp=(type==='barge'?109:type==='skiff'?34:49)+wave*(type==='barge'?11:7);
+ const p=pos(0);boats.push({...p,d:0,hp,max:hp,type,speed:(type==='skiff'?64:type==='barge'?33:43)+wave*1.5,flash:0,lane:(spawnCount%3-1)*5});spawnCount++
+}
+function hurt(b,n){
+ if(b.hp<=0)return;b.hp-=n;b.flash=.14;
+ if(b.hp<=0){cash+=b.type==='barge'?10:6;score+=b.type==='barge'?85:45;burst(b.x,b.y,'#ead6a7',12);rings.push({x:b.x,y:b.y,age:0,r:19});ui()}
+}
+function update(dt){
+ elapsed+=dt;if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)ui()}
+ if(wave<5&&elapsed>=nextWave){wave++;spawnLeft=6+wave;spawnCount=0;spawnTime=0;nextWave=elapsed+18;cash+=wave>1?12:0;ui()}
+ if(spawnLeft){spawnTime-=dt;if(spawnTime<=0){spawn();spawnLeft--;spawnTime=wave>=4?1.02:1.35}}
+ for(const b of boats){
+ if(b.hp<=0)continue;b.d+=b.speed*dt;const p=pos(b.d);b.x=p.x-Math.sin(p.a)*b.lane;b.y=p.y+Math.cos(p.a)*b.lane;b.a=p.a;b.flash=Math.max(0,b.flash-dt);
+ if(b.d>=end){health=Math.max(0,health-(b.type==='barge'?2:1));b.hp=0;shake=.32;burst(b.x,b.y,'#d99554',16);ui();if(health===0){finish(false);return}}
+ }
+ for(const p of pads){
+ const t=p.tower;if(!t)continue;const s=specs[t.type],range=s.range+8*(t.level-1);t.cool=Math.max(0,t.cool-dt);t.kick=Math.max(0,t.kick-dt);
+ let target;for(const b of boats)if(b.hp>0&&Math.hypot(b.x-p.x,b.y-p.y)<=range&&(!target||b.d>target.d))target=b;
+ if(!target)continue;t.angle=Math.atan2(target.y-p.y,target.x-p.x);if(t.cool>0)continue;t.cool=s.delay;t.kick=.14;
+ const power=s.damage*(1+.62*(t.level-1));
+ if(t.type==='bolt'){hurt(target,power);shots.push({type:'bolt',x:p.x+Math.cos(t.angle)*16,y:p.y+Math.sin(t.angle)*16,tx:target.x,ty:target.y,age:0,time:.12});burst(target.x,target.y,'#fae2a1',3)}
+ else{const predicted=pos(Math.min(end,target.d+target.speed*.4));shots.push({type:'mortar',x:p.x,y:p.y-5,tx:predicted.x-Math.sin(predicted.a)*target.lane,ty:predicted.y+Math.cos(predicted.a)*target.lane,age:0,time:.4,power})}
+ }
+ for(const shot of shots){shot.age+=dt;if(shot.age>=shot.time&&shot.type==='mortar'){
+ for(const b of boats)if(Math.hypot(b.x-shot.tx,b.y-shot.ty)<42)hurt(b,shot.power);
+ burst(shot.tx,shot.ty,'#f2c384',13);rings.push({x:shot.tx,y:shot.ty,age:0,r:37})}}
+ shots=shots.filter(s=>s.age<s.time);boats=boats.filter(b=>b.hp>0);shake=Math.max(0,shake-dt);
+ for(const r of rings)r.age+=dt;rings=rings.filter(r=>r.age<.55);
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=22*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
+ if(wave===5&&!spawnLeft&&!boats.length){finish(true);return}if(Math.floor(elapsed)!==Math.floor(elapsed-dt))ui()
+}
+function platform(p,i){
+ const {x,y,tower:t}=p;
+ g.save();g.translate(x,y);
+ const vertices=(r,dy)=>Array.from({length:8},(_,i)=>{const a=(i+.5)*Math.PI*.25;return [Math.cos(a)*r,Math.sin(a)*r*.79+dy]});
+ poly(g,vertices(18,3),'#859074','#495e4e',1.2);poly(g,vertices(18,0),'#ddd8ac','#65775e',1.3);
+ poly(g,vertices(13,0),t?'#799080':'#b5bea0','#7c8b70',.8);
+ for(let n=0;n<4;n++){const a=Math.PI*.25+n*Math.PI*.5;ellipse(g,Math.cos(a)*15,Math.sin(a)*11,1.2,1.2,'#657862')}
+ if(!t){
+ g.textAlign='center';g.textBaseline='middle';g.font='bold 13px Georgia';g.fillStyle='#3d5c4b';g.fillText(i+1,0,.4);
+ }else{
+ ellipse(g,0,2.5,10,7,'#465e4f');ellipse(g,0,0,10,7,'#bdab7b','#41584b',1.3);
+ g.save();g.rotate(t.angle);g.translate(-t.kick*17,0);
+ if(t.type==='bolt'){
+ poly(g,[[-5,-5],[7,-4],[18,-3],[18,3],[7,3],[-4,5]],'#506f60','#2c473e',1.3);g.fillStyle='#ddc798';g.fillRect(5,-2.1,13,2);g.fillStyle='#334f44';g.fillRect(16,-3.5,3,7);
+ }else{
+ poly(g,[[-6,-5],[4,-7],[16,-7],[16,7],[4,7],[-6,5]],'#b17550','#524a36',1.3);
+ line(g,[[1,-5],[14,-5]],'#e2b27b',2);ellipse(g,15,0,3.2,7,'#5f5643','#d8ad71',1.5)}
+ g.restore();if(t.level>1)label(g,'★'.repeat(t.level-1),0,18,8,'#87522a','Georgia',false);
+ }
+ if(focus===i){g.setLineDash([3,3]);g.beginPath();g.ellipse(0,0,22,18,0,0,7);g.strokeStyle='#9b4328';g.lineWidth=1.6;g.stroke()}g.restore()
+}
+function vessel(b){
+ g.save();g.translate(b.x,b.y);g.rotate(b.a);
+ const s=b.type==='barge'?1.3:b.type==='skiff'?.75:1;g.scale(s,s);
+ const wake=2*Math.sin(clock*3+b.d*.09);
+ line(g,[[-9,-3],[-18,-6-wake],[-26,-8]],'#c3d6c299',1.3);line(g,[[-9,3],[-19,6+wake],[-25,8]],'#c3d6c299',1.3);
+ poly(g,[[-12,-5],[4,-6],[14,-1],[15,1],[4,7],[-12,7]],'#395e55');
+ poly(g,[[-12,-5],[2,-6],[14,0],[2,6],[-12,5]],b.flash?'#fff0bd':'#553e35','#433d30',1.25);
+ poly(g,[[-10,-3],[1,-4],[10,0],[1,4],[-10,3]],'#c39968');
+ if(b.type==='barge'){g.fillStyle='#935039';g.fillRect(-7,-4,11,8);line(g,[[-2,-4],[-2,4]],'#d0a36d',1.5)}
+ else{g.fillStyle=b.flash?'#f3e7b3':'#a44f37';g.fillRect(-7,-3.5,7,7);g.fillStyle='#e9d0a0';g.fillRect(2,-2,3,4)}
+ g.restore();if(b.hp<b.max){g.fillStyle='#38554b';g.fillRect(b.x-9,b.y-13,18,2.5);g.fillStyle='#edc477';g.fillRect(b.x-9,b.y-13,18*b.hp/b.max,2.5)}
+}
+function draw(){
+ g.setTransform(c.width/W,0,0,c.height/H,0,0);g.clearRect(0,0,W,H);g.save();
+ if(shake>0)g.translate(Math.sin(clock*133)*shake*5,Math.cos(clock*127)*shake*4);
+ g.drawImage(map,0,0,W,H);
+ for(let i=0;i<9;i++){const p=pos((i*106+clock*6)%end);g.save();g.translate(p.x,p.y);g.rotate(p.a);line(g,[[-3,-2],[1,0],[-3,2]],'#dde6c589',1);g.restore()}
+ if(mode==='play'&&focus>=0){const p=pads[focus],t=p.tower,r=specs[t?t.type:selected].range+(t?8*(t.level-1):0);g.save();g.setLineDash([4,5]);ellipse(g,p.x,p.y,r,r,'#e5eab012','#536b5499',1);g.restore()}
+ pads.forEach(platform);
+ if(mode==='ready'){
+ for(const [d,type] of [[105,'cutter'],[71,'barge'],[40,'skiff']]){const p=pos(d);vessel({...p,d,type,hp:1,max:1})}
+ }else for(const b of boats)vessel(b);
+ for(const s of shots){
+ const u=s.age/s.time;if(s.type==='bolt'){g.globalAlpha=1-u;line(g,[[s.x,s.y],[s.tx,s.ty]],'#fff1a7',2.6);g.globalAlpha=1}
+ else{const x=s.x+(s.tx-s.x)*u,y=s.y+(s.ty-s.y)*u;ellipse(g,x,y,2.5,1.4,'#34554955');ellipse(g,x,y-Math.sin(Math.PI*u)*23,3,3,'#67472d','#eec58b',1)}}
+ for(const r of rings){g.globalAlpha=1-r.age/.55;ellipse(g,r.x,r.y,3+r.r*r.age/.55,2+r.r*.72*r.age/.55,'#ecd3a322','#f4e0ae',1.5)}g.globalAlpha=1;
+ for(const p of particles){g.globalAlpha=Math.min(1,p.life*4);g.fillStyle=p.col;g.fillRect(p.x,p.y,2,2)}g.globalAlpha=1;g.restore()
+}
+function resize(){const b=c.getBoundingClientRect(),d=Math.min(3,window.devicePixelRatio||1);c.width=Math.max(1,Math.round(b.width*d));c.height=Math.max(1,Math.round(b.height*d));draw()}
+function loop(time){const dt=last?Math.min(.05,(time-last)/1000):0;last=time;if(mode!=='pause')clock+=dt;if(mode==='play')update(dt);draw();requestAnimationFrame(loop)}
+window.addEventListener('resize',resize);resize();ui();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

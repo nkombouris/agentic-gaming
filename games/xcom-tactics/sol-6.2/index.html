@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1219">
+<title>Relay Under Glass</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground: #0b1219;
+    --surface: #101c25;
+    --line: #2b424d;
+    --paper: #e7eee9;
+    --muted: #9ab0b5;
+    --mint: #98f4dc;
+    --amber: #ffce7a;
+    --red: #ff8a78;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font: 15px/1.5 system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: radial-gradient(ellipse at top left, #17252b, var(--ground) 55%); color: var(--paper); }
+  button { color: inherit; font: inherit; cursor: pointer; }
+  button:disabled { cursor: default; opacity: .45; }
+  button:focus-visible, canvas:focus-visible { outline: 2px solid var(--mint); outline-offset: -3px; }
+  .shell {
+    height: 100dvh; min-height: 530px; max-width: 1680px; margin: auto;
+    padding: 0 clamp(12px, 2.5vw, 38px) 20px;
+    display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 15px;
+  }
+  .mast {
+    min-height: 84px; display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand, .mission, .round { display: flex; align-items: center; gap: 13px; }
+  .brand-mark {
+    width: 37px; height: 37px; flex: 0 0 37px; display: grid; place-items: center;
+    color: var(--mint); background: #17322f; border: 1px solid #427166;
+    clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%);
+  }
+  .brand-mark::before {
+    content: ""; width: 18px; height: 18px; transform: rotate(45deg);
+    border: 2px solid currentColor; border-top-color: transparent; border-bottom-color: transparent;
+    box-shadow: inset 0 0 8px #98f4dc5c;
+  }
+  .eyebrow, .mission span, .round span, .panel h2, .phase, .sector, .controls button, .datum {
+    font: 700 11px/1.35 var(--mono); letter-spacing: .11em; text-transform: uppercase;
+  }
+  .brand .eyebrow { color: var(--muted); margin-bottom: 3px; }
+  .brand h1 { margin: 0; font-size: clamp(17px, 2.1vw, 29px); line-height: 1.03; letter-spacing: -.045em; }
+  .mission { margin-left: auto; }
+  .mission div, .round div { display: grid; gap: 2px; }
+  .mission span, .round span { color: var(--muted); }
+  .mission strong { font-size: 13px; }
+  .objective-mark { width: 9px; height: 9px; transform: rotate(45deg); background: var(--amber); box-shadow: 0 0 12px #ffce7a71; }
+  .round { min-width: 96px; border-left: 1px solid var(--line); padding-left: 19px; }
+  .round strong { font: 500 24px/1 var(--mono); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) clamp(212px, 22vw, 302px); gap: 14px; min-height: 0; }
+  .field { display: grid; grid-template-rows: 47px minmax(0, 1fr) 66px; min-height: 0; background: #0b141c; border: 1px solid var(--line); }
+  .field-top, .controls { display: flex; align-items: center; padding: 0 13px; gap: 8px; background: var(--surface); }
+  .field-top { justify-content: space-between; border-bottom: 1px solid var(--line); }
+  .phase { display: flex; align-items: center; gap: 9px; color: var(--mint); }
+  .phase::before { content: ""; width: 7px; height: 7px; background: currentColor; box-shadow: 0 0 10px currentColor; border-radius: 50%; }
+  .phase.hostile { color: var(--red); }
+  .sector { color: var(--muted); }
+  .field-view { min-width: 0; min-height: 0; position: relative; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .controls { border-top: 1px solid var(--line); }
+  .controls button {
+    height: 39px; padding: 0 clamp(6px, .8vw, 12px); display: flex; align-items: center; gap: 8px;
+    border: 1px solid #304752; background: #15232d; white-space: nowrap;
+  }
+  .controls button:hover:not(:disabled) { border-color: var(--mint); }
+  .controls button[aria-pressed="true"] { color: var(--mint); background: #1c3837; border-color: #62a799; }
+  .controls .end { margin-left: auto; color: var(--amber); border-color: #756344; }
+  .controls .end.ready { background: var(--amber); color: #1c1711; }
+  kbd { font: 700 10px/1 var(--mono); min-width: 19px; text-align: center; border: 1px solid currentColor; border-radius: 3px; padding: 3px; opacity: .77; }
+  aside { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .panel { border: 1px solid var(--line); background: var(--surface); padding: clamp(12px, 1.45vw, 19px); }
+  .panel h2 { margin: 0 0 13px; color: var(--muted); }
+  .operator { display: grid; grid-template-columns: 39px minmax(0, 1fr); gap: 11px; align-items: center; margin-bottom: 16px; }
+  .operator-mark { display: grid; place-items: center; height: 39px; border: 1px solid #50796f; background: #1c3332; color: var(--mint); font: 23px/1 var(--mono); }
+  .operator strong { display: block; font-size: 16px; letter-spacing: -.035em; }
+  .operator small, #target-detail { font-size: 12px; color: var(--muted); }
+  .meter-label { display: flex; justify-content: space-between; margin: 11px 0 6px; }
+  .datum { color: var(--muted); }
+  .datum output { color: var(--paper); }
+  .meter { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; height: 6px; }
+  .meter > i, .actions > i { background: #2f4650; }
+  .meter > i.lit { background: var(--mint); }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; height: 9px; }
+  .actions > i.lit { background: var(--amber); box-shadow: 0 0 10px #ffce7a38; }
+  .target { min-height: 128px; border-left: 2px solid #42616b; }
+  .target[data-kind="aim"] { border-left-color: var(--red); }
+  .target[data-kind="route"] { border-left-color: var(--mint); }
+  .target h2 { margin-bottom: 8px; }
+  #target-title { display: block; font-size: 18px; line-height: 1.15; letter-spacing: -.03em; }
+  #target-detail { margin: 6px 0 0; min-height: 32px; }
+  .activity { flex: 1; min-height: 88px; overflow: hidden; }
+  .activity ol { margin: 0; list-style: none; padding: 0; display: grid; gap: 8px; }
+  .activity li { position: relative; padding-left: 11px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .activity li::before { content: ""; position: absolute; width: 4px; height: 4px; background: currentColor; top: .5em; left: 0; }
+  .activity li:first-child { color: var(--paper); }
+  .activity li.good { color: var(--mint); }
+  .activity li.bad { color: var(--red); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--muted); font: 10px var(--mono); padding: 2px 1px 4px; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend i { width: 11px; height: 8px; border: 1px solid #728b97; background: #415b69; }
+  .legend .low { border-color: #d0a66c; background: #8c6945; }
+  .veil {
+    position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
+    background: radial-gradient(ellipse at center, #09131938, #091319c4);
+  }
+  .brief {
+    width: min(100%, 480px); background: linear-gradient(146deg, #162a32f7, #0f1b25fc 72%);
+    border: 1px solid #53727b; border-top: 3px solid var(--mint); padding: clamp(18px, 3vw, 30px);
+    box-shadow: 0 22px 80px #0009;
+  }
+  .brief .eyebrow { margin: 0 0 10px; color: var(--mint); }
+  .brief h2 { margin: 0; max-width: 12ch; font-size: clamp(31px, 4.5vw, 60px); line-height: .96; letter-spacing: -.068em; }
+  .brief p { margin: 13px 0; color: #b9ccca; font-size: 13px; max-width: 46ch; }
+  .brief-keys { margin: 16px 0; display: flex; flex-wrap: wrap; gap: 6px 13px; color: #cad9d5; font-size: 11px; }
+  .brief-keys span { display: inline-flex; gap: 5px; align-items: center; }
+  #start-mission {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    border: 1px solid var(--mint); color: #09221e; background: var(--mint);
+    padding: 10px 14px; font: 800 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  }
+  #start-mission:hover { background: #c9fff0; }
+  @media (max-width: 850px) {
+    .shell { gap: 10px; }
+    .mast { min-height: 67px; }
+    main { grid-template-columns: minmax(0, 1fr) 185px; gap: 8px; }
+    aside { gap: 8px; }
+    .controls { padding-inline: 7px; gap: 4px; }
+    .controls button { gap: 4px; letter-spacing: .03em; }
+    .sector { display: none; }
+  }
+  @media (max-height: 680px) {
+    .shell { padding-bottom: 10px; }
+    .mast { min-height: 62px; }
+    .field { grid-template-rows: 39px minmax(0, 1fr) 54px; }
+    .panel { padding-block: 10px; }
+    .panel h2 { margin-bottom: 8px; }
+    .brief p { margin: 9px 0; }
+    .brief-keys { margin-block: 9px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="mast">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div><div class="eyebrow">West Transit Hub</div><h1>Relay Under Glass</h1></div>
+    </div>
+    <div class="mission">
+      <div class="objective-mark" aria-hidden="true"></div>
+      <div><span>Objective</span><strong id="mission">Neutralize 5 drones</strong></div>
+    </div>
+    <div class="round"><div><span>Round</span><strong id="round">01</strong></div></div>
+  </header>
+  <main>
+    <section class="field" aria-label="Tactical field">
+      <header class="field-top">
+        <span class="phase" id="phase">Awaiting deployment</span>
+        <span class="sector" id="sector">Reinforcements in round 4</span>
+      </header>
+      <div class="field-view" id="field-view">
+        <canvas id="field" tabindex="0" aria-label="Tactical grid. Use arrow keys to select a tile and Enter to act."></canvas>
+        <div class="veil" id="veil">
+          <section class="brief" aria-labelledby="brief-title">
+            <div class="eyebrow" id="brief-label">Mission briefing</div>
+            <h2 id="brief-title">Retake the relay.</h2>
+            <p id="brief-copy">The transit hub has gone dark. Disable its patrol drones before they overrun your operator.</p>
+            <div class="brief-keys" id="brief-keys">
+              <span><kbd>Q</kbd> Move</span><span><kbd>E</kbd> Aim</span><span><kbd>B</kbd> Brace</span>
+              <span><kbd>Space</kbd> End turn</span><span><kbd>R</kbd> Restart</span>
+            </div>
+            <p id="brief-help">Click a lit tile to move or an exposed drone to fire. Walls block shots. Low cover makes targets harder to hit.</p>
+            <button type="button" id="start-mission"><span id="start-caption">Deploy</span><kbd>Enter</kbd></button>
+          </section>
+        </div>
+      </div>
+      <nav class="controls" aria-label="Mission controls">
+        <button type="button" id="move" aria-pressed="true">Move <kbd>Q</kbd></button>
+        <button type="button" id="aim" aria-pressed="false">Aim <kbd>E</kbd></button>
+        <button type="button" id="brace">Brace <kbd>B</kbd></button>
+        <button type="button" class="end" id="end">End turn <kbd>Space</kbd></button>
+      </nav>
+    </section>
+    <aside aria-label="Mission status">
+      <section class="panel">
+        <h2>Your unit</h2>
+        <div class="operator">
+          <div class="operator-mark" aria-hidden="true">◇</div>
+          <div><strong>Field operator</strong><small id="stance">Ready to deploy</small></div>
+        </div>
+        <div class="meter-label datum"><span>Integrity</span><output id="hp-value"></output></div>
+        <div class="meter" id="hp-meter" aria-hidden="true"></div>
+        <div class="meter-label datum"><span>Action points</span><output id="ap-value"></output></div>
+        <div class="actions" id="ap-meter" aria-hidden="true"></div>
+      </section>
+      <section class="panel target" id="target">
+        <h2>Tile intel</h2>
+        <strong id="target-title">West approach</strong>
+        <p id="target-detail"></p>
+      </section>
+      <section class="panel activity">
+        <h2>Activity</h2>
+        <ol id="log" aria-live="polite"></ol>
+      </section>
+      <div class="legend" aria-label="Map terrain legend">
+        <span><i></i> Solid wall</span><span><i class="low"></i> Low cover</span>
+      </div>
+    </aside>
+  </main>
+</div>
+<script>
+(() => {
+  'use strict';
+
+  const map = [
+    '.....#.......',
+    '..#......#...',
+    '...#c..#.....',
+    '.#..c..#..c..',
+    '.....##...c..',
+    '.....##..#...',
+    '..c....c.....',
+    '....##..c....',
+    '.............',
+  ];
+  const columns = map[0].length;
+  const rows = map.length;
+  const maxHP = 10;
+  const maxAP = 2;
+  const moveRange = 4;
+  const fireRange = 8;
+  const droneCount = 5;
+  const arrivalRound = 4;
+  const gates = [{x: 12, y: 0}, {x: 12, y: 8}];
+  const directions = [{x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 0, y: -1}];
+  const types = {
+    scout: {name: 'Scout', hp: 3, move: 2, range: 6, aim: 76, damage: 1, color: '#ff8b77'},
+    warden: {name: 'Warden', hp: 5, move: 2, range: 6, aim: 80, damage: 2, color: '#ffbe74'},
+    hunter: {name: 'Hunter', hp: 4, move: 3, range: 5, aim: 84, damage: 2, color: '#f4a0c7'},
+  };
+  const ui = {};
+  for (const id of [
+    'field', 'field-view', 'phase', 'sector', 'mission', 'round', 'move', 'aim', 'brace',
+    'end', 'hp-value', 'hp-meter', 'ap-value', 'ap-meter', 'stance', 'target',
+    'target-title', 'target-detail', 'log', 'veil', 'brief-label', 'brief-title',
+    'brief-copy', 'brief-keys', 'brief-help', 'start-mission', 'start-caption',
+  ]) ui[id] = document.getElementById(id);
+  const canvas = ui.field;
+  const ctx = canvas.getContext('2d');
+  const mint = '#98f4dc';
+  const amber = '#ffce7a';
+  const rose = '#ff8978';
+  const recordKey = 'relay-under-glass-best-v1';
+  const view = {w: 0, h: 0, tile: 1, left: 0, top: 0, scale: 1};
+  const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  const same = (a, b) => a && b && a.x === b.x && a.y === b.y;
+  const key = (x, y) => y * columns + x;
+  const terrain = (x, y) => map[y]?.[x];
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const coordinate = (p) => String.fromCharCode(65 + p.x) + (p.y + 1);
+
+  let unit, foes, round, phase, mode, hover, reach, preview, destroyed, messages;
+  let motion, particles, beams, popups, recoil, cooldown, enemyIndex, enemyStep;
+  let elapsed = 0;
+  let previousFrame = 0;
+  let paused = false;
+  let best = loadBest();
+
+  function loadBest() {
+    try {
+      const data = JSON.parse(localStorage.getItem(recordKey) || 'null');
+      return data && Number.isInteger(data.round) && Number.isInteger(data.hp) ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveBest() {
+    if (!best || round < best.round || (round === best.round && unit.hp > best.hp)) {
+      best = {round, hp: unit.hp};
+      try { localStorage.setItem(recordKey, JSON.stringify(best)); } catch {}
+    }
+  }
+
+  function drone(type, x, y) {
+    const profile = types[type];
+    return {type, hp: profile.hp, x, y, color: profile.color};
+  }
+
+  function reset(deploy) {
+    unit = {x: 1, y: 4, hp: maxHP, ap: maxAP, braced: false, color: mint};
+    foes = [drone('scout', 6, 1), drone('scout', 11, 2), drone('warden', 11, 6)];
+    round = 1;
+    destroyed = 0;
+    mode = 'move';
+    hover = null;
+    preview = [];
+    reach = new Map();
+    motion = null;
+    particles = [];
+    beams = [];
+    popups = [];
+    recoil = 0;
+    cooldown = 0;
+    enemyIndex = 0;
+    enemyStep = 0;
+    messages = [];
+    phase = deploy ? 'player' : 'briefing';
+    ui.veil.hidden = deploy;
+    if (deploy) {
+      note('Operator deployed. Two actions available.', 'good');
+      canvas.focus({preventScroll: true});
+    } else {
+      note('Three drones on station.');
+    }
+    refreshReach();
+    updateHUD();
+  }
+
+  function note(message, style = '') {
+    messages.unshift({message, style});
+    messages.length = Math.min(messages.length, 4);
+    ui.log.replaceChildren(...messages.map(({message, style}) => {
+      const entry = document.createElement('li');
+      entry.textContent = message;
+      entry.className = style;
+      return entry;
+    }));
+  }
+
+  function finished(clear) {
+    phase = 'finished';
+    mode = 'move';
+    hover = null;
+    if (clear) saveBest();
+    ui['brief-label'].textContent = clear ? 'Mission complete' : 'Mission failed';
+    ui['brief-title'].textContent = clear ? 'Relay secured.' : 'Operator down.';
+    ui['brief-copy'].textContent = clear
+      ? 'All five drones disabled in ' + round + (round === 1 ? ' round.' : ' rounds.')
+      : destroyed + ' of 5 drones disabled. The hub remains under drone control.';
+    ui['brief-help'].textContent = best
+      ? 'Best clear · Round ' + best.round + ' with ' + best.hp + ' integrity.'
+      : 'A new deployment starts with two action points and full integrity.';
+    ui['brief-keys'].hidden = true;
+    ui['start-caption'].textContent = 'Deploy again';
+    ui.veil.hidden = false;
+    updateHUD();
+  }
+
+  function occupied(except) {
+    const cells = new Set();
+    for (const actor of [unit, ...foes]) {
+      if (actor !== except && actor.hp > 0) cells.add(key(actor.x, actor.y));
+    }
+    return cells;
+  }
+
+  function paths(origin, limit, busy) {
+    const start = {x: origin.x, y: origin.y, steps: 0, previous: null};
+    const queue = [start];
+    const found = new Map([[key(start.x, start.y), start]]);
+    for (let i = 0; i < queue.length; i++) {
+      const cell = queue[i];
+      if (cell.steps === limit) continue;
+      for (const direction of directions) {
+        const x = cell.x + direction.x;
+        const y = cell.y + direction.y;
+        const index = key(x, y);
+        if (terrain(x, y) !== '.' || busy.has(index) || found.has(index)) continue;
+        const next = {x, y, steps: cell.steps + 1, previous: cell};
+        found.set(index, next);
+        queue.push(next);
+      }
+    }
+    return found;
+  }
+
+  function route(cell) {
+    const result = [];
+    for (let next = cell; next; next = next.previous) result.unshift(next);
+    return result;
+  }
+
+  function refreshReach() {
+    reach = paths(unit, moveRange, occupied(unit));
+  }
+
+  function hasSight(source, target) {
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    const sx = Math.sign(dx);
+    const sy = Math.sign(dy);
+    const nx = Math.abs(dx);
+    const ny = Math.abs(dy);
+    let x = source.x;
+    let y = source.y;
+    let ix = 0;
+    let iy = 0;
+    while (ix < nx || iy < ny) {
+      const stepX = (2 * ix + 1) * ny;
+      const stepY = (2 * iy + 1) * nx;
+      if (stepX === stepY) {
+        if (terrain(x + sx, y) === '#' || terrain(x, y + sy) === '#') return false;
+        x += sx;
+        y += sy;
+        ix++;
+        iy++;
+      } else if (stepX < stepY) {
+        x += sx;
+        ix++;
+      } else {
+        y += sy;
+        iy++;
+      }
+      if (terrain(x, y) === '#') return false;
+    }
+    return true;
+  }
+
+  function inCover(target, source) {
+    const dx = source.x - target.x;
+    const dy = source.y - target.y;
+    return (Math.abs(dx) >= Math.abs(dy) * .55 && terrain(target.x + Math.sign(dx), target.y) === 'c')
+      || (Math.abs(dy) >= Math.abs(dx) * .55 && terrain(target.x, target.y + Math.sign(dy)) === 'c');
+  }
+
+  function shot(source, target, profile) {
+    const gap = distance(source, target);
+    if (gap > profile.range) return {chance: 0, reason: 'Out of range'};
+    if (!hasSight(source, target)) return {chance: 0, reason: 'Sight blocked by a wall'};
+    const cover = inCover(target, source);
+    const chance = clamp(Math.round(profile.aim - Math.max(0, gap - 1) * 5
+      - (cover ? 25 : 0) - (target.braced ? 26 : 0)), 12, 97);
+    return {chance, cover};
+  }
+
+  const operatorProfile = {range: fireRange, aim: 104, damage: 3};
+
+  function canAct() {
+    return phase === 'player' && unit.ap > 0 && !motion && cooldown === 0;
+  }
+
+  function actorAt(cell) {
+    return cell && foes.find((foe) => foe.hp > 0 && same(foe, cell));
+  }
+
+  function setMode(next) {
+    if (phase !== 'player') return;
+    mode = next;
+    updateHUD();
+  }
+
+  function choose(cell) {
+    if (!cell || !canAct()) return;
+    const foe = actorAt(cell);
+    if (foe) {
+      const solution = shot(unit, foe, operatorProfile);
+      if (!solution.chance) return;
+      unit.ap--;
+      cooldown = .26;
+      attack(unit, foe, operatorProfile, solution);
+    } else if (mode === 'move') {
+      const destination = reach.get(key(cell.x, cell.y));
+      if (!destination?.steps) return;
+      unit.ap--;
+      moveActor(unit, destination);
+      note('Operator moved to ' + coordinate(destination) + '.');
+    }
+    updateHUD();
+  }
+
+  function brace() {
+    if (!canAct() || unit.braced) return;
+    unit.ap--;
+    unit.braced = true;
+    popup(unit, 'BRACED', mint);
+    note('Operator braced for incoming fire.', 'good');
+    updateHUD();
+  }
+
+  function moveActor(actor, destination) {
+    const steps = route(destination);
+    actor.x = destination.x;
+    actor.y = destination.y;
+    motion = {actor, steps, progress: 0, duration: Math.min(.5, .14 * destination.steps)};
+    if (actor === unit) refreshReach();
+  }
+
+  function pose(actor) {
+    if (motion?.actor !== actor) return actor;
+    const position = motion.progress / motion.duration * (motion.steps.length - 1);
+    const step = Math.floor(position);
+    const a = motion.steps[step];
+    const b = motion.steps[step + 1] || a;
+    const ease = (1 - Math.cos((position - step) * Math.PI)) / 2;
+    return {x: a.x + (b.x - a.x) * ease, y: a.y + (b.y - a.y) * ease};
+  }
+
+  function attack(source, target, profile, solution) {
+    const hit = Math.random() * 100 < solution.chance;
+    const offset = hit ? 0 : (Math.random() < .5 ? -.43 : .43);
+    beams.push({x: source.x, y: source.y, tx: target.x + offset, ty: target.y - offset / 2, color: source.color, life: .24});
+    burst(source, source.color, 7);
+    if (hit) {
+      target.hp = Math.max(0, target.hp - profile.damage);
+      popup(target, '−' + profile.damage, target === unit ? rose : mint);
+      burst(target, source.color, target.hp === 0 ? 24 : 15);
+      recoil = target === unit || target.hp === 0 ? 6 : 3;
+    } else {
+      popup(target, 'MISS', '#c5d1d1');
+      burst({x: target.x + offset, y: target.y - offset / 2}, '#d0b39b', 5);
+    }
+
+    if (source === unit) {
+      if (!target.hp) {
+        destroyed++;
+        note(types[target.type].name + ' disabled at ' + coordinate(target) + '.', 'good');
+        refreshReach();
+        if (destroyed === droneCount) finished(true);
+      } else {
+        note(hit ? types[target.type].name + ' took ' + profile.damage + ' damage.' : 'Operator shot missed.', hit ? 'good' : '');
+      }
+    } else {
+      const name = types[source.type].name;
+      note(hit ? name + ' hit for ' + profile.damage + '.' : name + ' missed.', hit ? 'bad' : '');
+      if (!unit.hp) finished(false);
+    }
+  }
+
+  function burst(cell, color, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = .5 + Math.random() * 2.9;
+      particles.push({x: cell.x, y: cell.y, vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed, color, r: .018 + Math.random() * .024, life: .15 + Math.random() * .38});
+    }
+  }
+
+  function popup(cell, label, color) {
+    popups.push({x: cell.x, y: cell.y, label, color, life: .85});
+  }
+
+  function endTurn() {
+    if (phase !== 'player' || motion || cooldown > 0) return;
+    phase = 'enemy';
+    unit.ap = 0;
+    hover = null;
+    enemyIndex = 0;
+    enemyStep = 0;
+    cooldown = .36;
+    note('Drones are repositioning.');
+    updateHUD();
+  }
+
+  function droneDestination(foe, profile) {
+    const options = paths(foe, profile.move, occupied(foe));
+    const traffic = occupied(foe);
+    traffic.delete(key(unit.x, unit.y));
+    const approach = paths(unit, columns * rows, traffic);
+    let choice = options.get(key(foe.x, foe.y));
+    let top = -Infinity;
+    for (const cell of options.values()) {
+      const attackLine = shot(cell, unit, profile);
+      const gap = distance(cell, unit);
+      const walkingDistance = approach.get(key(cell.x, cell.y))?.steps ?? (gap + 14);
+      const wanted = foe.type === 'hunter' ? 2 : 4;
+      const value = attackLine.chance * .75 - walkingDistance * 1.15
+        + (inCover(cell, unit) ? 8 : 0) - Math.abs(gap - wanted) * .8 - cell.steps * .85;
+      if (value > top) {
+        top = value;
+        choice = cell;
+      }
+    }
+    return choice;
+  }
+
+  function droneTurn() {
+    while (enemyIndex < foes.length && !foes[enemyIndex].hp) enemyIndex++;
+    const foe = foes[enemyIndex];
+    if (!foe) {
+      nextRound();
+      return;
+    }
+    const profile = types[foe.type];
+    if (enemyStep === 0) {
+      enemyStep = 1;
+      const destination = droneDestination(foe, profile);
+      if (destination.steps) {
+        moveActor(foe, destination);
+        cooldown = .15;
+        return;
+      }
+    }
+    const solution = shot(foe, unit, profile);
+    if (solution.chance) attack(foe, unit, profile, solution);
+    enemyIndex++;
+    enemyStep = 0;
+    cooldown = solution.chance ? .52 : .13;
+    updateHUD();
+  }
+
+  function nextRound() {
+    round++;
+    unit.ap = maxAP;
+    unit.braced = false;
+    mode = 'move';
+    phase = 'player';
+    let arrived = false;
+    if (foes.length === 3 && (round >= arrivalRound || destroyed === 3)) {
+      const busy = occupied();
+      gates.forEach((gate, index) => {
+        const positions = [gate, {x: gate.x - 1, y: gate.y}, {x: gate.x, y: gate.y + (index === 0 ? 1 : -1)}];
+        const cell = positions.find((p) => !busy.has(key(p.x, p.y))) || gate;
+        foes.push(drone(index === 0 ? 'hunter' : 'scout', cell.x, cell.y));
+        busy.add(key(cell.x, cell.y));
+        burst(cell, rose, 19);
+        popup(cell, 'INBOUND', rose);
+      });
+      arrived = true;
+    }
+    note(arrived ? 'Two reinforcements entered from the east.' : 'Operator actions restored.', arrived ? 'bad' : 'good');
+    refreshReach();
+    updateHUD();
+  }
+
+  function setMeter(element, filled, size) {
+    if (!element.children.length) {
+      for (let i = 0; i < size; i++) element.append(document.createElement('i'));
+    }
+    for (let i = 0; i < size; i++) element.children[i].classList.toggle('lit', i < filled);
+  }
+
+  function updateHUD() {
+    const player = phase === 'player';
+    const available = canAct();
+    const moving = !!motion;
+    ui.phase.textContent = paused && (player || phase === 'enemy') ? 'Paused'
+      : phase === 'briefing' ? 'Awaiting deployment' : phase === 'enemy' ? 'Drone turn'
+      : phase === 'finished' ? (unit.hp ? 'Relay secured' : 'Operator down') : 'Operator turn';
+    ui.phase.classList.toggle('hostile', phase === 'enemy' || !unit.hp);
+    ui.sector.textContent = foes.length === 3
+      ? 'Reinforcements in round ' + arrivalRound : 'All drones on station';
+    const remaining = droneCount - destroyed;
+    ui.mission.textContent = remaining ? 'Neutralize ' + remaining + (remaining === 1 ? ' drone' : ' drones') : 'Area secure';
+    ui.round.textContent = String(round).padStart(2, '0');
+    ui.stance.textContent = unit.braced ? 'Braced until next round' : phase === 'briefing' ? 'Ready to deploy' : 'Pulse carbine · 3 damage';
+    ui['hp-value'].textContent = unit.hp + ' / ' + maxHP;
+    ui['ap-value'].textContent = unit.ap + ' / ' + maxAP;
+    setMeter(ui['hp-meter'], unit.hp, maxHP);
+    setMeter(ui['ap-meter'], unit.ap, maxAP);
+    ui.move.disabled = !available;
+    ui.aim.disabled = !available;
+    ui.brace.disabled = !available || unit.braced;
+    ui.end.disabled = !player || moving || cooldown > 0;
+    ui.move.setAttribute('aria-pressed', String(mode === 'move'));
+    ui.aim.setAttribute('aria-pressed', String(mode === 'aim'));
+    ui.end.classList.toggle('ready', player && !unit.ap);
+    updateIntel();
+  }
+
+  function updateIntel() {
+    let title = 'West approach';
+    let detail = 'Drones patrol the hub. Reinforcements enter from the east.';
+    let kind = '';
+    preview = [];
+    const foe = actorAt(hover);
+    if (phase === 'enemy') {
+      title = 'Drone turn';
+      detail = 'Watch for movement around cover.';
+    } else if (phase === 'finished') {
+      title = unit.hp ? 'Field secured' : 'Signal lost';
+      detail = destroyed + ' of 5 drones disabled.';
+    } else if (phase === 'player') {
+      if (foe) {
+        const solution = shot(unit, foe, operatorProfile);
+        title = types[foe.type].name + ' · ' + (solution.chance ? solution.chance + '% hit' : 'No shot');
+        detail = solution.chance
+          ? foe.hp + ' integrity · ' + (solution.cover ? 'Protected by low cover' : 'Clear line of sight')
+          : foe.hp + ' integrity · ' + solution.reason;
+        kind = 'aim';
+      } else if (hover && !same(hover, unit)) {
+        const tileType = terrain(hover.x, hover.y);
+        const destination = reach.get(key(hover.x, hover.y));
+        title = coordinate(hover);
+        if (tileType === '#') detail = 'Solid wall. Blocks movement and line of sight.';
+        else if (tileType === 'c') detail = 'Low cover. Protects an adjacent unit from incoming fire.';
+        else if (mode === 'move' && destination?.steps && unit.ap) {
+          preview = route(destination);
+          detail = destination.steps + (destination.steps === 1 ? ' tile' : ' tiles') + ' · Move costs 1 action';
+          kind = 'route';
+        } else detail = mode === 'aim' ? 'Select a drone to check line of sight.' : 'Outside the current movement range.';
+      } else {
+        title = !unit.ap ? 'Actions spent' : mode === 'aim' ? 'Pick a target' : 'Choose a destination';
+        detail = !unit.ap ? 'End your turn to let the drones act.' : mode === 'aim'
+          ? 'Hover a drone to see its hit chance and cover.'
+          : 'Move up to four tiles. Click an exposed drone to fire.';
+      }
+    }
+    ui.target.dataset.kind = kind;
+    ui['target-title'].textContent = title;
+    ui['target-detail'].textContent = detail;
+    canvas.style.cursor = canAct() && (kind === 'aim' || kind === 'route') ? 'crosshair' : 'default';
+  }
+
+  function resize() {
+    const {width, height} = ui['field-view'].getBoundingClientRect();
+    if (width < 2 || height < 2) return;
+    view.w = width;
+    view.h = height;
+    view.scale = clamp(window.devicePixelRatio || 1, 1, 3);
+    canvas.width = Math.round(width * view.scale);
+    canvas.height = Math.round(height * view.scale);
+    view.tile = Math.max(1, Math.floor(Math.min((width - 42) / columns, (height - 43) / rows)));
+    view.left = Math.round((width - columns * view.tile) / 2);
+    view.top = Math.round((height - rows * view.tile) / 2);
+    draw();
+  }
+
+  function screen(cell) {
+    return {
+      x: view.left + (cell.x + .5) * view.tile,
+      y: view.top + (cell.y + .5) * view.tile,
+    };
+  }
+
+  function strokeLine(x1, y1, x2, y2, color, width = 1) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function poly(points, fill, stroke, width = 1) {
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+    for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = width; ctx.stroke(); }
+  }
+
+  function drawFloor() {
+    const {left, top, tile} = view;
+    const width = columns * tile;
+    const height = rows * tile;
+    ctx.fillStyle = '#081019';
+    ctx.fillRect(left - 6, top - 6, width + 12, height + 12);
+    ctx.strokeStyle = '#38515c';
+    ctx.strokeRect(left - 6.5, top - 6.5, width + 13, height + 13);
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < columns; x++) {
+        const px = left + x * tile;
+        const py = top + y * tile;
+        const texture = (x * 17 + y * 13 + x * y * 3) % 9;
+        ctx.fillStyle = texture > 6 ? '#253744' : texture > 3 ? '#20313d' : '#1d2d38';
+        ctx.fillRect(px, py, tile, tile);
+        if (mode === 'move' && phase === 'player' && unit.ap && reach.get(key(x, y))?.steps) {
+          ctx.fillStyle = '#6ce6c217';
+          ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
+          ctx.fillStyle = '#a7f4d45c';
+          ctx.fillRect(px + tile * .5 - 1, py + tile * .5 - 1, 2, 2);
+        }
+        if (texture === 3 || texture === 7) {
+          strokeLine(px + tile * .13, py + tile * .18, px + tile * .29, py + tile * .18, '#96adba43');
+          strokeLine(px + tile * .13, py + tile * .24, px + tile * .22, py + tile * .24, '#96adba30');
+        }
+        ctx.strokeStyle = '#a6bdc122';
+        ctx.strokeRect(px + .5, py + .5, tile, tile);
+      }
+    }
+
+    for (const line of [top + tile * 4.80, top + tile * 8.76]) {
+      strokeLine(left, line, left + width, line, '#d9ac6347', 1);
+      strokeLine(left, line + 4, left + width, line + 4, '#07111a99', 1);
+      ctx.setLineDash([tile * .17, tile * .31]);
+      strokeLine(left, line - 3, left + width, line - 3, '#92acb048', 1);
+      ctx.setLineDash([]);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 ' + clamp(tile * .18, 8, 11) + 'px ui-monospace, monospace';
+    ctx.fillStyle = '#90a8b5';
+    for (let x = 0; x < columns; x++) ctx.fillText(String.fromCharCode(65 + x), left + (x + .5) * tile, top - 13);
+    for (let y = 0; y < rows; y++) ctx.fillText(String(y + 1), left - 14, top + (y + .5) * tile);
+
+    for (const gate of gates) {
+      const point = screen(gate);
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      ctx.scale(tile, tile);
+      ctx.fillStyle = '#632e2b';
+      ctx.fillRect(-.44, -.43, .88, .86);
+      ctx.strokeStyle = '#e989656f';
+      ctx.lineWidth = .018;
+      ctx.strokeRect(-.39, -.37, .78, .74);
+      ctx.globalAlpha = .65 + Math.sin(elapsed * 3) * .2;
+      for (const shift of [-.2, .12]) poly([[shift + .13, -.21], [shift - .05, 0],
+        [shift + .13, .21], [shift + .02, .21], [shift - .17, 0], [shift + .02, -.21]], '#db8d61');
+      ctx.restore();
+    }
+  }
+
+  function drawTerrain() {
+    const {tile} = view;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < columns; x++) {
+        const type = terrain(x, y);
+        if (type === '.') continue;
+        const point = screen({x, y});
+        ctx.save();
+        ctx.translate(point.x, point.y);
+        ctx.scale(tile, tile);
+        ctx.fillStyle = '#050c15aa';
+        ctx.fillRect(-.4, -.32, .94, .85);
+        if (type === '#') {
+          poly([[-.46, -.35], [.46, -.35], [.46, .30], [.36, .42], [-.46, .42]], '#172631', '#7291a1', .016);
+          poly([[-.46, -.42], [.34, -.42], [.46, -.32], [.46, .23], [-.46, .23]], '#3c5664', '#7d9aa8', .015);
+          ctx.fillStyle = '#293e4c';
+          ctx.fillRect(-.34, -.29, .67, .4);
+          ctx.strokeStyle = '#94afbc50';
+          ctx.lineWidth = .013;
+          ctx.strokeRect(-.34, -.29, .67, .4);
+          for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = '#7794a24f';
+            ctx.fillRect(-.24, -.23 + .1 * i, .44, .024);
+          }
+          ctx.fillStyle = '#99dac7';
+          ctx.fillRect(.19, .31, .12, .027);
+        } else {
+          poly([[-.38, -.17], [.4, -.17], [.4, .3], [-.38, .3]], '#463923', '#a88459', .018);
+          poly([[-.39, -.24], [.27, -.24], [.39, -.13], [.39, .10], [-.39, .10]], '#8b6c49', '#e8bb79', .018);
+          ctx.fillStyle = '#d6ac6c';
+          ctx.fillRect(-.26, -.12, .51, .038);
+          ctx.fillStyle = '#272d30';
+          ctx.fillRect(-.3, .17, .6, .04);
+          ctx.fillRect(-.31, -.27, .05, .56);
+          ctx.fillRect(.22, -.27, .05, .56);
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawSelection() {
+    if (phase !== 'player' || !hover) return;
+    const {tile} = view;
+    const point = screen(hover);
+    const foe = actorAt(hover);
+    const mark = foe ? rose : preview.length ? mint : '#819ca9';
+    ctx.strokeStyle = mark;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(point.x - tile * .46, point.y - tile * .46, tile * .92, tile * .92);
+    if (preview.length && !motion) {
+      ctx.beginPath();
+      ctx.lineWidth = Math.max(2, tile * .05);
+      ctx.strokeStyle = '#a5f6dfc4';
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      for (const [i, cell] of preview.entries()) {
+        const pos = screen(cell);
+        if (i === 0) ctx.moveTo(pos.x, pos.y); else ctx.lineTo(pos.x, pos.y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = mint;
+      for (const cell of preview.slice(1)) {
+        const pos = screen(cell);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, Math.max(2, tile * .045), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (foe && !motion && unit.ap) {
+      const result = shot(unit, foe, operatorProfile);
+      if (result.chance) {
+        const from = screen(unit);
+        ctx.setLineDash([4, 6]);
+        strokeLine(from.x, from.y, point.x, point.y, '#ff9c86bd', 1.5);
+        ctx.setLineDash([]);
+      }
+    }
+  }
+
+  function drawActor(actor) {
+    if (actor.hp <= 0) return;
+    const isPlayer = actor === unit;
+    const shape = actor.type;
+    const {tile} = view;
+    const point = screen(pose(actor));
+    const bob = isPlayer ? 0 : Math.sin(elapsed * 5 + actor.x * 1.37) * .033;
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.scale(tile, tile);
+    ctx.fillStyle = isPlayer ? '#53dfc82e' : '#ff82701f';
+    ctx.beginPath();
+    ctx.arc(0, 0, .391, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = actor.color + 'b8';
+    ctx.lineWidth = .023;
+    ctx.beginPath();
+    ctx.arc(0, 0, .393, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#060d14b9';
+    ctx.beginPath();
+    ctx.ellipse(.022, .22, .31, .12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (actor.braced) {
+      ctx.strokeStyle = mint;
+      ctx.beginPath();
+      ctx.arc(0, 0, .46, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.translate(0, -.035 + bob);
+    if (isPlayer) {
+      poly([[-.27, .14], [-.23, -.09], [-.12, -.16], [.1, -.13], [.19, -.02], [.14, .16]],
+        '#294e51', mint, .024);
+      poly([[-.16, -.04], [-.15, -.24], [.02, -.29], [.17, -.17], [.14, -.02], [0, .055]],
+        '#a8dbcf', '#d2fdf2', .022);
+      poly([[.01, -.15], [.16, -.16], [.14, -.06], [0, -.055]], '#194047');
+      poly([[.10, .06], [.18, -.02], [.37, -.01], [.36, .08], [.21, .10], [.16, .18]], '#151c23', mint, .022);
+    } else if (shape === 'warden') {
+      poly([[-.32, -.18], [.24, -.22], [.33, -.1], [.32, .18], [.17, .25], [-.29, .21]],
+        '#543c37', actor.color, .026);
+      poly([[-.2, -.10], [.2, -.1], [.23, .09], [-.16, .14]], '#241f27', '#ffc888a1', .015);
+      ctx.fillStyle = actor.color;
+      ctx.fillRect(-.155, -.022, .31, .052);
+      ctx.fillRect(-.34, -.04, .08, .115);
+      ctx.fillRect(.25, -.04, .10, .115);
+    } else {
+      const wide = shape === 'hunter' ? .36 : .30;
+      poly([[-wide, -.13], [-.16, -.11], [0, -.25], [.16, -.11], [wide, -.13],
+        [.22, .13], [0, .23], [-.22, .13]], '#502d37', actor.color, .029);
+      poly([[0, -.14], [.145, .005], [0, .143], [-.145, .005]], actor.color);
+      ctx.fillStyle = '#fff3e9';
+      ctx.fillRect(-.077, -.012, .154, .027);
+    }
+    const hpSize = isPlayer ? maxHP : types[shape].hp;
+    const segment = .58 / hpSize;
+    for (let i = 0; i < hpSize; i++) {
+      ctx.fillStyle = i < actor.hp ? actor.color : '#354553';
+      ctx.fillRect(-.29 + segment * i, .36, segment - .013, .046);
+    }
+    ctx.restore();
+  }
+
+  function drawEffects() {
+    for (const beam of beams) {
+      const from = screen(beam);
+      const to = screen({x: beam.tx, y: beam.ty});
+      ctx.save();
+      ctx.globalAlpha = clamp(beam.life * 5, 0, 1);
+      ctx.shadowColor = beam.color;
+      ctx.shadowBlur = 12;
+      strokeLine(from.x, from.y, to.x, to.y, beam.color, 3);
+      strokeLine(from.x, from.y, to.x, to.y, '#fff7e0', 1);
+      ctx.restore();
+    }
+    for (const particle of particles) {
+      const pos = screen(particle);
+      ctx.globalAlpha = clamp(particle.life * 3.4, 0, 1);
+      ctx.fillStyle = particle.color;
+      const size = Math.max(1, particle.r * view.tile);
+      ctx.fillRect(pos.x, pos.y, size, size);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '800 ' + clamp(view.tile * .27, 11, 19) + 'px ui-monospace, monospace';
+    for (const popup of popups) {
+      const pos = screen(popup);
+      ctx.globalAlpha = clamp(popup.life * 3.5, 0, 1);
+      ctx.strokeStyle = '#071019';
+      ctx.lineWidth = 4;
+      const y = pos.y - (.55 + (.85 - popup.life) * .8) * view.tile;
+      ctx.strokeText(popup.label, pos.x, y);
+      ctx.fillStyle = popup.color;
+      ctx.fillText(popup.label, pos.x, y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    if (!view.w) return;
+    ctx.setTransform(view.scale, 0, 0, view.scale, 0, 0);
+    const background = ctx.createLinearGradient(0, 0, view.w, view.h);
+    background.addColorStop(0, '#14242c');
+    background.addColorStop(1, '#0b131e');
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, view.w, view.h);
+    for (let x = -view.h; x < view.w; x += 23) {
+      strokeLine(x, 0, x + view.h, view.h, '#35495225');
+    }
+    ctx.save();
+    if (recoil) ctx.translate((Math.random() - .5) * recoil, (Math.random() - .5) * recoil);
+    drawFloor();
+    drawSelection();
+    drawTerrain();
+    drawActor(unit);
+    for (const foe of foes) drawActor(foe);
+    drawEffects();
+    ctx.restore();
+  }
+
+  function tick(dt) {
+    elapsed += dt;
+    recoil = Math.max(0, recoil - 23 * dt);
+    for (const particle of particles) {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.vy += dt * 1.7;
+    }
+    for (const effect of [...particles, ...beams, ...popups]) effect.life -= dt;
+    particles = particles.filter((effect) => effect.life > 0);
+    beams = beams.filter((effect) => effect.life > 0);
+    popups = popups.filter((effect) => effect.life > 0);
+    if (motion) {
+      motion.progress += dt;
+      if (motion.progress < motion.duration) return;
+      motion = null;
+      updateHUD();
+    }
+    if (cooldown > 0) {
+      cooldown = Math.max(0, cooldown - dt);
+      if (cooldown > 0) return;
+      updateHUD();
+    }
+    if (phase === 'enemy') droneTurn();
+  }
+
+  function frame(now) {
+    const dt = previousFrame ? Math.min(.05, (now - previousFrame) / 1000) : 0;
+    previousFrame = now;
+    if (!paused) tick(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function cursorCell(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((event.clientX - rect.left - view.left) / view.tile);
+    const y = Math.floor((event.clientY - rect.top - view.top) / view.tile);
+    return terrain(x, y) ? {x, y} : null;
+  }
+
+  canvas.addEventListener('pointermove', (event) => {
+    if (phase !== 'player') return;
+    const cell = cursorCell(event);
+    if (cell || hover) {
+      if (same(cell, hover)) return;
+      hover = cell;
+      updateIntel();
+    }
+  });
+  canvas.addEventListener('pointerleave', () => {
+    hover = null;
+    updateIntel();
+  });
+  canvas.addEventListener('click', (event) => {
+    if (phase !== 'player') return;
+    hover = cursorCell(event);
+    choose(hover);
+    updateIntel();
+  });
+  ui['start-mission'].addEventListener('click', () => reset(true));
+  ui.move.addEventListener('click', () => setMode('move'));
+  ui.aim.addEventListener('click', () => setMode('aim'));
+  ui.brace.addEventListener('click', brace);
+  ui.end.addEventListener('click', endTurn);
+  const arrows = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]};
+  window.addEventListener('keydown', (event) => {
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+    const arrow = arrows[event.key];
+    const buttonActivation = event.target instanceof HTMLButtonElement && (event.key === 'Enter' || event.code === 'Space');
+    if (buttonActivation) return;
+    if (arrow || event.code === 'Space') event.preventDefault();
+    if (event.repeat && !arrow) return;
+    if (event.key.toLowerCase() === 'r' && phase !== 'briefing') reset(true);
+    if (event.key === 'Enter' && (phase === 'briefing' || phase === 'finished')) {
+      reset(true);
+      return;
+    }
+    if (phase !== 'player') return;
+    if (arrow) {
+      const cell = hover || unit;
+      hover = {x: clamp(cell.x + arrow[0], 0, columns - 1), y: clamp(cell.y + arrow[1], 0, rows - 1)};
+      updateIntel();
+    }
+    if (event.key === 'Enter') choose(hover);
+    if (event.code === 'KeyQ') setMode('move');
+    if (event.code === 'KeyE') setMode('aim');
+    if (event.code === 'KeyB') brace();
+    if (event.code === 'Space') endTurn();
+  });
+
+  function clearFocus() {
+    paused = true;
+    hover = null;
+    updateHUD();
+  }
+  window.addEventListener('blur', clearFocus);
+  window.addEventListener('focus', () => {
+    paused = document.hidden;
+    updateHUD();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearFocus();
+    else {
+      paused = !document.hasFocus();
+      updateHUD();
+    }
+  });
+
+  reset(false);
+  resize();
+  new ResizeObserver(resize).observe(ui['field-view']);
+  window.addEventListener('resize', resize);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

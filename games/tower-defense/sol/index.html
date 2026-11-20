@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a171b">
+<title>Tidelock</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #f2eee0;
+    --muted: #a3b9b8;
+    --line: #304648;
+    --panel: #112326;
+    --gold: #f8c477;
+    --sea: #88e2d2;
+    --danger: #f7a298;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100svh;
+    color: var(--ink);
+    background: radial-gradient(ellipse at 17% 0%, #203438 0%, #0a171b 48%, #080f13 100%);
+    font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    touch-action: manipulation;
+  }
+  button:focus-visible, canvas:focus-visible { outline: 2px solid var(--sea); outline-offset: 3px; }
+  .shell { width: min(1160px, calc(100% - 60px)); margin: 0 auto; padding: 26px 0 24px; }
+  .masthead { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .mark {
+    display: grid; place-content: center; gap: 4px; width: 51px; height: 51px;
+    border: 1px solid #8e7651; border-radius: 12px; background: #372e24; color: var(--gold);
+  }
+  .mark i {
+    display: block; width: 24px; height: 5px; border: solid currentColor;
+    border-width: 1px 0 0; transform: skewY(-16deg);
+  }
+  .mark i:nth-child(2) { width: 19px; }
+  .mark i:nth-child(3) { width: 13px; }
+  h1 { margin: 0; font-size: 40px; line-height: .88; letter-spacing: -.078em; font-weight: 850; }
+  .subtitle { display: block; margin-top: 8px; color: var(--muted); }
+  .eyebrow { font: 700 10px/1.25 var(--mono); text-transform: uppercase; letter-spacing: .13em; }
+  .record { display: grid; text-align: right; gap: 3px; color: var(--muted); }
+  .record strong { color: var(--ink); font: 700 19px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 13px;
+    background: #132528; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .stat { display: flex; align-items: center; gap: 11px; padding: 10px 16px; min-width: 0; }
+  .stat + .stat { border-left: 1px solid var(--line); }
+  .stat b { font: 700 20px/1.05 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat span { color: var(--muted); white-space: nowrap; }
+  .stat .supply { color: var(--gold); }
+  .stat .low { color: var(--danger); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 257px; gap: 13px; align-items: start; }
+  .battle, .arsenal { min-width: 0; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); }
+  .battle { overflow: hidden; }
+  .board-top { padding: 9px 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sector { display: flex; align-items: center; gap: 8px; color: #c1d7d2; white-space: nowrap; }
+  .sector::before { content: ""; width: 7px; height: 7px; background: var(--sea); border-radius: 50%; box-shadow: 0 0 12px #79efcb66; }
+  #waveStatus { color: #c1d7d2; font: 600 11px/1.25 var(--mono); text-align: right; }
+  .board { position: relative; aspect-ratio: 760 / 490; background: #0b272d; isolation: isolate; }
+  #field { display: block; width: 100%; height: 100%; touch-action: pan-y pinch-zoom; }
+  .cover {
+    position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; text-align: center;
+    background: radial-gradient(ellipse at center, #07171bed 0%, #07171bc9 38%, #07171b5e 100%);
+  }
+  .cover[hidden] { display: none; }
+  .briefing { width: min(100%, 385px); }
+  .cover .eyebrow { color: var(--gold); }
+  .cover h2 { margin: 7px 0 7px; font-size: clamp(29px, 6vw, 59px); font-weight: 850; line-height: .94; letter-spacing: -.07em; }
+  #coverText, #controls { margin: 0 auto; max-width: 282px; }
+  #controls { margin-top: 11px; color: #bbd0cc; font-size: 12px; }
+  #controls kbd { font: 700 11px var(--mono); color: var(--ink); }
+  .touch-help { display: none; }
+  .primary {
+    min-height: 46px; margin-top: 17px; padding: 8px 21px; border: 1px solid #ffe5ac;
+    border-radius: 8px; background: var(--gold); color: #241a0d; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 0 #976c37;
+  }
+  .primary:active { box-shadow: none; transform: translateY(2px); }
+  .board-bottom {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    min-height: 34px; padding: 6px 12px; color: var(--muted); font-size: 12px;
+  }
+  #score { white-space: nowrap; font: 700 11px/1.2 var(--mono); text-transform: uppercase; }
+  #hint[data-alert] { color: var(--gold); }
+  .arsenal { padding: 12px; }
+  .arsenal h2 { margin: 1px 0 9px; font-size: 18px; line-height: 1; letter-spacing: -.025em; }
+  .blueprints { display: grid; gap: 6px; }
+  .blueprint {
+    position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center;
+    gap: 7px; min-height: 59px; padding: 6px 8px; text-align: left; cursor: pointer;
+    border: 1px solid #394f50; border-radius: 8px; background: #172b2e;
+  }
+  .blueprint[aria-pressed="true"] { border-color: var(--tower-color); background: #243335; }
+  .blueprint[data-short] .cost { color: #b7a88f; }
+  .blueprint canvas { width: 42px; height: 42px; border-radius: 6px; background: #102326; }
+  .blueprint strong, .blueprint small { display: block; white-space: nowrap; }
+  .blueprint strong { font-size: 14px; line-height: 1.15; }
+  .blueprint small { margin-top: 3px; font-size: 11px; color: var(--muted); }
+  .cost { color: var(--gold); font: 700 12px/1.1 var(--mono); }
+  .key { display: block; text-align: right; margin-top: 4px; color: var(--muted); font: 10px/1.15 var(--mono); }
+  .details { margin-top: 11px; min-height: 85px; padding: 10px 10px 9px; border-radius: 8px; background: #0b1b1e; }
+  #detailTitle { color: #dde9df; margin: 0; font-size: 13px; font-weight: 800; }
+  #detailNote { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .actions { display: flex; gap: 6px; margin-top: 8px; }
+  .actions[hidden] { display: none; }
+  .actions button {
+    flex: 1; min-height: 44px; padding: 6px 3px; cursor: pointer; white-space: nowrap;
+    border-radius: 6px; background: #263637; border: 1px solid #526362; font-size: 12px; font-weight: 750;
+  }
+  .actions button:first-child { background: #423625; color: #fce0aa; border-color: #826946; }
+  .actions button:disabled { opacity: .5; cursor: default; }
+  @media (hover: hover) {
+    .blueprint:hover { background: #2a3e3e; }
+    .primary:hover { background: #ffda96; }
+    .actions button:hover:not(:disabled) { border-color: var(--sea); }
+  }
+  @media (max-width: 850px) {
+    .shell { width: min(690px, calc(100% - 30px)); padding-top: 17px; }
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+    .blueprints { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .details { min-height: 59px; margin-top: 8px; }
+    .details.has-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+    .actions { margin-top: 0; }
+    .actions button { min-width: 74px; }
+  }
+  @media (max-width: 500px) {
+    .shell { width: calc(100% - 18px); padding: 12px 0 max(12px, env(safe-area-inset-bottom)); }
+    .masthead { padding-bottom: 11px; }
+    .brand { gap: 9px; }
+    .mark { width: 38px; height: 38px; border-radius: 8px; gap: 3px; }
+    .mark i { width: 19px; height: 4px; }
+    .mark i:nth-child(2) { width: 15px; }
+    .mark i:nth-child(3) { width: 11px; }
+    h1 { font-size: 32px; }
+    .subtitle { margin-top: 4px; font-size: 11px; }
+    .record .eyebrow { font-size: 9px; }
+    .record strong { font-size: 16px; }
+    .stats { margin-bottom: 9px; }
+    .stat { flex-direction: column; align-items: flex-start; gap: 3px; padding: 7px 8px; }
+    .stat b { font-size: 16px; }
+    .stat .eyebrow { font-size: 9px; letter-spacing: .08em; }
+    .board-top { padding: 6px 8px; }
+    .board-bottom { padding: 4px 8px; min-height: 29px; }
+    .arsenal { padding: 8px; }
+    .arsenal h2 { font-size: 15px; margin-bottom: 6px; }
+    .blueprint { grid-template-columns: 33px minmax(0, 1fr); gap: 3px 5px; padding: 5px; min-height: 53px; }
+    .blueprint canvas { grid-row: span 2; width: 33px; height: 33px; }
+    .blueprint div:nth-child(2) { align-self: end; }
+    .blueprint strong { font-size: 12px; }
+    .blueprint small, .key { display: none; }
+    .cost { align-self: start; grid-column: 2; }
+    .cover h2 { margin: 5px 0; }
+    #coverText { font-size: 13px; }
+    #controls { margin-top: 6px; line-height: 1.3; }
+    .primary { margin-top: 10px; }
+    .details { padding: 7px; }
+    .actions { gap: 5px; }
+    .actions button { min-width: 61px; padding-inline: 4px; font-size: 11px; }
+  }
+  @media (pointer: coarse) {
+    .desktop-help { display: none; }
+    .touch-help { display: inline; }
+  }
+  @media (max-width: 350px) {
+    .board-bottom { font-size: 11px; }
+    .blueprint { grid-template-columns: 29px minmax(0, 1fr); }
+    .blueprint canvas { width: 29px; height: 29px; }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="masthead">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div><h1>Tidelock</h1><span class="subtitle">Harbor defense</span></div>
+    </div>
+    <div class="record"><span class="eyebrow">Best score</span><strong id="best">0</strong></div>
+  </header>
+
+  <section class="stats" aria-label="Defense status">
+    <div class="stat"><span class="eyebrow">Supply</span><b class="supply" id="cash">$155</b></div>
+    <div class="stat"><span class="eyebrow">Integrity</span><b id="health">12 / 12</b></div>
+    <div class="stat"><span class="eyebrow">Wave</span><b id="wave">0 / 6</b></div>
+  </section>
+
+  <div class="layout">
+    <section class="battle" aria-label="Floodgate map">
+      <div class="board-top">
+        <span class="sector eyebrow">Lock 05</span>
+        <span id="waveStatus">Ready for launch</span>
+      </div>
+      <div class="board">
+        <canvas id="field" width="760" height="490" tabindex="0" aria-label="Harbor map. Choose a mooring with the arrow keys. Press Enter to build or manage."></canvas>
+        <div class="cover" id="cover">
+          <div class="briefing">
+            <div class="eyebrow" id="coverLabel">Harbor watch</div>
+            <h2 id="coverTitle">Hold the lock.</h2>
+            <p id="coverText">Build on the moorings and stop six waves before they reach the floodgate.</p>
+            <p id="controls">
+              <span class="desktop-help">Click a tower, then a mooring.<br><kbd>1–3</kbd> towers · <kbd>Arrows</kbd> aim · <kbd>Enter</kbd> build · <kbd>R</kbd> restart</span>
+              <span class="touch-help">Tap a tower, then a mooring.<br>Tap built towers to upgrade or sell.</span>
+            </p>
+            <button type="button" class="primary" id="begin">Start defense &nbsp;→</button>
+          </div>
+        </div>
+      </div>
+      <div class="board-bottom">
+        <span id="hint">Place towers on the round moorings.</span>
+        <span id="score">Score 0</span>
+      </div>
+    </section>
+
+    <aside class="arsenal" aria-label="Tower controls">
+      <h2>Towers</h2>
+      <div class="blueprints" id="blueprints"></div>
+      <div class="details" id="details">
+        <div>
+          <p id="detailTitle">Rivet</p>
+          <p id="detailNote">A rapid-fire gun for single targets.</p>
+        </div>
+        <div class="actions" id="actions" hidden>
+          <button type="button" id="upgrade" title="Upgrade (U)">Upgrade</button>
+          <button type="button" id="sell" title="Sell (X)">Sell</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const field = document.getElementById("field");
+  const ctx = field.getContext("2d");
+  const byId = id => document.getElementById(id);
+  const cover = byId("cover");
+  const begin = byId("begin");
+  const cashLabel = byId("cash");
+  const healthLabel = byId("health");
+  const waveLabel = byId("wave");
+  const waveStatus = byId("waveStatus");
+  const bestLabel = byId("best");
+  const scoreLabel = byId("score");
+  const hint = byId("hint");
+  const details = byId("details");
+  const detailTitle = byId("detailTitle");
+  const detailNote = byId("detailNote");
+  const actions = byId("actions");
+  const upgrade = byId("upgrade");
+  const sell = byId("sell");
+  const W = 760, H = 490, HEALTH = 12;
+  const TAU = Math.PI * 2;
+
+  const towers = [
+    { name: "Rivet", role: "Rapid gun", note: "A rapid-fire gun for single targets.", color: "#f8c477", cost: 55, range: 108, power: 19, interval: 0.56 },
+    { name: "Mortar", role: "Area blast", note: "Shells burst over groups of nearby boats.", color: "#f29eab", cost: 80, range: 133, power: 31, interval: 1.36 },
+    { name: "Coil", role: "Slows boats", note: "Shocks a boat and slows it for 1.6 seconds.", color: "#8ce7de", cost: 65, range: 112, power: 11, interval: 0.76 }
+  ];
+  const boats = {
+    skiff: { radius: 9, hp: 37, speed: 95, bounty: 8, breach: 1, color: "#ffb074" },
+    dart: { radius: 8, hp: 25, speed: 143, bounty: 7, breach: 1, color: "#e8df8a" },
+    barge: { radius: 13, hp: 116, speed: 67, bounty: 14, breach: 2, color: "#f48b93" },
+    breaker: { radius: 17, hp: 475, speed: 59, bounty: 42, breach: 4, color: "#f0a9e5" }
+  };
+  const waves = [
+    { time: 8, name: "First wake", groups: [[0, "skiff", 8, 1.06]] },
+    { time: 22, name: "Running lights", groups: [[0, "dart", 10, 0.66], [2, "skiff", 4, 1.13]] },
+    { time: 37, name: "Heavy weather", groups: [[0, "barge", 4, 1.76], [0.7, "skiff", 10, 0.7]] },
+    { time: 52, name: "Cross-current", groups: [[0, "dart", 14, 0.55], [1.3, "barge", 5, 1.39]] },
+    { time: 67, name: "Iron tide", groups: [[0, "barge", 8, 0.97], [0.35, "dart", 14, 0.50]] },
+    { time: 82, name: "The Breaker", groups: [[0, "skiff", 14, 0.49], [1.1, "barge", 6, 1.02], [3.7, "breaker", 1, 0], [4.2, "dart", 12, 0.41]] }
+  ];
+  const moorings = [
+    [62, 250], [176, 209], [178, 304], [228, 78],
+    [349, 171], [348, 272], [226, 391], [365, 405],
+    [516, 272], [519, 177], [565, 56], [693, 207],
+    [562, 370], [693, 321]
+  ].map(([x, y]) => ({x, y}));
+  const bends = [[-29, 345], [116, 345], [116, 147], [287, 147], [287, 330], [460, 330], [460, 118], [634, 118], [634, 383], [735, 383]];
+  const channel = [{x: bends[0][0], y: bends[0][1], length: 0}];
+
+  function along(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
+  function addChannel(x, y) {
+    const last = channel[channel.length - 1];
+    channel.push({ x, y, length: last.length + Math.hypot(x - last.x, y - last.y) });
+  }
+  for (let i = 1; i < bends.length - 1; i++) {
+    const corner = bends[i];
+    const before = bends[i - 1];
+    const after = bends[i + 1];
+    const start = along(corner, before, 35 / Math.hypot(corner[0] - before[0], corner[1] - before[1]));
+    const end = along(corner, after, 35 / Math.hypot(corner[0] - after[0], corner[1] - after[1]));
+    addChannel(...start);
+    for (let j = 1; j <= 12; j++) {
+      const t = j / 12, s = 1 - t;
+      addChannel(s * s * start[0] + 2 * t * s * corner[0] + t * t * end[0],
+                 s * s * start[1] + 2 * t * s * corner[1] + t * t * end[1]);
+    }
+  }
+  addChannel(...bends[bends.length - 1]);
+  const distance = channel[channel.length - 1].length;
+  const schedule = [];
+  waves.forEach((wave, number) => {
+    for (const [offset, type, count, interval] of wave.groups) {
+      for (let i = 0; i < count; i++) schedule.push({time: wave.time + offset + i * interval, type, number});
+    }
+  });
+  schedule.sort((a, b) => a.time - b.time);
+
+  function pointAt(length) {
+    let low = 0, high = channel.length - 1;
+    while (high - low > 1) {
+      const mid = Math.floor((low + high) / 2);
+      if (channel[mid].length <= length) low = mid;
+      else high = mid;
+    }
+    const a = channel[low], b = channel[high];
+    const t = Math.min(1, Math.max(0, (length - a.length) / (b.length - a.length)));
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, angle: Math.atan2(b.y - a.y, b.x - a.x) };
+  }
+  function bestScore() {
+    try { return Number(localStorage.getItem("tidelock.best")) || 0; }
+    catch (_) { return 0; }
+  }
+  function emptyGame(stage) {
+    return {
+      stage, time: 0, money: 155, health: HEALTH, wave: -1, index: 0,
+      score: 0, best: bestScore(), army: [], structures: moorings.map(() => null),
+      shells: [], beams: [], sparks: [], rings: [], shake: 0, struck: 0,
+      blueprint: 0, selected: -1, hovered: -1, focused: -1, notice: "", noticeUntil: 0
+    };
+  }
+  let game = emptyGame("title");
+  let visualTime = 0;
+
+  function upgradePrice(tower) { return Math.ceil(towers[tower.type].cost * (tower.level === 1 ? 0.72 : 1.05)); }
+  function sellPrice(tower) { return Math.floor(tower.invested * 0.7); }
+  function towerRange(tower) { return towers[tower.type].range + (tower.level - 1) * 13; }
+
+  const cards = towers.map((tower, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "blueprint";
+    button.style.setProperty("--tower-color", tower.color);
+    button.setAttribute("aria-label", tower.name + ", " + tower.role + ", " + tower.cost + " supply");
+    button.innerHTML = '<canvas width="84" height="84" aria-hidden="true"></canvas><div><strong>' +
+      tower.name + '</strong><small>' + tower.role + '</small></div><div class="cost">$' + tower.cost +
+      '<kbd class="key">' + (index + 1) + '</kbd></div>';
+    byId("blueprints").append(button);
+    button.addEventListener("click", () => choose(index));
+    const icon = button.querySelector("canvas").getContext("2d");
+    icon.scale(2, 2);
+    icon.fillStyle = "#223d3e";
+    icon.strokeStyle = "#435e5c";
+    circle(icon, 21, 22, 15);
+    icon.fill();
+    icon.stroke();
+    drawTurret(icon, 21, 22, index, -0.89, 1, 0.85);
+    return button;
+  });
+
+  function showOverlay(label, title, copy, button, showControls) {
+    byId("coverLabel").textContent = label;
+    byId("coverTitle").textContent = title;
+    byId("coverText").textContent = copy;
+    byId("controls").hidden = !showControls;
+    begin.textContent = button;
+    cover.hidden = false;
+  }
+  function paintHud() {
+    cashLabel.textContent = "$" + game.money;
+    healthLabel.textContent = game.health + " / " + HEALTH;
+    healthLabel.classList.toggle("low", game.health <= 4);
+    waveLabel.textContent = (game.wave + 1) + " / " + waves.length;
+    bestLabel.textContent = game.best.toLocaleString();
+    scoreLabel.textContent = "Score " + game.score.toLocaleString();
+    if (game.stage === "title") waveStatus.textContent = "Ready for launch";
+    else if (game.stage === "paused") waveStatus.textContent = "Paused";
+    else if (game.stage === "won") waveStatus.textContent = "Harbor secure";
+    else if (game.stage === "lost") waveStatus.textContent = "Floodgate lost";
+    else {
+      const next = waves[game.wave + 1];
+      const current = waves[game.wave];
+      if (current && (game.time - current.time < 4 || !next)) waveStatus.textContent = current.name;
+      else waveStatus.textContent = (current ? "Next wave" : "First wave") + " in " + Math.max(1, Math.ceil(next.time - game.time)) + "s";
+    }
+    const activeNotice = game.noticeUntil > game.time;
+    hint.toggleAttribute("data-alert", activeNotice);
+    hint.textContent = activeNotice ? game.notice :
+      game.selected >= 0 ? "Upgrade or sell this tower." :
+      game.blueprint >= 0 ? "Place towers on the round moorings." : "Choose a tower to build.";
+  }
+  function paintShop() {
+    cards.forEach((card, index) => {
+      card.setAttribute("aria-pressed", String(index === game.blueprint));
+      card.toggleAttribute("data-short", game.money < towers[index].cost);
+    });
+    const tower = game.structures[game.selected];
+    actions.hidden = !tower;
+    details.classList.toggle("has-actions", Boolean(tower));
+    if (tower) {
+      const model = towers[tower.type];
+      detailTitle.textContent = model.name + " · Mk " + ["I", "II", "III"][tower.level - 1];
+      detailNote.textContent = tower.level === 3 ? "Maximum power and range." : "Upgrades boost power, range and rate of fire.";
+      upgrade.textContent = tower.level === 3 ? "Max level" : "Upgrade $" + upgradePrice(tower);
+      upgrade.disabled = tower.level === 3 || game.money < upgradePrice(tower);
+      sell.textContent = "Sell +$" + sellPrice(tower);
+    } else {
+      const model = towers[game.blueprint];
+      detailTitle.textContent = model ? model.name : "Choose a tower";
+      detailNote.textContent = model ? model.note : "Select a blueprint, then use any empty mooring.";
+    }
+  }
+  function refresh() { paintHud(); paintShop(); }
+  function say(message) {
+    game.notice = message;
+    game.noticeUntil = game.time + 2.3;
+    paintHud();
+  }
+  function start() {
+    game = emptyGame("playing");
+    cover.hidden = true;
+    refresh();
+  }
+  function pause() {
+    if (game.stage !== "playing") return;
+    game.stage = "paused";
+    game.hovered = -1;
+    showOverlay("Harbor watch", "Watch paused.", "The tide will wait.", "Resume", false);
+    paintHud();
+  }
+  function pressBegin() {
+    if (game.stage === "paused") {
+      game.stage = "playing";
+      cover.hidden = true;
+      refresh();
+    } else {
+      start();
+    }
+  }
+  function finish(won) {
+    game.stage = won ? "won" : "lost";
+    if (won) game.score += game.health * 65;
+    const record = game.score > game.best;
+    if (record) {
+      game.best = game.score;
+      try { localStorage.setItem("tidelock.best", String(game.best)); } catch (_) {}
+    }
+    const score = "Score " + game.score.toLocaleString();
+    showOverlay(record ? "New best score" : "Harbor watch",
+      won ? "Lock held." : "Lock breached.",
+      won ? "All six waves repelled. " + score + "." : "The fleet reached the floodgate. " + score + ".",
+      "Play again  →", false);
+    refresh();
+  }
+  function choose(index) {
+    if (game.stage !== "playing" && game.stage !== "title") return;
+    game.blueprint = index;
+    game.selected = -1;
+    game.noticeUntil = 0;
+    refresh();
+  }
+  function pressMooring(index) {
+    if (game.stage !== "playing" || index < 0) return;
+    const tower = game.structures[index];
+    game.noticeUntil = 0;
+    if (tower) {
+      game.selected = index;
+      game.blueprint = -1;
+      refresh();
+      return;
+    }
+    const model = towers[game.blueprint];
+    if (!model) {
+      say("Choose a tower below or press 1–3.");
+      return;
+    }
+    if (game.money < model.cost) {
+      say("Need $" + (model.cost - game.money) + " more supply.");
+      return;
+    }
+    game.money -= model.cost;
+    game.structures[index] = {type: game.blueprint, level: 1, invested: model.cost, timer: 0.16, angle: -Math.PI / 3, kick: 0};
+    const p = moorings[index];
+    burst(p.x, p.y, model.color, 11, 76);
+    ring(p.x, p.y, model.color, 37);
+    refresh();
+  }
+  function improve() {
+    const tower = game.structures[game.selected];
+    if (game.stage !== "playing" || !tower || tower.level >= 3) return;
+    const cost = upgradePrice(tower);
+    if (cost > game.money) return;
+    game.money -= cost;
+    tower.invested += cost;
+    tower.level++;
+    const p = moorings[game.selected];
+    ring(p.x, p.y, towers[tower.type].color, 50);
+    burst(p.x, p.y, towers[tower.type].color, 14, 91);
+    refresh();
+  }
+  function remove() {
+    const tower = game.structures[game.selected];
+    if (game.stage !== "playing" || !tower) return;
+    game.money += sellPrice(tower);
+    game.structures[game.selected] = null;
+    const p = moorings[game.selected];
+    ring(p.x, p.y, "#9ec1b8", 30);
+    game.selected = -1;
+    game.blueprint = tower.type;
+    refresh();
+  }
+
+  function nearestMooring(event) {
+    const rect = field.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * W / rect.width;
+    const y = (event.clientY - rect.top) * H / rect.height;
+    let limit = Math.max(24, 22 * W / rect.width), index = -1;
+    moorings.forEach((point, i) => {
+      const range = Math.hypot(x - point.x, y - point.y);
+      if (range < limit) { limit = range; index = i; }
+    });
+    return index;
+  }
+  function moveFocus(key) {
+    const center = moorings[game.focused];
+    if (!center) { game.focused = 0; return; }
+    const [dx, dy] = {ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[key];
+    let best = Infinity, target = game.focused;
+    moorings.forEach((point, i) => {
+      const x = point.x - center.x, y = point.y - center.y;
+      const forward = x * dx + y * dy;
+      if (forward <= 0) return;
+      const rank = Math.hypot(x, y) + 1.3 * Math.abs(x * dy - y * dx);
+      if (rank < best) { best = rank; target = i; }
+    });
+    game.focused = target;
+  }
+
+  begin.addEventListener("click", pressBegin);
+  upgrade.addEventListener("click", improve);
+  sell.addEventListener("click", remove);
+  field.addEventListener("pointermove", event => {
+    if (event.pointerType === "mouse" && game.stage === "playing") {
+      game.focused = -1;
+      game.hovered = nearestMooring(event);
+      field.style.cursor = game.hovered >= 0 ? "pointer" : "default";
+    }
+  });
+  field.addEventListener("pointerleave", () => { game.hovered = -1; });
+  field.addEventListener("click", event => {
+    game.focused = -1;
+    pressMooring(nearestMooring(event));
+  });
+  window.addEventListener("keydown", event => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const key = event.key.toLowerCase();
+    const nativeButton = event.target instanceof HTMLButtonElement;
+    if (key === "r" && !event.repeat) { event.preventDefault(); start(); return; }
+    if (event.key.startsWith("Arrow") && game.stage === "playing") {
+      event.preventDefault();
+      game.hovered = -1;
+      moveFocus(event.key);
+      field.focus({preventScroll: true});
+    } else if (key === "enter" || key === " ") {
+      if (nativeButton) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      if (game.stage !== "playing") pressBegin();
+      else if (key === "enter") pressMooring(game.focused);
+      else pause();
+    } else if ("123".includes(key) && key.length === 1) {
+      choose(Number(key) - 1);
+    } else if (key === "u" && !event.repeat) improve();
+    else if (key === "x" && !event.repeat) remove();
+    else if (key === "escape") {
+      if (game.selected >= 0) {
+        game.blueprint = game.structures[game.selected].type;
+        game.selected = -1;
+        refresh();
+      } else if (game.stage === "playing") pause();
+    }
+  });
+  window.addEventListener("blur", pause);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+
+  function circle(target, x, y, radius) {
+    target.beginPath();
+    target.arc(x, y, radius, 0, TAU);
+  }
+  function polygon(target, points) {
+    target.beginPath();
+    target.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) target.lineTo(points[i][0], points[i][1]);
+    target.closePath();
+  }
+  function burst(x, y, color, count, force) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * TAU, speed = (0.3 + Math.random() * 0.7) * force;
+      const life = 0.25 + Math.random() * 0.42;
+      game.sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        color, life, max: life, radius: 1 + Math.random() * 2.3 });
+    }
+  }
+  function ring(x, y, color, radius) {
+    game.rings.push({x, y, color, radius, life: 0.43, max: 0.43});
+  }
+  function hit(enemy, damage) {
+    if (enemy.hp <= 0) return;
+    enemy.hp -= damage;
+    enemy.flash = 0.13;
+    if (enemy.hp > 0) return;
+    game.money += enemy.model.bounty;
+    game.score += enemy.model.bounty * 10;
+    burst(enemy.x, enemy.y, enemy.model.color, enemy.type === "breaker" ? 34 : 13, 101);
+    ring(enemy.x, enemy.y, enemy.model.color, enemy.model.radius * 2.45);
+    if (enemy.type === "breaker") game.shake = 0.25;
+    refresh();
+  }
+  function fire(tower, p, target) {
+    const model = towers[tower.type];
+    tower.timer = model.interval / (1 + (tower.level - 1) * 0.15);
+    tower.kick = 0.13;
+    const power = model.power * (1 + (tower.level - 1) * 0.57);
+    const sourceX = p.x + Math.cos(tower.angle) * 14;
+    const sourceY = p.y + Math.sin(tower.angle) * 14;
+    if (tower.type === 1) {
+      const flight = 0.35;
+      const impact = pointAt(target.progress + target.speed * (target.slow ? 0.52 : 1) * flight);
+      game.shells.push({x: sourceX, y: sourceY, tx: impact.x, ty: impact.y, flight, timer: flight, power, radius: 49 + (tower.level - 1) * 7});
+      return;
+    }
+    const life = tower.type === 2 ? 0.17 : 0.10;
+    game.beams.push({x: sourceX, y: sourceY, tx: target.x, ty: target.y, color: model.color, coil: tower.type === 2, life, max: life});
+    if (tower.type === 2) target.slow = 1.6;
+    hit(target, power);
+    burst(target.x, target.y, model.color, 3, 47);
+  }
+  function step(dt) {
+    game.time += dt;
+    while (game.wave + 1 < waves.length && game.time >= waves[game.wave + 1].time) {
+      game.wave++;
+      if (game.wave > 0) game.money += 14;
+      refresh();
+    }
+    while (game.index < schedule.length && schedule[game.index].time <= game.time) {
+      const item = schedule[game.index++];
+      const model = boats[item.type];
+      const hp = model.hp * (1 + item.number * 0.115);
+      game.army.push({type: item.type, model, hp, maxHp: hp, progress: 0,
+        speed: model.speed * (1 + item.number * 0.017), slow: 0, flash: 0, ...pointAt(0)});
+    }
+    game.shake = Math.max(0, game.shake - dt);
+    game.struck = Math.max(0, game.struck - dt);
+    for (const enemy of game.army) {
+      enemy.slow = Math.max(0, enemy.slow - dt);
+      enemy.flash = Math.max(0, enemy.flash - dt);
+      enemy.progress += enemy.speed * (enemy.slow > 0 ? 0.52 : 1) * dt;
+      Object.assign(enemy, pointAt(enemy.progress));
+      if (enemy.progress >= distance) {
+        enemy.hp = 0;
+        game.health = Math.max(0, game.health - enemy.model.breach);
+        game.shake = 0.30;
+        game.struck = 0.62;
+        burst(733, 383, "#ffb280", 18, 119);
+        ring(733, 383, "#f9857b", 45);
+        say("Floodgate hit −" + enemy.model.breach);
+        if (game.health === 0) { finish(false); return; }
+      }
+    }
+    game.structures.forEach((tower, i) => {
+      if (!tower) return;
+      tower.timer = Math.max(0, tower.timer - dt);
+      tower.kick = Math.max(0, tower.kick - dt);
+      const p = moorings[i], range = towerRange(tower);
+      let target;
+      for (const enemy of game.army) {
+        if (enemy.hp <= 0 || (target && enemy.progress <= target.progress)) continue;
+        if (Math.hypot(enemy.x - p.x, enemy.y - p.y) <= range) target = enemy;
+      }
+      if (target) {
+        tower.angle = Math.atan2(target.y - p.y, target.x - p.x);
+        if (tower.timer <= 0) fire(tower, p, target);
+      }
+    });
+    for (const shell of game.shells) {
+      shell.timer -= dt;
+      if (shell.timer > 0) continue;
+      burst(shell.tx, shell.ty, towers[1].color, 17, 120);
+      ring(shell.tx, shell.ty, towers[1].color, shell.radius);
+      game.shake = Math.max(game.shake, 0.08);
+      for (const enemy of game.army) {
+        if (Math.hypot(enemy.x - shell.tx, enemy.y - shell.ty) <= shell.radius) hit(enemy, shell.power);
+      }
+    }
+    for (const spark of game.sparks) {
+      spark.x += spark.vx * dt;
+      spark.y += spark.vy * dt;
+      spark.life -= dt;
+    }
+    game.beams.forEach(beam => { beam.life -= dt; });
+    game.rings.forEach(effect => { effect.life -= dt; });
+    game.army = game.army.filter(enemy => enemy.hp > 0);
+    game.sparks = game.sparks.filter(spark => spark.life > 0);
+    game.beams = game.beams.filter(beam => beam.life > 0);
+    game.rings = game.rings.filter(effect => effect.life > 0);
+    game.shells = game.shells.filter(shell => shell.timer > 0);
+    if (game.index === schedule.length && game.army.length === 0) finish(true);
+  }
+
+  function trace(target) {
+    target.beginPath();
+    target.moveTo(channel[0].x, channel[0].y);
+    for (const point of channel) target.lineTo(point.x, point.y);
+  }
+  function makeMap() {
+    const art = document.createElement("canvas");
+    art.width = W * 2;
+    art.height = H * 2;
+    const g = art.getContext("2d");
+    g.scale(2, 2);
+    const sand = g.createLinearGradient(0, 0, W, H);
+    sand.addColorStop(0, "#183a3e");
+    sand.addColorStop(0.5, "#0e2c32");
+    sand.addColorStop(1, "#142d2d");
+    g.fillStyle = sand;
+    g.fillRect(0, 0, W, H);
+
+    g.strokeStyle = "#6ca9a216";
+    g.lineWidth = 1;
+    g.beginPath();
+    for (let x = 16; x < W; x += 28) { g.moveTo(x, 0); g.lineTo(x, H); }
+    for (let y = 16; y < H; y += 28) { g.moveTo(0, y); g.lineTo(W, y); }
+    g.stroke();
+    let seed = 16275;
+    const rand = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (let i = 0; i < 360; i++) {
+      const x = rand() * W, y = rand() * H;
+      const length = 1 + rand() * 6;
+      g.fillStyle = i % 5 === 0 ? "#b6e2c343" : "#94bfaf23";
+      g.fillRect(x, y, length, 0.75);
+    }
+
+    const contours = [[24, 87, 119, 70], [254, 465, 120, 42], [402, 65, 98, 63], [694, 38, 104, 60], [510, 451, 96, 75], [75, 431, 91, 44]];
+    g.strokeStyle = "#82b6a335";
+    for (const [cx, cy, rx, ry] of contours) {
+      for (let i = 0; i < 4; i++) {
+        g.beginPath();
+        g.ellipse(cx, cy, rx * (1 - i * 0.17), ry * (1 - i * 0.17), -0.31, 0, TAU);
+        g.stroke();
+      }
+    }
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    const channelWidths = [[67, "#07181c77"], [60, "#788e74"], [54, "#425d50"], [48, "#182f37"], [43, "#17454b"]];
+    for (const [width, color] of channelWidths) {
+      trace(g);
+      g.lineWidth = width;
+      g.strokeStyle = color;
+      g.stroke();
+    }
+    trace(g);
+    g.setLineDash([4, 12]);
+    g.lineWidth = 1.15;
+    g.strokeStyle = "#8ed1c674";
+    g.stroke();
+    g.setLineDash([]);
+    for (let length = 74; length < distance - 30; length += 141) {
+      const p = pointAt(length);
+      g.save();
+      g.translate(p.x, p.y);
+      g.rotate(p.angle);
+      g.strokeStyle = "#a4d8bb79";
+      g.lineWidth = 1.3;
+      g.beginPath();
+      g.moveTo(-2, -5);
+      g.lineTo(4, 0);
+      g.lineTo(-2, 5);
+      g.stroke();
+      g.restore();
+    }
+
+    g.fillStyle = "#acd0c7";
+    g.font = "700 11px ui-monospace, monospace";
+    g.fillText("INBOUND", 13, 308);
+    g.fillText("FLOODGATE", 647, 443);
+    g.fillStyle = "#85a49d";
+    g.font = "10px ui-monospace, monospace";
+    g.fillText("N", 42, 42);
+    g.strokeStyle = "#a5bbab";
+    g.beginPath();
+    g.moveTo(46, 50);
+    g.lineTo(46, 77);
+    g.moveTo(40, 60);
+    g.lineTo(46, 50);
+    g.lineTo(52, 60);
+    g.moveTo(36, 68);
+    g.lineTo(56, 68);
+    g.stroke();
+    return art;
+  }
+  const map = makeMap();
+  const currentMarks = Array.from({length: 28}, (_, i) => pointAt(73 + i * 52));
+
+  function drawTurret(g, x, y, type, angle, level, scale = 1, kick = 0) {
+    const color = towers[type].color;
+    g.save();
+    g.translate(x, y);
+    g.scale(scale, scale);
+    g.rotate(angle);
+    g.fillStyle = "#091b20";
+    g.strokeStyle = color;
+    g.lineWidth = 1.4;
+    if (type === 0) {
+      polygon(g, [[-8,-7], [4,-9], [11,-5], [11,5], [4,9], [-8,7]]);
+      g.fill();
+      g.stroke();
+      g.fillStyle = color;
+      g.fillRect(-2 - kick, -2.3, 20, 4.6);
+      g.fillRect(15 - kick, -3.1, 3, 6.2);
+    } else if (type === 1) {
+      polygon(g, [[-8,-8], [8,-8], [10,0], [8,8], [-8,8], [-11,0]]);
+      g.fill();
+      g.stroke();
+      g.fillStyle = color;
+      g.fillRect(0 - kick, -4, 15, 8);
+      g.fillStyle = "#261e27";
+      g.fillRect(9 - kick, -2.5, 6, 5);
+      g.fillStyle = color;
+      g.fillRect(-5, -4, 2, 8);
+    } else {
+      polygon(g, [[-10,-5], [0,-10], [9,-4], [9,4], [0,10], [-10,5]]);
+      g.fill();
+      g.stroke();
+      g.strokeStyle = color;
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.moveTo(-2, 0);
+      g.lineTo(7, 0);
+      g.lineTo(13, -5);
+      g.moveTo(7, 0);
+      g.lineTo(13, 5);
+      g.stroke();
+      circle(g, -3, 0, 2.7);
+      g.fillStyle = color;
+      g.fill();
+    }
+    g.rotate(-angle);
+    if (level > 1) {
+      g.fillStyle = "#f9ebc5";
+      for (let i = 0; i < level; i++) g.fillRect(-level * 2 + i * 4, 13, 2.6, 3);
+    }
+    g.restore();
+  }
+
+  function drawGate() {
+    ctx.fillStyle = "#0b1b22";
+    ctx.fillRect(709, 339, 44, 25);
+    ctx.fillRect(709, 402, 44, 25);
+    ctx.fillStyle = "#7a8f77";
+    ctx.fillRect(712, 335, 37, 24);
+    ctx.fillRect(712, 407, 37, 24);
+    ctx.fillStyle = "#2f4645";
+    ctx.fillRect(715, 338, 31, 17);
+    ctx.fillRect(715, 411, 31, 16);
+    ctx.strokeStyle = game.struck > 0 ? "#ff9b83" : "#8ce7de99";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(735, 362);
+    ctx.lineTo(735, 405);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = game.struck > 0 ? "#ffad8f" : "#b4f3d3";
+    circle(ctx, 735, 351, 3.8);
+    ctx.fill();
+    circle(ctx, 735, 415, 3.8);
+    ctx.fill();
+    ctx.fillStyle = "#f8c477";
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(717 + i * 7, 338, 3, 5);
+      ctx.fillRect(717 + i * 7, 423, 3, 4);
+    }
+  }
+
+  function drawMoorings() {
+    const marked = game.hovered >= 0 ? game.hovered : game.focused;
+    const inspect = game.selected >= 0 ? game.selected : marked;
+    const point = moorings[inspect];
+    if (point && game.stage === "playing") {
+      const existing = game.structures[inspect];
+      const model = towers[existing ? existing.type : game.blueprint];
+      if (model) {
+        circle(ctx, point.x, point.y, existing ? towerRange(existing) : model.range);
+        ctx.fillStyle = model.color + "14";
+        ctx.fill();
+        ctx.strokeStyle = model.color + "a8";
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([4, 7]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    moorings.forEach((p, i) => {
+      const built = game.structures[i];
+      const color = built ? towers[built.type].color : "#bdcbb5";
+      const active = i === game.selected || i === marked;
+      circle(ctx, p.x, p.y + 3, 19);
+      ctx.fillStyle = "#050e14b5";
+      ctx.fill();
+      circle(ctx, p.x, p.y, active ? 20 : 17);
+      ctx.fillStyle = built ? "#1f3637" : "#143238";
+      ctx.strokeStyle = active ? "#fcf0c5" : built ? color : "#8bac9c";
+      ctx.lineWidth = active ? 2.6 : 1.65;
+      ctx.fill();
+      ctx.stroke();
+      if (built) {
+        drawTurret(ctx, p.x, p.y, built.type, built.angle, built.level, 1, built.kick * 22);
+      } else {
+        ctx.strokeStyle = active ? "#ffdeb0" : "#bdd5c7";
+        ctx.lineWidth = 1.65;
+        ctx.beginPath();
+        ctx.moveTo(p.x - 5, p.y);
+        ctx.lineTo(p.x + 5, p.y);
+        ctx.moveTo(p.x, p.y - 5);
+        ctx.lineTo(p.x, p.y + 5);
+        ctx.stroke();
+      }
+    });
+  }
+
+  function drawBoat(enemy) {
+    const r = enemy.model.radius;
+    const color = enemy.slow ? "#8ce7de" : enemy.model.color;
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    ctx.rotate(enemy.angle);
+    ctx.strokeStyle = enemy.slow ? "#a9fff19c" : "#b3e1dc70";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-r - 1, -r * 0.33);
+    ctx.quadraticCurveTo(-r * 1.8, -r * 0.51, -r * 2.12, -r * 0.75);
+    ctx.moveTo(-r - 1, r * 0.33);
+    ctx.quadraticCurveTo(-r * 1.8, r * 0.51, -r * 2.12, r * 0.75);
+    ctx.stroke();
+    ctx.fillStyle = "#091c23";
+    ctx.strokeStyle = color;
+    ctx.lineWidth = enemy.type === "breaker" ? 2.5 : 1.45;
+    polygon(ctx, [[-r * 0.95, -r * 0.50], [r * 0.23, -r * 0.56], [r, 0], [r * 0.23, r * 0.56], [-r * 0.95, r * 0.50]]);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = enemy.flash > 0 ? "#fff9df" : color;
+    ctx.fillRect(-r * 0.62, -r * 0.25, r * 0.74, r * 0.5);
+    if (enemy.type === "breaker" || enemy.type === "barge") {
+      ctx.fillRect(r * 0.23, -r * 0.19, r * 0.27, r * 0.38);
+    }
+    ctx.restore();
+    if (enemy.hp < enemy.maxHp || enemy.type === "breaker") {
+      const w = r * 2;
+      ctx.fillStyle = "#091c23";
+      ctx.fillRect(enemy.x - r - 1, enemy.y - r - 4, w + 2, 4);
+      ctx.fillStyle = color;
+      ctx.fillRect(enemy.x - r, enemy.y - r - 3, w * enemy.hp / enemy.maxHp, 2);
+    }
+  }
+
+  function render() {
+    ctx.setTransform(field.width / W, 0, 0, field.height / H, 0, 0);
+    ctx.fillStyle = "#0e2c32";
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    if (game.shake > 0) {
+      ctx.translate(Math.sin(visualTime * 138) * game.shake * 12, Math.cos(visualTime * 174) * game.shake * 8);
+    }
+    ctx.drawImage(map, 0, 0, W, H);
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "#b2ebdc";
+    for (let i = 0; i < currentMarks.length; i++) {
+      const p = currentMarks[i], pulse = 0.5 + 0.5 * Math.sin(visualTime * 1.8 + i * 0.7);
+      ctx.globalAlpha = pulse * 0.38;
+      const offset = (i % 2 ? 1 : -1) * 14;
+      const x = p.x - Math.sin(p.angle) * offset, y = p.y + Math.cos(p.angle) * offset;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(p.angle) * (3 + pulse * 9), y + Math.sin(p.angle) * (3 + pulse * 9));
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    drawGate();
+    drawMoorings();
+    for (const enemy of game.army) { if (enemy.hp > 0) drawBoat(enemy); }
+    for (const beam of game.beams) {
+      ctx.globalAlpha = Math.min(1, beam.life / beam.max);
+      ctx.strokeStyle = beam.color;
+      ctx.lineWidth = beam.coil ? 2.3 : 2;
+      ctx.beginPath();
+      ctx.moveTo(beam.x, beam.y);
+      if (beam.coil) {
+        for (let i = 1; i < 7; i++) {
+          const t = i / 7;
+          ctx.lineTo(beam.x + (beam.tx - beam.x) * t + Math.sin(i * 3 + visualTime * 65) * 6,
+                     beam.y + (beam.ty - beam.y) * t + Math.cos(i * 3 + visualTime * 65) * 6);
+        }
+      }
+      ctx.lineTo(beam.tx, beam.ty);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    for (const shell of game.shells) {
+      const t = 1 - shell.timer / shell.flight;
+      const x = shell.x + (shell.tx - shell.x) * t;
+      const y = shell.y + (shell.ty - shell.y) * t;
+      ctx.fillStyle = "#131d266e";
+      circle(ctx, x, y, 3.4);
+      ctx.fill();
+      ctx.fillStyle = "#fff0c2";
+      circle(ctx, x, y - Math.sin(t * Math.PI) * 23, 3.4);
+      ctx.fill();
+    }
+    for (const effect of game.rings) {
+      const left = effect.life / effect.max;
+      circle(ctx, effect.x, effect.y, 3 + effect.radius * (1 - left));
+      ctx.globalAlpha = left * 0.62;
+      ctx.strokeStyle = effect.color;
+      ctx.lineWidth = 2.5 * left + 0.5;
+      ctx.stroke();
+    }
+    for (const spark of game.sparks) {
+      ctx.globalAlpha = spark.life / spark.max;
+      ctx.fillStyle = spark.color;
+      ctx.fillRect(spark.x, spark.y, spark.radius, spark.radius);
+    }
+    ctx.restore();
+  }
+
+  function resize() {
+    const box = field.getBoundingClientRect();
+    const ratio = Math.min(2.5, window.devicePixelRatio || 1);
+    field.width = Math.max(1, Math.round(box.width * ratio));
+    field.height = Math.max(1, Math.round(box.height * ratio));
+  }
+  window.addEventListener("resize", resize);
+  new ResizeObserver(resize).observe(field);
+  resize();
+  refresh();
+  let previous = performance.now(), nextHud = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, Math.max(0, (now - previous) / 1000));
+    previous = now;
+    if (game.stage !== "paused") visualTime += dt;
+    if (game.stage === "playing") {
+      step(dt);
+      if (visualTime >= nextHud) { paintHud(); nextHud = visualTime + 0.13; }
+    }
+    render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

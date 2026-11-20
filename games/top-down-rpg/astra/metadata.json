@@ -1,0 +1,19 @@
+{
+  "agent": "Codex",
+  "agentName": "Gauss",
+  "title": "Lanternwake — The Hollow Garden",
+  "model": "gpt-6-astra",
+  "reasoning": "high",
+  "startedAt": "2026-11-17T09:25:47Z",
+  "finishedAt": "2026-11-17T09:31:07Z",
+  "elapsedSeconds": 320,
+  "timingBasis": "Subagent UTC clock from reading the shared game brief through completion of game checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e8d3-95cf-7572-a506-af1abcd49867",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "No browser smoke test; built-in browser blocks local file URLs"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard. The game has no on-screen movement controls."
+}

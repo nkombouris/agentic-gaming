@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Moth Cabinet</title>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0}body{background:#142924;color:#f5ebce;font-family:Georgia,serif;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+.veil{position:absolute;inset:0;display:grid;place-items:center;background:rgba(9,24,21,.68);backdrop-filter:blur(4px)}
+.veil[hidden]{display:none}
+.panel{position:relative;width:min(470px,90vw);text-align:center;padding:30px 36px 32px;background:#f3e8cb;color:#243c32;border:1px solid #c6ac70;outline:1px solid #a68e5d;outline-offset:-8px;box-shadow:0 18px 80px #09171388}
+.panel:before,.panel:after{content:"✦";position:absolute;top:12px;color:#8c733f;font-size:11px}.panel:before{left:12px}.panel:after{right:12px}
+.mark{width:96px;height:65px;margin:auto}
+.kicker,button,.controls{font:600 10px/1.5 ui-monospace,Menlo,Consolas,monospace;letter-spacing:2px;text-transform:uppercase}
+.kicker{margin:10px 0;color:#756337}h1{font:normal 43px/.98 Georgia,serif;margin:11px 0 17px;letter-spacing:-2px}
+p{font-size:16px;line-height:1.45;margin:10px auto 16px;max-width:345px}
+.controls{letter-spacing:.8px;font-size:10px;line-height:1.75;color:#57654f;margin:15px 0 20px}
+button{cursor:pointer;background:#2b4738;color:#fff3d5;padding:13px 24px;border:1px solid #273f34;letter-spacing:1.2px}button:hover,button:focus-visible{background:#41654d}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Solitaire table. Click an uncovered card one rank higher or lower than the field card."></canvas>
+<div class="veil" id="veil"><section class="panel" role="dialog" aria-labelledby="title">
+<canvas class="mark" id="mark" width="240" height="160" aria-hidden="true"></canvas>
+<div class="kicker" id="eyebrow">Natural History · Solitaire</div>
+<h1 id="title">The Moth Cabinet</h1>
+<p id="message">Collect every specimen. Choose an uncovered card one rank above or below the field card. Aces connect kings and twos.</p>
+<div class="controls" id="controls">Click a card to collect · Space to draw<br>R to deal again</div>
+<button id="start">Open the cabinet</button>
+</section></div>
+<script>
+'use strict';
+const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
+const veil=document.getElementById('veil'), start=document.getElementById('start');
+const W=1200,H=770,CW=83,CH=112;
+const ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const suits=['♠','♥','♣','♦'];
+const ink=['#304337','#a34e39','#46533b','#a36431'];
+const washes=['#879582','#c58b6e','#939768','#cfad6f'];
+const species=['Pine hawk','Ruby tiger','Oak beauty','Gold spot'];
+const sections=[{cx:283,rows:4},{cx:600,rows:3},{cx:917,rows:4}];
+const tableau=[],dust=[],particles=[];
+const stockRect={x:437,y:548,w:CW,h:CH}, fieldRect={x:655,y:548,w:CW,h:CH};
+const again={x:1034,y:70,w:112,h:34};
+let stock=[],field,score,streak,remaining,best=0,phase='start',hover=null,time=0,now=0;
+let alertText='',alertFor=0,pulse=0,stockFlash=0,prev=0,scale=1,ox=0,oy=0;
+try{best=Number(localStorage.getItem('moth-cabinet-record'))||0}catch{}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function near(a,b){const diff=Math.abs(a-b);return diff===1||diff===12}
+function buildLayout(){
+  tableau.length=0;
+  for(const s of sections){
+    const first=tableau.length;
+    for(let row=0;row<s.rows;row++)for(let col=0;col<=row;col++){
+      const i=tableau.length;
+      tableau.push({x:s.cx+(col-row/2)*92-CW/2,y:165+(row+4-s.rows)*66,w:CW,h:CH,
+        blockedBy:row+1===s.rows?[]:[i+row+1,i+row+2],taken:false,turned:0,id:i,first});
+    }
+  }
+}
+function deal(){
+  buildLayout();
+  const deck=[];
+  for(let suit=0;suit<4;suit++)for(let rank=0;rank<13;rank++)deck.push({rank,suit});
+  shuffle(deck);
+  field=deck.pop();
+  let active=field,chain=0;
+  const drawn=[],picked=new Set();
+  while(picked.size<tableau.length){
+    const choices=tableau.filter(t=>!picked.has(t.id)&&t.blockedBy.every(id=>picked.has(id)));
+    const slot=choices[Math.floor(Math.random()*choices.length)];
+    let index=deck.findIndex(c=>near(active.rank,c.rank));
+    if((chain>=2&&Math.random()<.42)||index<0){
+      const next=deck.findIndex(c=>deck.some(v=>near(v.rank,c.rank)));
+      if(next>=0){active=deck.splice(next,1)[0];drawn.push(active);chain=0;index=deck.findIndex(c=>near(active.rank,c.rank))}
+    }
+    if(index<0)index=0;
+    slot.card=deck.splice(index,1)[0];
+    active=slot.card;chain++;picked.add(slot.id);
+  }
+  stock=drawn.concat(deck).reverse();
+  score=0;streak=0;remaining=tableau.length;time=0;particles.length=0;hover=null;alertFor=0;pulse=0;stockFlash=0;
+}
+function open(t){return !t.taken&&t.blockedBy.every(id=>tableau[id].taken)}
+function record(){if(score>best){best=score;try{localStorage.setItem('moth-cabinet-record',String(best))}catch{}}}
+function dialog(mode){
+  phase=mode;veil.hidden=false;
+  document.getElementById('eyebrow').textContent=({win:'Collection complete',lose:'Field notes',pause:'Intermission'})[mode];
+  document.getElementById('title').textContent=({win:'Cabinet complete',lose:'The drawer is closed',pause:'Cabinet paused'})[mode];
+  document.getElementById('message').textContent=mode==='pause'?'Your specimens are right where you left them.':
+    (mode==='win'?'All 26 specimens collected. ':'The stock is empty and no ranks connect. ')+(26-remaining)+' collected · '+score+' points.';
+  start.textContent=mode==='pause'?'Resume collecting':'Deal again';
+  start.focus({preventScroll:true});
+}
+function begin(){if(phase!=='pause'&&phase!=='start')deal();phase='play';veil.hidden=true;prev=performance.now()}
+function restart(){deal();phase='play';veil.hidden=true;prev=performance.now()}
+start.addEventListener('click',begin);
+function checkEnd(){if(remaining===0){score+=stock.length*10;record();dialog('win')}
+  else if(!stock.length&&!tableau.some(t=>open(t)&&near(t.card.rank,field.rank))){record();dialog('lose')}}
+function drawStock(){if(!stock.length){notice('The stock is empty');return}field=stock.pop();streak=0;stockFlash=.32;pulse=.32;alertFor=0;checkEnd()}
+function notice(msg){alertText=msg;alertFor=1.6}
+function collect(t){
+  if(!open(t)){notice('Collect both cards below this specimen');return}
+  if(!near(t.card.rank,field.rank)){notice('Choose a rank next to '+ranks[field.rank]);return}
+  field=t.card;t.taken=true;remaining--;streak++;score+=10+Math.min(streak-1,8)*5;pulse=.34;alertFor=0;
+  for(const card of tableau)if(!card.taken&&card.blockedBy.includes(t.id)&&open(card))card.turned=.32;
+  for(let i=0;i<12;i++)particles.push({x:t.x+CW/2,y:t.y+CH/2,dx:(Math.random()-.5)*115,dy:-20-Math.random()*80,life:.4+Math.random()*.45});
+  record();checkEnd();
+}
+function inside(x,y,r){return x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h}
+function target(e){
+ const x=(e.clientX-ox)/scale,y=(e.clientY-oy)/scale;
+ if(inside(x,y,again))return again;if(inside(x,y,stockRect))return stockRect;
+ for(let i=tableau.length-1;i>=0;i--){const t=tableau[i];if(!t.taken&&inside(x,y,t))return t}return null;
+}
+canvas.addEventListener('mousemove',e=>{hover=target(e);canvas.style.cursor=hover?'pointer':'default'});
+canvas.addEventListener('mouseleave',()=>{hover=null});
+canvas.addEventListener('click',e=>{if(phase!=='play')return;const t=target(e);if(t===again)restart();else if(t===stockRect)drawStock();else if(t)collect(t)});
+window.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='KeyR')e.preventDefault();if(e.repeat)return;
+ if(e.code==='KeyR')restart();else if(e.code==='Space'&&phase==='play')drawStock();else if(e.code==='Space'&&!veil.hidden)begin()});
+function pause(){if(phase==='play'){hover=null;dialog('pause')}}window.addEventListener('blur',pause);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+function fit(){const d=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(innerWidth*d);canvas.height=Math.round(innerHeight*d);
+ scale=Math.min(innerWidth/W,innerHeight/H);ox=(innerWidth-W*scale)/2;oy=(innerHeight-H*scale)/2}
+window.addEventListener('resize',fit);
+function textAt(t,x,y,font,color,align='left'){
+ ctx.fillStyle=color;ctx.font=font;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(t,x,y);
+}
+function cap(t,x,y,size,color,align='left',spacing=1.4){
+ ctx.save();ctx.font=size+'px Menlo, Consolas, monospace';ctx.fillStyle=color;ctx.textAlign='left';ctx.textBaseline='alphabetic';
+ const width=ctx.measureText(t).width+spacing*(t.length-1);
+ if(align==='center')x-=width/2;if(align==='right')x-=width;
+ for(const c of t){ctx.fillText(c,x,y);x+=ctx.measureText(c).width+spacing}ctx.restore();
+}
+function line(x1,y1,x2,y2,col,w=1){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke()}
+function rect(x,y,w,h,r,fill,stroke){
+ ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}
+}
+function moth(g,x,y,s,type,col,fill){
+ g.save();g.translate(x,y);g.scale(s,s);g.strokeStyle=col;g.lineWidth=1.3;g.lineCap='round';g.lineJoin='round';
+ const tip=[37,34,39,32][type],rise=[-21,-28,-16,-25][type];
+ for(let side of [-1,1]){
+   g.save();g.scale(side,1);g.fillStyle=fill;
+   g.beginPath();g.moveTo(0,0);g.bezierCurveTo(9,-12,tip-8,rise-3,tip,rise);
+   g.bezierCurveTo(tip-1,rise+9,30,-1,23,5);g.quadraticCurveTo(35,18,22,18);
+   g.bezierCurveTo(18,23,13,17,10,21);g.quadraticCurveTo(3,19,1,7);g.closePath();g.fill();g.stroke();
+   g.lineWidth=.85;
+   for(let i=0;i<4;i++){g.beginPath();g.moveTo(1,0);g.quadraticCurveTo(16,-3-i*2,tip-2-i*2,rise+3+i*3);g.stroke()}
+   for(let i=0;i<3;i++){g.beginPath();g.moveTo(2,4);g.quadraticCurveTo(10,5,11+i*5,17-i);g.stroke()}
+   g.lineWidth=1.25;g.beginPath();g.moveTo(4,3);g.quadraticCurveTo(11,4,20,1);g.lineTo(25,-3);g.stroke();
+   g.beginPath();g.ellipse(20,-8,3.8,1.8,-.55,0,Math.PI*2);g.fillStyle=col;g.fill();
+   g.beginPath();g.ellipse(16,10,2.7,3,-.2,0,Math.PI*2);g.stroke();
+   g.beginPath();g.moveTo(1,-5);g.quadraticCurveTo(2,-14,8,-17);g.stroke();
+   g.restore();
+ }
+ g.fillStyle=col;g.beginPath();g.ellipse(0,4,2.2,11,0,0,Math.PI*2);g.fill();g.beginPath();g.arc(0,-5,2.7,0,Math.PI*2);g.fill();g.restore();
+}
+function plate(x,y,w,h){
+ rect(x,y,w,h,4,'#213830','#716e4f');
+ for(const a of [x+5,x+w-5])for(const b of [y+5,y+h-5]){ctx.beginPath();ctx.arc(a,b,1.4,0,Math.PI*2);ctx.fillStyle='#bfa770';ctx.fill()}
+}
+function cardBack(x,y){
+ rect(x+1,y+3,CW,CH,5,'#0d201c');rect(x,y,CW,CH,5,'#a79467','#cfb98a');
+ rect(x+3,y+3,CW-6,CH-6,3,'#344b3d');rect(x+7,y+7,CW-14,CH-14,2,null,'#9f9165');
+ ctx.save();ctx.beginPath();ctx.rect(x+8,y+8,CW-16,CH-16);ctx.clip();
+ for(let k=-CH;k<CW;k+=7)line(x+k,y+8,x+k+CH,y+CH-8,'#b4a16d26');
+ ctx.restore();
+ ctx.save();ctx.translate(x+CW/2,y+CH/2);ctx.rotate(Math.PI/4);rect(-21,-21,42,42,0,'#344b3d','#ab9869');rect(-17,-17,34,34,0,null,'#8a815b');ctx.restore();
+ moth(ctx,x+CW/2,y+CH/2,.46,1,'#d3bd83','#394e3d');
+ for(let i=0;i<2;i++){const yy=y+(i?CH-14:14);line(x+29,yy,x+54,yy,'#ab9869');}
+}
+function face(x,y,c,lit){
+ ctx.save();if(lit){ctx.shadowColor='#f7d88a99';ctx.shadowBlur=13}
+ rect(x+1,y+4,CW,CH,5,'#11241e');rect(x,y,CW,CH,5,lit?'#fff1cd':'#f0e5c7',lit?'#f7d58b':'#bbad86');ctx.restore();
+ rect(x+4,y+4,CW-8,CH-8,3,null,'#b0a37c');
+ const color=ink[c.suit];
+ textAt(ranks[c.rank],x+9,y+25,'bold 20px Georgia',color);
+ textAt(suits[c.suit],x+CW-10,y+23,'17px Georgia',color,'right');
+ line(x+10,y+30,x+CW-10,y+30,'#c7bd9f');
+ const cy=y+59;
+ ctx.save();ctx.setLineDash([1,3]);line(x+10,cy,x+CW-10,cy,'#b4ae8d');line(x+CW/2,y+35,x+CW/2,y+82,'#b4ae8d');ctx.restore();
+ moth(ctx,x+CW/2,cy,.83,c.suit,color,washes[c.suit]);
+ textAt(species[c.suit],x+CW/2,y+91,'italic 11px Georgia',color,'center');
+ line(x+24,y+96,x+CW-24,y+96,'#b9ad8d');
+ cap('FIG. '+String(c.rank+1).padStart(2,'0'),x+CW/2,y+104,6.8,'#706a52','center',.7);
+}
+function background(){
+ ctx.fillStyle='#20382e';ctx.fillRect(0,0,W,H);
+ const grad=ctx.createRadialGradient(615,340,30,605,350,720);grad.addColorStop(0,'#345340');grad.addColorStop(1,'#192e28');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+ for(const d of dust){ctx.fillStyle=d.c;ctx.fillRect(d.x,d.y,d.w,1)}
+ for(const x of [26,1174])line(x,27,x,743,'#ab9b6b73');
+ for(const y of [26,744])line(26,y,1174,y,'#ab9b6b73');
+ for(const x of [26,1174])for(const y of [26,744]){
+  ctx.save();ctx.translate(x,y);ctx.scale(x===26?1:-1,y===26?1:-1);line(5,5,32,5,'#c0a774');line(5,5,5,32,'#c0a774');
+  ctx.beginPath();ctx.arc(5,5,12,0,Math.PI*.5);ctx.strokeStyle='#9b9265';ctx.stroke();ctx.restore();
+ }
+}
+function emblems(){
+ for(const s of sections){
+   const y=s.rows===3?169:146;
+   line(s.cx-39,y,s.cx-12,y,'#b7aa7859');line(s.cx+12,y,s.cx+39,y,'#b7aa7859');
+   textAt('✧',s.cx,y+5,'16px Georgia','#bdad77','center');
+ }
+}
+function render(){
+ const d=canvas.width/innerWidth;ctx.setTransform(d,0,0,d,0,0);ctx.fillStyle='#192e28';ctx.fillRect(0,0,innerWidth,innerHeight);
+ ctx.translate(ox,oy);ctx.scale(scale,scale);background();
+ cap('ENTOMOLOGY  /  PATIENCE',57,61,10,'#d6bf89');textAt('The Moth Cabinet',54,108,'47px Georgia','#f6eccf');
+ for(const [x,label,val] of [[665,'COLLECTED',(26-remaining)+' / 26'],[788,'SCORE',String(score)],[911,'RECORD',String(best)]]){
+   line(x-20,62,x-20,103,'#a18f636b');cap(label,x,73,9.5,'#c2b789');textAt(val,x,103,'26px Georgia','#f5e8c6');
+ }
+ rect(again.x,again.y,again.w,again.h,3,hover===again?'#435843':null,'#a2956b');cap('NEW DEAL',1090,91,10,'#e4d5a8','center');
+ line(54,129,1146,129,'#ac9e705e');emblems();
+ for(const t of tableau){if(t.taken)continue;if(!open(t))cardBack(t.x,t.y);else{
+   const lift=(phase==='play'&&hover===t?4:0)+Math.sin(t.turned/.32*Math.PI)*4;
+   face(t.x,t.y-lift,t.card,phase==='play'&&hover===t&&near(t.card.rank,field.rank));
+ }}
+ line(147,517,520,517,'#b0a27666');line(680,517,1053,517,'#b0a27666');cap('FIELD DRAWER',600,521,10,'#cfc090','center');
+ const sx=stockRect.x,sy=stockRect.y;
+ rect(sx,sy,CW,CH,4,null,'#9c9068');if(stock.length){if(stock.length>2)cardBack(sx+5,sy+3);if(stock.length>1)cardBack(sx+2.5,sy+1.5);cardBack(sx,sy-(stockFlash>0?2:0))}else{cap('EMPTY',sx+CW/2,sy+62,9,'#c0b385','center')}
+ face(fieldRect.x,fieldRect.y-3*Math.sin(pulse/.34*Math.PI),field,false);
+ const cx=590;line(cx-27,605,cx+27,605,'#aaa078');line(cx+27,605,cx+19,600,'#aaa078');line(cx+27,605,cx+19,610,'#aaa078');
+ cap('STOCK · '+stock.length,sx+CW/2,684,10,'#e0d3a6','center');cap('FIELD CARD',fieldRect.x+CW/2,684,10,'#e0d3a6','center');
+ cap('NEXT RANK',873,581,9,'#c0b489');textAt(ranks[(field.rank+12)%13]+'  or  '+ranks[(field.rank+1)%13],873,610,'italic 24px Georgia','#f2e5c4');
+ if(streak>1)cap('RUN OF '+streak,873,639,9,'#ddba77');
+ textAt(alertFor>0?alertText:'Collect a neighboring rank, or draw from the stock.',600,722,'italic 15px Georgia',alertFor>0?'#f7d38b':'#d0c4a2','center');
+ for(const p of particles){ctx.globalAlpha=Math.min(p.life*2,1);textAt('✦',p.x,p.y,'12px Georgia','#e6c47c','center')}ctx.globalAlpha=1;
+}
+function frame(ts){const dt=Math.min(.05,Math.max(0,(ts-prev)/1000));prev=ts;
+ if(phase==='play'){time+=dt;alertFor=Math.max(0,alertFor-dt);pulse=Math.max(0,pulse-dt);stockFlash=Math.max(0,stockFlash-dt);
+ for(const t of tableau)t.turned=Math.max(0,t.turned-dt);
+ for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.dx*dt;p.y+=p.dy*dt;p.dy+=80*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+ render();requestAnimationFrame(frame);
+}
+for(let i=0;i<4800;i++)dust.push({x:Math.random()*W,y:Math.random()*H,w:Math.random()*2+1,c:i%2?'#d9d5a014':'#0d201a20'});
+const mg=document.getElementById('mark').getContext('2d');moth(mg,120,88,2.45,1,'#405440','#b4af81');
+fit();deal();requestAnimationFrame(frame);
+</script>
+</body></html>

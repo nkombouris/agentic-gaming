@@ -1,0 +1,20 @@
+{
+  "agent": "Codex",
+  "agentName": "Lorentz",
+  "title": "Tidelock",
+  "model": "gpt-6.1-sol",
+  "reasoning": "max",
+  "startedAt": "2026-11-17T12:02:23Z",
+  "finishedAt": "2026-11-17T12:13:33Z",
+  "elapsedSeconds": 670,
+  "timingBasis": "Subagent UTC clock from reading the game brief through completion of checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e962-d8cb-78d2-b806-df21722aaacf",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "Chrome and Firefox headless aborted before loading the game.",
+    "interactions": "Node DOM and Canvas simulation passed six-wave victory, best score persistence, touch and keyboard controls, and pause/replay."
+  },
+  "mobileSupported": true,
+  "mobileSupportNotes": "Phone-width simulations at 360 and 390 CSS pixels passed tap start, selection, mooring placement, upgrades, sale, and replay. Physical device and real browser layout were not tested."
+}

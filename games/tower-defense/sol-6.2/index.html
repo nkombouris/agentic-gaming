@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101c22">
+<title>Brinepost</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground: #101c22;
+    --panel: #182932;
+    --edge: #324952;
+    --text: #f6f0de;
+    --muted: #b9c8c5;
+    --gold: #f9cc7f;
+    --coral: #ffa188;
+    --mint: #92e2d7;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    min-height: 100svh;
+    margin: 0;
+    padding: clamp(10px, 2.3vw, 26px);
+    background: radial-gradient(ellipse at 50% 0%, #253d46, transparent 75%), var(--ground);
+    color: var(--text);
+    font: 15px/1.4 system-ui, sans-serif;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+  button:focus-visible, canvas:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+  .shell { width: min(100%, 890px); margin: auto; }
+  .masthead, .board-status, .workbench-status { display: flex; align-items: center; justify-content: space-between; }
+  .masthead { gap: 12px; margin-bottom: 12px; }
+  .brand { display: flex; gap: 11px; align-items: center; }
+  .brand-mark {
+    position: relative;
+    width: 35px;
+    height: 35px;
+    border: 1px solid #886f4c;
+    border-radius: 50%;
+    background: #26363a;
+  }
+  .brand-mark::before, .brand-mark::after {
+    content: "";
+    position: absolute;
+    background: var(--gold);
+  }
+  .brand-mark::before { inset: 6px 14px; clip-path: polygon(50% 0, 100% 66%, 50% 100%, 0 66%); }
+  .brand-mark::after { inset: 12px 6px 15px; clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%); }
+  h1, h2, p { margin: 0; }
+  h1 { font: 700 clamp(27px, 4vw, 46px)/1 Georgia, serif; letter-spacing: -.055em; }
+  .best { display: flex; align-items: baseline; gap: 8px; color: var(--muted); font-size: 12px; }
+  .best strong, .metric strong { font-variant-numeric: tabular-nums; }
+  .best strong { color: var(--gold); font-size: 16px; }
+  .hud { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-bottom: 8px; }
+  .metric {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 5px;
+    padding: 8px 12px;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .metric span, .board-status {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .metric strong { font-size: clamp(17px, 2.2vw, 23px); line-height: 1; }
+  #hull { color: var(--mint); }
+  #hull.critical { color: var(--coral); }
+  #scrap { color: var(--gold); }
+  .arena { border: 1px solid var(--edge); border-radius: 11px; background: var(--panel); }
+  .board-status { padding: 8px 13px; gap: 10px; }
+  .wave-pips { display: flex; gap: 5px; }
+  .wave-pips i { display: block; width: 12px; height: 4px; border-radius: 3px; background: #405661; }
+  .wave-pips i.reached { background: var(--gold); }
+  .board-wrap { position: relative; }
+  canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 860 / 540;
+    border-radius: 0 0 10px 10px;
+    background: #153941;
+    touch-action: manipulation;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 8px;
+    background: #0a171f77;
+    border-radius: 0 0 10px 10px;
+  }
+  .dialog {
+    width: min(100%, 440px);
+    padding: clamp(10px, 3vw, 29px);
+    border: 1px solid #728277;
+    border-radius: 12px;
+    background: #15252df5;
+    box-shadow: 0 10px 45px #081319a9;
+    text-align: center;
+  }
+  .dialog h2 { color: var(--gold); font: 700 clamp(24px, 5.4vw, 49px)/1.03 Georgia, serif; letter-spacing: -.045em; }
+  .dialog p { margin: 9px auto 0; max-width: 34ch; }
+  .dialog .keys { max-width: none; color: var(--muted); font-size: 11px; }
+  .start {
+    min-height: 44px;
+    margin-top: 14px;
+    padding: 7px 25px;
+    border: 1px solid #ffdc9e;
+    border-radius: 7px;
+    background: var(--gold);
+    color: #1d2424;
+    font-weight: 800;
+  }
+  .start:hover { background: #ffdf9f; }
+  .tower-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 8px; }
+  .tool {
+    display: grid;
+    grid-template-columns: 25px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    min-height: 52px;
+    padding: 6px 11px;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    background: var(--panel);
+    text-align: left;
+  }
+  .tool:hover { border-color: #789097; }
+  .tool[aria-pressed="true"] { border-color: var(--accent); background: #243840; }
+  .tool[data-tower="bolt"] { --accent: var(--gold); }
+  .tool[data-tower="mortar"] { --accent: var(--coral); }
+  .tool[data-tower="arc"] { --accent: var(--mint); }
+  .tool strong, .tool small { display: block; }
+  .tool small { font-size: 11px; color: var(--muted); }
+  .tool .cost { color: var(--accent); font-size: 13px; font-weight: 750; }
+  .tool .tool-icon { color: var(--accent); width: 24px; height: 24px; }
+  .tool-icon::before { content: ""; display: block; width: 100%; height: 100%; background: currentColor; }
+  [data-tower="bolt"] .tool-icon::before { clip-path: polygon(46% 0, 88% 0, 61% 38%, 85% 38%, 22% 100%, 40% 55%, 15% 55%); }
+  [data-tower="mortar"] .tool-icon::before { clip-path: polygon(50% 2%, 62% 33%, 94% 21%, 81% 51%, 98% 71%, 66% 73%, 50% 100%, 34% 73%, 2% 71%, 19% 51%, 6% 21%, 38% 33%); }
+  [data-tower="arc"] .tool-icon::before { clip-path: polygon(0 45%, 28% 45%, 43% 12%, 59% 67%, 70% 44%, 100% 44%, 100% 56%, 77% 56%, 56% 93%, 41% 40%, 36% 57%, 0 57%); }
+  .workbench-status { min-height: 48px; gap: 9px; padding: 4px 2px; }
+  #message { font-size: 12px; color: var(--muted); }
+  .actions { display: flex; flex: none; gap: 6px; }
+  .actions button {
+    min-height: 42px;
+    padding: 0 11px;
+    border: 1px solid #64818a;
+    border-radius: 7px;
+    background: var(--panel);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .actions button:disabled { cursor: default; opacity: .55; }
+  @media (max-width: 550px) {
+    .masthead { margin-bottom: 9px; }
+    .brand-mark { width: 29px; height: 29px; }
+    .brand-mark::before { inset: 5px 11px; }
+    .brand-mark::after { inset: 11px 4px 11px; }
+    .best { gap: 4px; font-size: 11px; }
+    .metric { display: grid; justify-content: start; padding: 5px 7px 7px; gap: 3px; }
+    .metric span, .board-status { font-size: 9px; }
+    .tool { grid-template-columns: 1fr auto; column-gap: 2px; row-gap: 0; min-height: 62px; padding: 5px 7px; }
+    .tool .tool-icon { width: 15px; height: 15px; grid-row: 1; }
+    .tool .tool-label { grid-column: 1 / -1; grid-row: 2; }
+    .tool strong, .tool .cost { font-size: 12px; }
+    .tool small { font-size: 10px; }
+    .dialog p { font-size: 12px; margin-top: 5px; }
+    .dialog .keys { font-size: 9px; }
+    .start { margin-top: 7px; }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="masthead">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><h1>Brinepost</h1></div>
+    <div class="best">Best score <strong id="best">0</strong></div>
+  </header>
+
+  <section class="hud" aria-label="Run status">
+    <div class="metric"><span>Hull</span><strong id="hull">24</strong></div>
+    <div class="metric"><span>Scrap</span><strong id="scrap">155</strong></div>
+    <div class="metric"><span>Wave</span><strong id="wave">0/6</strong></div>
+    <div class="metric"><span>Score</span><strong id="score">0</strong></div>
+  </section>
+
+  <section class="arena" aria-label="Lighthouse channel">
+    <div class="board-status">
+      <span id="wave-status">Six incoming waves</span>
+      <div class="wave-pips" id="wave-pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="board-wrap">
+      <canvas id="board" width="860" height="540" tabindex="0" aria-label="Tower defense board. Use arrow keys to move between pads and Space to build or select."></canvas>
+      <div id="overlay" class="overlay">
+        <div class="dialog" role="group" aria-labelledby="overlay-title">
+          <h2 id="overlay-title">Keep the light on.</h2>
+          <p id="overlay-text">Spend scrap to build towers and stop six waves of salvage drones from reaching the lighthouse.</p>
+          <p id="overlay-keys" class="keys">Pick a tower, then tap or click a pad.<br>1–3 choose · Arrows + Space build · U upgrade · S sell · R restart</p>
+          <button id="start" class="start" type="button">Start defense</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Towers">
+    <div class="tower-bar" id="tower-bar">
+      <button class="tool" type="button" data-tower="bolt" aria-pressed="true" title="Bolt tower (1)">
+        <span class="tool-icon" aria-hidden="true"></span><span class="tool-label"><strong>Bolt</strong><small>Rapid fire</small></span><span class="cost">60</span>
+      </button>
+      <button class="tool" type="button" data-tower="mortar" aria-pressed="false" title="Mortar tower (2)">
+        <span class="tool-icon" aria-hidden="true"></span><span class="tool-label"><strong>Mortar</strong><small>Area damage</small></span><span class="cost">95</span>
+      </button>
+      <button class="tool" type="button" data-tower="arc" aria-pressed="false" title="Arc tower (3)">
+        <span class="tool-icon" aria-hidden="true"></span><span class="tool-label"><strong>Arc</strong><small>Slows drones</small></span><span class="cost">75</span>
+      </button>
+    </div>
+    <div class="workbench-status">
+      <p id="message" aria-live="polite">Select a tower and build on a marked pad.</p>
+      <div class="actions" id="actions" hidden>
+        <button id="upgrade" type="button" title="Upgrade (U)">Upgrade</button>
+        <button id="sell" type="button" title="Sell (S)">Sell</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+const board = $('board');
+const ctx = board.getContext('2d');
+const overlay = $('overlay');
+const startButton = $('start');
+const towerButtons = Array.from($('tower-bar').querySelectorAll('button'));
+const wavePips = Array.from($('wave-pips').children);
+const W = 860;
+const H = 540;
+const TAU = Math.PI * 2;
+const hullMax = 24;
+const bestKey = 'brinepost-best-v1';
+
+const types = {
+  bolt:   { name: 'Bolt',   cost: 60, upgrade: 55, range: 132, damage: 29, cadence: 0.51, color: '#ffd584' },
+  mortar: { name: 'Mortar', cost: 95, upgrade: 75, range: 176, damage: 40, cadence: 1.37, color: '#ffa086' },
+  arc:    { name: 'Arc',    cost: 75, upgrade: 60, range: 136, damage: 16, cadence: 0.74, color: '#93f4e6' }
+};
+const drones = {
+  s: { hp: 64,  speed: 77, size: 12, reward: 10, leak: 1, color: '#f89176' },
+  f: { hp: 43,  speed: 114, size: 9, reward: 9,  leak: 1, color: '#f9c06c' },
+  a: { hp: 170, speed: 60, size: 15, reward: 21, leak: 2, color: '#d7a1ec' },
+  b: { hp: 495, speed: 49, size: 22, reward: 48, leak: 4, color: '#eb8f9b' }
+};
+const waves = [
+  { time: 6, gap: 1.24, drones: 'sssssss' },
+  { time: 22, gap: 1.04, drones: 'sfsffssfs' },
+  { time: 39, gap: 0.98, drones: 'safssfaffsa' },
+  { time: 57, gap: 0.93, drones: 'fsaffasasffsa' },
+  { time: 76, gap: 0.83, drones: 'afssfaaaffsassaf' },
+  { time: 96, gap: 0.79, drones: 'affsaaabffaasfaasf' }
+];
+const schedule = waves.flatMap((wave, index) => Array.from(wave.drones, (kind, position) => ({
+  kind,
+  wave: index + 1,
+  time: wave.time + position * wave.gap
+})));
+
+const waypoints = [
+  [-32, 377], [124, 377], [200, 305], [200, 190],
+  [281, 116], [418, 116], [491, 186], [491, 351],
+  [566, 422], [685, 422], [753, 357], [753, 253], [810, 198]
+];
+let routeLength = 0;
+const route = waypoints.slice(1).map(([x, y], index) => {
+  const [fromX, fromY] = waypoints[index];
+  const length = Math.hypot(x - fromX, y - fromY);
+  const segment = { fromX, fromY, x, y, length, start: routeLength, angle: Math.atan2(y - fromY, x - fromX) };
+  routeLength += length;
+  return segment;
+});
+
+const pads = [
+  [76, 326], [142, 422], [153, 226], [249, 288], [266, 183],
+  [365, 170], [465, 103], [431, 260], [548, 285], [448, 396],
+  [591, 370], [661, 469], [696, 305], [804, 343], [809, 266]
+].map(([x, y]) => ({ x, y, tower: null }));
+
+let best = 0;
+try { best = Math.max(0, Number(localStorage.getItem(bestKey)) || 0); } catch {}
+let mode = 'ready';
+let paused = false;
+let time = 0;
+let last = performance.now();
+let selected = 'bolt';
+let activePad = -1;
+let hoverPad = -1;
+let keyPad = -1;
+let hull = hullMax;
+let scrap = 155;
+let score = 0;
+let waveNumber = 0;
+let nextSpawn = 0;
+let shake = 0;
+let hurt = 0;
+let enemies = [];
+let particles = [];
+let shots = [];
+
+function setText(element, value) {
+  const label = String(value);
+  if (element.textContent !== label) element.textContent = label;
+}
+
+function updateHud() {
+  setText($('best'), Math.max(best, score));
+  setText($('hull'), hull);
+  $('hull').classList.toggle('critical', hull <= 7);
+  setText($('scrap'), scrap);
+  setText($('wave'), waveNumber + '/' + waves.length);
+  setText($('score'), score);
+  wavePips.forEach((pip, index) => pip.classList.toggle('reached', index < waveNumber));
+  if (mode === 'ready') return;
+  let status = 'Final wave';
+  if (mode === 'won') status = 'Lighthouse secured';
+  else if (mode === 'lost') status = 'Signal lost';
+  else if (paused) status = 'Paused';
+  else if (waves[waveNumber]) {
+    const seconds = Math.max(1, Math.ceil(waves[waveNumber].time - time));
+    status = (waveNumber ? 'Next wave in ' : 'First wave in ') + seconds + 's';
+  }
+  setText($('wave-status'), status);
+  const tower = pads[activePad]?.tower;
+  if (tower) $('upgrade').disabled = tower.level === 2 || scrap < types[tower.kind].upgrade;
+}
+
+function updateActions(message) {
+  const tower = pads[activePad]?.tower;
+  $('actions').hidden = !tower;
+  if (tower) {
+    const type = types[tower.kind];
+    setText($('upgrade'), tower.level === 2 ? 'Max level' : 'Upgrade ' + type.upgrade);
+    setText($('sell'), 'Sell +' + sellValue(tower));
+    $('upgrade').disabled = tower.level === 2 || scrap < type.upgrade;
+    setText($('message'), message || type.name + ' · Level ' + tower.level);
+  } else {
+    setText($('message'), message || types[selected].name + ' selected. Choose a build pad.');
+  }
+}
+
+function start() {
+  time = 0;
+  last = performance.now();
+  hull = hullMax;
+  scrap = 155;
+  score = 0;
+  waveNumber = 0;
+  nextSpawn = 0;
+  shake = 0;
+  hurt = 0;
+  enemies = [];
+  particles = [];
+  shots = [];
+  pads.forEach(pad => { pad.tower = null; });
+  hoverPad = -1;
+  keyPad = -1;
+  paused = false;
+  mode = 'playing';
+  overlay.hidden = true;
+  selectTool('bolt');
+  board.focus({ preventScroll: true });
+  updateHud();
+}
+
+function finish(won) {
+  mode = won ? 'won' : 'lost';
+  if (won) score += hull * 15;
+  best = Math.max(best, score);
+  try { localStorage.setItem(bestKey, String(best)); } catch {}
+  activePad = -1;
+  updateActions(won ? 'All six waves cleared.' : 'The drones reached the lighthouse.');
+  updateHud();
+  setText($('overlay-title'), won ? 'The light holds.' : 'Signal lost.');
+  setText($('overlay-text'), won
+    ? 'Six waves cleared with ' + hull + ' hull left. Final score ' + score + '.'
+    : 'The lighthouse went dark in wave ' + waveNumber + '. Final score ' + score + '.');
+  setText($('overlay-keys'), 'Tap below or press R to restart.');
+  setText(startButton, 'Play again');
+  overlay.hidden = false;
+  startButton.focus({ preventScroll: true });
+}
+
+function selectTool(kind) {
+  selected = kind;
+  activePad = -1;
+  towerButtons.forEach(button => button.setAttribute('aria-pressed', button.dataset.tower === kind));
+  updateActions();
+}
+
+function usePad(index) {
+  if (mode !== 'playing' || paused || index < 0) return;
+  const pad = pads[index];
+  activePad = index;
+  if (pad.tower) {
+    updateActions();
+    return;
+  }
+  const type = types[selected];
+  if (scrap < type.cost) {
+    updateActions('Need ' + (type.cost - scrap) + ' more scrap for ' + type.name + '.');
+    return;
+  }
+  scrap -= type.cost;
+  pad.tower = { kind: selected, level: 1, cooldown: 0.12, angle: -Math.PI / 2 };
+  activePad = -1;
+  scatter(pad.x, pad.y, type.color, 10, 80);
+  updateActions(type.name + ' built.');
+  updateHud();
+}
+
+function sellValue(tower) {
+  const type = types[tower.kind];
+  return Math.floor((type.cost + (tower.level === 2 ? type.upgrade : 0)) * 0.65);
+}
+
+function upgradeTower() {
+  if (mode !== 'playing' || paused) return;
+  const pad = pads[activePad];
+  if (!pad?.tower || pad.tower.level === 2) return;
+  const type = types[pad.tower.kind];
+  if (scrap < type.upgrade) return;
+  scrap -= type.upgrade;
+  pad.tower.level = 2;
+  scatter(pad.x, pad.y, type.color, 13, 110);
+  updateActions();
+  updateHud();
+}
+
+function sellTower() {
+  if (mode !== 'playing' || paused) return;
+  const pad = pads[activePad];
+  if (!pad?.tower) return;
+  scrap += sellValue(pad.tower);
+  const name = types[pad.tower.kind].name;
+  pad.tower = null;
+  activePad = -1;
+  updateActions(name + ' sold.');
+  updateHud();
+}
+
+function nearestPad(event) {
+  const bounds = board.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) * W / bounds.width;
+  const y = (event.clientY - bounds.top) * H / bounds.height;
+  let distance = Math.max(33, 23 * W / bounds.width);
+  let result = -1;
+  pads.forEach((pad, index) => {
+    const candidate = Math.hypot(pad.x - x, pad.y - y);
+    if (candidate < distance) {
+      distance = candidate;
+      result = index;
+    }
+  });
+  return result;
+}
+
+function movePad(dx, dy) {
+  if (keyPad === -1) {
+    keyPad = activePad >= 0 ? activePad : 0;
+    return;
+  }
+  const origin = pads[keyPad];
+  let next = keyPad;
+  let bestDirection = Infinity;
+  pads.forEach((pad, index) => {
+    const x = pad.x - origin.x;
+    const y = pad.y - origin.y;
+    const forward = x * dx + y * dy;
+    if (forward <= 0) return;
+    const sideways = x * dy - y * dx;
+    const weight = forward + Math.abs(sideways) * 2.5;
+    if (weight < bestDirection) {
+      bestDirection = weight;
+      next = index;
+    }
+  });
+  keyPad = next;
+}
+
+startButton.addEventListener('click', start);
+towerButtons.forEach(button => button.addEventListener('click', () => selectTool(button.dataset.tower)));
+$('upgrade').addEventListener('click', upgradeTower);
+$('sell').addEventListener('click', sellTower);
+board.addEventListener('pointermove', event => {
+  if (event.pointerType === 'mouse' && mode === 'playing') hoverPad = nearestPad(event);
+});
+board.addEventListener('pointerleave', () => { hoverPad = -1; });
+board.addEventListener('click', event => {
+  keyPad = -1;
+  usePad(nearestPad(event));
+});
+const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+document.addEventListener('keydown', event => {
+  if (event.altKey || event.metaKey || event.ctrlKey) return;
+  const { code, target } = event;
+  const direction = directions[code];
+  if (direction || code === 'Space' && target.tagName !== 'BUTTON') event.preventDefault();
+  if (code === 'Enter' && !overlay.hidden && target.tagName !== 'BUTTON') start();
+  if (code === 'KeyR' && !event.repeat) start();
+  if (mode !== 'playing' || paused) return;
+  if (direction) {
+    hoverPad = -1;
+    movePad(...direction);
+    board.focus({ preventScroll: true });
+  }
+  if (event.repeat) return;
+  if (code === 'Space' && target.tagName !== 'BUTTON') {
+    if (keyPad === -1) keyPad = hoverPad === -1 ? 0 : hoverPad;
+    usePad(keyPad);
+  }
+  const tool = ['Digit1', 'Digit2', 'Digit3'].indexOf(code);
+  if (tool !== -1) {
+    selectTool(towerButtons[tool].dataset.tower);
+    board.focus({ preventScroll: true });
+  }
+  if (code === 'KeyU') upgradeTower();
+  if (code === 'KeyS') sellTower();
+});
+
+function setPaused(value) {
+  paused = value;
+  hoverPad = -1;
+  last = performance.now();
+  updateHud();
+}
+window.addEventListener('blur', () => setPaused(true));
+window.addEventListener('focus', () => setPaused(document.hidden));
+document.addEventListener('visibilitychange', () => setPaused(document.hidden || !document.hasFocus()));
+
+function pointAt(distance) {
+  const segment = route.find(part => distance < part.start + part.length) || route[route.length - 1];
+  const fraction = (distance - segment.start) / segment.length;
+  return {
+    x: segment.fromX + (segment.x - segment.fromX) * fraction,
+    y: segment.fromY + (segment.y - segment.fromY) * fraction,
+    angle: segment.angle
+  };
+}
+
+function spawn(entry) {
+  if (entry.wave !== waveNumber) {
+    waveNumber = entry.wave;
+    if (waveNumber > 1) scrap += 15;
+  }
+  const type = drones[entry.kind];
+  const maxHp = Math.round(type.hp * (1 + (entry.wave - 1) * 0.13));
+  enemies.push({ kind: entry.kind, ...type, ...pointAt(0), maxHp, hp: maxHp, distance: 0, slow: 0, flash: 0 });
+}
+
+function scatter(x, y, color, count, speed) {
+  for (let index = 0; index < count; index++) {
+    const angle = Math.random() * TAU;
+    const magnitude = speed * (0.35 + Math.random() * 0.65);
+    const life = 0.2 + Math.random() * 0.33;
+    particles.push({ x, y, vx: Math.cos(angle) * magnitude, vy: Math.sin(angle) * magnitude, life, initial: life, color });
+  }
+}
+
+function hit(enemy, damage) {
+  if (enemy.hp <= 0) return;
+  enemy.hp -= damage;
+  enemy.flash = 0.13;
+  if (enemy.hp <= 0) {
+    scrap += enemy.reward;
+    score += enemy.reward * 10;
+    scatter(enemy.x, enemy.y, enemy.color, enemy.kind === 'b' ? 25 : 8, 105);
+  }
+}
+
+function fire(pad, tower, target) {
+  const type = types[tower.kind];
+  const damage = type.damage * (tower.level === 2 ? 1.62 : 1);
+  const splash = tower.level === 2 ? 67 : 54;
+  tower.cooldown = type.cadence * (tower.level === 2 ? 0.83 : 1);
+  shots.push({ from: pad, x: target.x, y: target.y, age: 0, kind: tower.kind, color: type.color, splash });
+  if (tower.kind === 'mortar') {
+    for (const enemy of enemies) {
+      if (Math.hypot(enemy.x - target.x, enemy.y - target.y) <= splash) hit(enemy, enemy === target ? damage : damage * 0.76);
+    }
+    scatter(target.x, target.y, type.color, 10, 145);
+    shake = Math.max(shake, 0.1);
+  } else {
+    if (tower.kind === 'arc') target.slow = tower.level === 2 ? 2.5 : 1.65;
+    hit(target, damage);
+    scatter(target.x, target.y, type.color, 3, 55);
+  }
+}
+
+function step(dt) {
+  time += dt;
+  while (nextSpawn < schedule.length && schedule[nextSpawn].time <= time) spawn(schedule[nextSpawn++]);
+  shake = Math.max(0, shake - dt);
+  hurt = Math.max(0, hurt - dt);
+
+  for (const enemy of enemies) {
+    enemy.distance += enemy.speed * (enemy.slow > 0 ? 0.54 : 1) * dt;
+    enemy.slow -= dt;
+    enemy.flash -= dt;
+    Object.assign(enemy, pointAt(enemy.distance));
+    if (enemy.distance >= routeLength) {
+      enemy.hp = 0;
+      hull = Math.max(0, hull - enemy.leak);
+      scatter(808, 208, '#ff9b82', 13, 125);
+      shake = 0.24;
+      hurt = 0.34;
+    }
+  }
+
+  for (const pad of pads) {
+    const tower = pad.tower;
+    if (!tower) continue;
+    const range = types[tower.kind].range + (tower.level === 2 ? 18 : 0);
+    tower.cooldown -= dt;
+    let target = null;
+    for (const enemy of enemies) {
+      if (enemy.hp <= 0 || target && enemy.distance <= target.distance) continue;
+      if (Math.hypot(pad.x - enemy.x, pad.y - enemy.y) <= range) target = enemy;
+    }
+    if (!target) continue;
+    tower.angle = Math.atan2(target.y - pad.y, target.x - pad.x);
+    if (tower.cooldown <= 0) fire(pad, tower, target);
+  }
+
+  enemies = enemies.filter(enemy => enemy.hp > 0);
+  particles = particles.filter(particle => particle.life > 0);
+  for (const particle of particles) {
+    particle.x += particle.vx * dt;
+    particle.y += particle.vy * dt;
+    particle.vx *= 1 - dt * 3;
+    particle.vy *= 1 - dt * 3;
+    particle.life -= dt;
+  }
+  for (const shot of shots) shot.age += dt;
+  shots = shots.filter(shot => shot.age < 0.3);
+
+  if (hull <= 0) finish(false);
+  else if (nextSpawn === schedule.length && !enemies.length) finish(true);
+  else updateHud();
+}
+
+function pathLine(context, points, width, color, dash = []) {
+  context.beginPath();
+  context.moveTo(...points[0]);
+  points.slice(1).forEach(point => context.lineTo(...point));
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.lineWidth = width;
+  context.strokeStyle = color;
+  context.setLineDash(dash);
+  context.stroke();
+  context.setLineDash([]);
+}
+
+function disk(context, x, y, radius, color) {
+  context.fillStyle = color;
+  context.beginPath();
+  context.arc(x, y, radius, 0, TAU);
+  context.fill();
+}
+
+function seededRandom() {
+  let seed = 571;
+  return () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+}
+
+function drawTerrain() {
+  const terrain = document.createElement('canvas');
+  terrain.width = W * 2;
+  terrain.height = H * 2;
+  const map = terrain.getContext('2d');
+  map.scale(2, 2);
+  const rand = seededRandom();
+  const water = map.createLinearGradient(0, 0, W, H);
+  water.addColorStop(0, '#123841');
+  water.addColorStop(0.65, '#235054');
+  water.addColorStop(1, '#183e49');
+  map.fillStyle = water;
+  map.fillRect(0, 0, W, H);
+
+  for (let x = 29; x < W; x += 43) pathLine(map, [[x, 0], [x, H]], 0.65, '#adcbc01a');
+  for (let y = 26; y < H; y += 43) pathLine(map, [[0, y], [W, y]], 0.65, '#adcbc01a');
+  for (let i = 0; i < 250; i++) {
+    const x = rand() * W;
+    const y = rand() * H;
+    pathLine(map, [[x, y], [x + rand() * 21 + 1, y - 2]], 1, i % 5 ? '#97d9cd27' : '#bde2cf50');
+  }
+
+  const island = new Path2D('M -35 320 Q 32 313 78 309 Q 130 316 151 272 L 151 205 Q 147 168 178 138 L 236 72 Q 260 49 314 55 L 399 62 Q 451 61 491 101 L 534 150 Q 566 183 556 237 L 549 295 Q 537 334 562 348 L 612 357 Q 662 364 683 323 L 692 269 Q 697 224 728 200 L 762 163 Q 800 130 840 149 L 890 174 L 891 237 Q 840 261 809 312 L 789 381 Q 770 445 722 459 Q 697 489 650 489 L 553 489 Q 513 483 476 444 L 421 385 Q 397 349 402 309 L 405 252 Q 400 217 364 199 Q 312 176 281 227 L 272 299 Q 259 341 224 375 L 175 423 Q 123 455 65 447 L -35 450 Z');
+  map.lineJoin = 'round';
+  for (const [width, color] of [[46, '#0c26304f'], [34, '#86d6c134'], [24, '#abd8b04f'], [16, '#31494a'], [10, '#968c68']]) {
+    map.strokeStyle = color;
+    map.lineWidth = width;
+    map.stroke(island);
+  }
+  const grass = map.createLinearGradient(0, 60, 250, 520);
+  grass.addColorStop(0, '#667658');
+  grass.addColorStop(1, '#3e6155');
+  map.fillStyle = grass;
+  map.fill(island);
+
+  map.save();
+  map.clip(island);
+  for (let i = 0; i < 1150; i++) {
+    const x = rand() * W;
+    const y = rand() * H;
+    map.fillStyle = i % 3 ? '#182f2c46' : '#d2d3a740';
+    map.fillRect(x, y, rand() * 3 + 1, rand() * 2 + 1);
+  }
+  for (let i = 0; i < 118; i++) {
+    const x = rand() * W;
+    const y = rand() * H;
+    const size = rand() * 7 + 1;
+    map.fillStyle = '#203e3a8c';
+    map.beginPath();
+    map.ellipse(x, y + 2, size, size * 0.58, -0.2, 0, TAU);
+    map.fill();
+    map.fillStyle = i % 4 ? '#72836a' : '#a5a17b';
+    map.beginPath();
+    map.ellipse(x, y, size * 0.8, size * 0.5, -0.2, 0, TAU);
+    map.fill();
+  }
+  map.restore();
+
+  pathLine(map, waypoints, 41, '#354342');
+  pathLine(map, waypoints, 34, '#776f56');
+  pathLine(map, waypoints, 29, '#b7a077');
+  pathLine(map, waypoints, 1.6, '#e2c69a', [5, 14]);
+  for (let distance = 68; distance < routeLength - 46; distance += 24) {
+    const { x, y, angle } = pointAt(distance);
+    const dx = Math.cos(angle + Math.PI / 2) * 13;
+    const dy = Math.sin(angle + Math.PI / 2) * 13;
+    disk(map, x - dx, y - dy, 1.3, '#534f40');
+    disk(map, x + dx, y + dy, 1.3, '#534f40');
+  }
+
+  for (const [x, y] of [[92, 231], [327, 294], [339, 344], [623, 271], [766, 465], [579, 82]]) {
+    map.lineWidth = 1;
+    map.strokeStyle = '#9bdace57';
+    map.beginPath();
+    map.ellipse(x, y + 5, 10, 4, 0, 0, TAU);
+    map.stroke();
+    disk(map, x, y, 3, '#f9ba83');
+  }
+  return terrain;
+}
+
+const terrain = drawTerrain();
+
+function hex(context, radius) {
+  context.beginPath();
+  for (let side = 0; side < 6; side++) {
+    const angle = (side + 0.5) * Math.PI / 3;
+    const x = radius * Math.cos(angle);
+    const y = radius * Math.sin(angle);
+    if (!side) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  }
+  context.closePath();
+}
+
+function drawLighthouse(clock) {
+  ctx.save();
+  ctx.translate(811, 197);
+  if (hull > 0) {
+    ctx.save();
+    ctx.rotate(-1.83 + Math.sin(clock * 0.45) * 0.62);
+    const light = ctx.createLinearGradient(0, 0, 158, 0);
+    light.addColorStop(0, '#ffe4a459');
+    light.addColorStop(1, '#ffe4a400');
+    ctx.fillStyle = light;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(162, -25);
+    ctx.lineTo(162, 25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  disk(ctx, 2, 6, 31, '#193636a8');
+  disk(ctx, 0, 0, 27, '#304548');
+  ctx.strokeStyle = '#c9b083';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  disk(ctx, 0, 0, 21, '#66736b');
+  disk(ctx, 0, 0, 16, '#e1d3ac');
+  disk(ctx, 0, 0, 12, '#984d45');
+  disk(ctx, 0, 0, 9, hull > 0 ? '#ffdd8f' : '#554f49');
+  if (hull > 0) disk(ctx, -1, -1, 4, '#fff3cf');
+  ctx.restore();
+}
+
+function drawPad(pad, index, preview) {
+  ctx.save();
+  ctx.translate(pad.x, pad.y);
+  const tower = pad.tower;
+  const type = types[tower?.kind || selected];
+  disk(ctx, 1, 4, 25, '#173034ae');
+  hex(ctx, 27);
+  ctx.fillStyle = '#344f4b';
+  ctx.fill();
+  ctx.strokeStyle = index === preview ? type.color : '#afc0a5';
+  ctx.lineWidth = index === preview ? 2.8 : 1.5;
+  ctx.stroke();
+  disk(ctx, 0, 0, 17, '#263e40');
+  if (tower) {
+    ctx.rotate(tower.angle);
+    ctx.fillStyle = '#10252b';
+    ctx.fillRect(-4, -7, 26, 14);
+    ctx.fillStyle = type.color;
+    if (tower.kind === 'mortar') {
+      disk(ctx, 0, 0, 13, type.color);
+      disk(ctx, 3, 0, 7, '#613e3c');
+      disk(ctx, 3, 0, 4, '#24343a');
+    } else {
+      ctx.fillRect(-2, -4, 22, 8);
+      disk(ctx, -2, 0, 9, type.color);
+      disk(ctx, -2, 0, 4, '#2b5054');
+      if (tower.kind === 'arc') {
+        disk(ctx, 16, -5, 3.5, type.color);
+        disk(ctx, 16, 5, 3.5, type.color);
+      }
+    }
+    ctx.rotate(-tower.angle);
+    if (tower.level === 2) {
+      disk(ctx, -5, 18, 2.3, type.color);
+      disk(ctx, 5, 18, 2.3, type.color);
+    }
+  } else {
+    const color = index === preview ? type.color : '#aec4ad';
+    pathLine(ctx, [[-7, 0], [7, 0]], 2, color);
+    pathLine(ctx, [[0, -7], [0, 7]], 2, color);
+    disk(ctx, 0, -20, 1.7, color);
+    disk(ctx, 0, 20, 1.7, color);
+  }
+  ctx.restore();
+}
+
+function drawEnemy(enemy) {
+  const { x, y, angle, size, kind } = enemy;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.fillStyle = '#203036';
+  ctx.fillRect(-size - 3, -size * 0.73, size * 1.8, size * 1.46);
+  ctx.fillStyle = enemy.flash > 0 ? '#ffefe1' : enemy.color;
+  ctx.beginPath();
+  ctx.moveTo(size + 3, 0);
+  ctx.lineTo(size * 0.45, -size * 0.66);
+  ctx.lineTo(-size * 0.75, -size * 0.65);
+  ctx.lineTo(-size, 0);
+  ctx.lineTo(-size * 0.75, size * 0.65);
+  ctx.lineTo(size * 0.45, size * 0.66);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#503d41';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  disk(ctx, size * 0.23, 0, size * 0.23, '#432e39');
+  if (kind === 'b' || kind === 'a') {
+    ctx.fillStyle = '#523c48';
+    ctx.fillRect(-size * 0.62, -size * 0.63, size * 0.23, size * 1.26);
+  }
+  if (enemy.slow > 0) {
+    ctx.strokeStyle = '#a7ffed';
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.arc(0, 0, size + 4, 0, TAU);
+    ctx.stroke();
+  }
+  ctx.restore();
+  if (enemy.hp < enemy.maxHp || kind === 'b') {
+    const width = size * 1.8;
+    ctx.fillStyle = '#243036';
+    ctx.fillRect(x - width / 2, y - size - 8, width, 3.5);
+    ctx.fillStyle = enemy.color;
+    ctx.fillRect(x - width / 2, y - size - 8, width * enemy.hp / enemy.maxHp, 3.5);
+  }
+}
+
+function drawShot(shot) {
+  ctx.globalAlpha = Math.max(0, 1 - shot.age / 0.3);
+  if (shot.kind === 'mortar') {
+    ctx.strokeStyle = shot.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(shot.x, shot.y, shot.splash * (0.24 + shot.age * 2.5), 0, TAU);
+    ctx.stroke();
+    disk(ctx, shot.x, shot.y, 10 * (1 - shot.age / 0.3), '#fff0c4');
+  } else {
+    const { x, y, from } = shot;
+    const points = shot.kind === 'arc'
+      ? [[from.x, from.y], [(from.x + x) / 2 - 6, (from.y + y) / 2 + 8], [x, y]]
+      : [[from.x, from.y], [x, y]];
+    pathLine(ctx, points, 3, shot.color);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function draw(clock) {
+  ctx.drawImage(terrain, 0, 0, W, H);
+  ctx.save();
+  if (shake > 0 && !paused) ctx.translate((Math.random() - 0.5) * shake * 24, (Math.random() - 0.5) * shake * 24);
+  drawLighthouse(clock);
+  const preview = mode === 'playing' ? (hoverPad >= 0 ? hoverPad : keyPad >= 0 ? keyPad : activePad) : -1;
+  if (preview >= 0) {
+    const pad = pads[preview];
+    const type = types[pad.tower?.kind || selected];
+    disk(ctx, pad.x, pad.y, type.range + (pad.tower?.level === 2 ? 18 : 0), type.color + '22');
+    ctx.strokeStyle = type.color + '8a';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  pads.forEach((pad, index) => drawPad(pad, index, preview));
+  for (const enemy of enemies) drawEnemy(enemy);
+  for (const shot of shots) drawShot(shot);
+  for (const particle of particles) {
+    ctx.globalAlpha = Math.max(0, particle.life / particle.initial);
+    disk(ctx, particle.x, particle.y, 2.3, particle.color);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  if (hurt > 0) {
+    ctx.strokeStyle = 'rgba(255, 120, 100, ' + hurt * 1.8 + ')';
+    ctx.lineWidth = 13;
+    ctx.strokeRect(0, 0, W, H);
+  }
+}
+
+function resize() {
+  const bounds = board.getBoundingClientRect();
+  const ratio = Math.min(2.5, window.devicePixelRatio || 1);
+  board.width = Math.max(1, Math.round(bounds.width * ratio));
+  board.height = Math.max(1, Math.round(bounds.height * ratio));
+  ctx.setTransform(board.width / W, 0, 0, board.height / H, 0, 0);
+}
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(board);
+
+function frame(now) {
+  const dt = Math.max(0, Math.min((now - last) / 1000, 0.05));
+  last = now;
+  if (mode === 'playing' && !paused) step(dt);
+  draw(mode === 'ready' ? now / 1000 : time);
+  requestAnimationFrame(frame);
+}
+resize();
+updateHud();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

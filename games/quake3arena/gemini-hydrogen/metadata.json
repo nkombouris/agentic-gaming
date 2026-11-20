@@ -1,0 +1,22 @@
+{
+  "agent": null,
+  "agentName": null,
+  "title": "VOID ARENA // Q3-X",
+  "model": "gemini-hydrogen",
+  "reasoning": "medium",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label and reasoning effort",
+  "sessionId": null,
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript",
+    "structure": "Found 1 title element(s), 2 canvas element(s), 1 inline stylesheet(s), and 1 inline classic script(s) out of 1 script element(s). No external assets were found in HTML resource attributes or inline CSS.",
+    "lineCount": 1301,
+    "browser": "Browser smoke test not run",
+    "render": "WebGL context requested in source. Rendering not tested."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Movement requires a keyboard and aiming uses mouse input. The game has no on-screen equivalents."
+}

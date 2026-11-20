@@ -1,0 +1,92 @@
+[
+  {
+    "id": "tideglass-relay",
+    "directory": "astra",
+    "en": {
+      "description": "Build towers on little islands and protect a coastal lighthouse through eight waves.",
+      "instructions": "Choose a tower, then tap or click an empty island to build. Select a built tower to upgrade or sell it."
+    },
+    "de": {
+      "description": "Baue Türme auf kleinen Inseln und verteidige einen Leuchtturm gegen acht Wellen.",
+      "instructions": "Wähle einen Turm und tippe oder klicke zum Bauen auf eine freie Insel. Wähle einen gebauten Turm, um ihn zu verbessern oder zu verkaufen."
+    }
+  },
+  {
+    "id": "verdant-bastion",
+    "directory": "luna",
+    "en": {
+      "description": "Plant defenders along a winding garden path to protect the seed core from blightlings.",
+      "instructions": "Choose a sprout and tap or click the grass to plant it. Use Send Wave to start the next wave."
+    },
+    "de": {
+      "description": "Pflanze Verteidiger entlang eines verschlungenen Gartenwegs und beschütze den Samenkern.",
+      "instructions": "Wähle einen Setzling und tippe oder klicke auf das Gras. Starte die nächste Welle über die Schaltfläche."
+    }
+  },
+  {
+    "id": "tidelock",
+    "directory": "sol",
+    "en": {
+      "description": "Build on harbor moorings to stop six waves before they reach the floodgate.",
+      "instructions": "Choose a tower and tap or click a mooring to build. Select an existing tower to upgrade or sell it."
+    },
+    "de": {
+      "description": "Baue Türme an Hafenliegeplätzen und halte sechs Wellen vor dem Schleusentor auf.",
+      "instructions": "Wähle einen Turm und tippe oder klicke zum Bauen auf einen Liegeplatz. Wähle einen vorhandenen Turm, um ihn zu verbessern oder zu verkaufen."
+    }
+  },
+  {
+    "id": "aegis-protocol",
+    "directory": "gemini-argon",
+    "en": {
+      "description": "Defend the Nexus Core against ten waves using turrets, boosted build pads, and an EMP ability.",
+      "instructions": "Select a turret with 1–4 or the shop buttons, then click a build pad. Press Space to call the next wave."
+    },
+    "de": {
+      "description": "Verteidige den Nexus-Kern mit Geschützen, verstärkten Bauplätzen und einem EMP gegen zehn Wellen.",
+      "instructions": "Wähle ein Geschütz mit 1–4 oder über den Shop und klicke auf einen Bauplatz. Die Leertaste ruft die nächste Welle."
+    }
+  },
+  {
+    "id": "neon-bastion",
+    "directory": "gemini-hydrogen",
+    "en": {
+      "description": "Build and upgrade turrets along an energy conduit to defend the core against eight waves.",
+      "instructions": "Choose a tower in the dock, then tap or click a build tile. Use Wave to send the next group or Speed to change the pace."
+    },
+    "de": {
+      "description": "Baue und verbessere Geschütze entlang einer Energieleitung, um den Kern gegen acht Wellen zu verteidigen.",
+      "instructions": "Wähle ein Geschütz und tippe oder klicke auf ein Baufeld. Starte über Wave die nächste Welle und passe mit Speed das Tempo an."
+    }
+  },
+  {
+    "id": "kingfisher-lock-astra-6-2",
+    "directory": "astra-6.2",
+    "title": "Kingfisher Lock",
+    "model": "gpt-6.2-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Guard a tidal lock against five waves of salvage boats. Bolt guns pick off individual boats while mortars strike clusters in the bends of the canal.",
+      "instructions": "Choose Take command. Select a gun and tap a numbered platform to build. Tap a tower and choose Upgrade to spend brass earned from sunken boats. On a keyboard, use 1 and 2 to select guns, the arrows to select a platform, Enter to build or upgrade, and R to restart."
+    },
+    "de": {
+      "description": "Verteidige eine Gezeitenschleuse gegen fünf Wellen von Bergungsbooten. Bolzengeschütze treffen einzelne Boote, während Mörser ganze Gruppen in den Kanalbiegungen unter Beschuss nehmen.",
+      "instructions": "Starte mit „Take command“. Wähle ein Geschütz und tippe zum Bauen auf eine nummerierte Plattform. Für versenkte Boote erhältst du Messing. Tippe auf einen Turm und dann auf „Upgrade“, um ihn auszubauen. Mit der Tastatur wählst du Geschütze mit 1 und 2 und Plattformen mit den Pfeiltasten. Die Eingabetaste baut ein Geschütz oder verbessert es. R startet die Partie neu."
+    }
+  },
+  {
+    "id": "brinepost-sol-6-2",
+    "directory": "sol-6.2",
+    "title": "Brinepost",
+    "model": "gpt-6.2-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Protect a lighthouse from six waves of salvage drones. Spend scrap on rapid-fire Bolt towers, explosive Mortars, and Arc towers that slow drones.",
+      "instructions": "Choose a tower and tap or click a build pad. Select a built tower to upgrade or sell it. On a keyboard, use 1–3 to choose a tower and the arrow keys and Space to use a pad. U upgrades, S sells, and R restarts. Tap or click Play again after the round to restart."
+    },
+    "de": {
+      "description": "Verteidige einen Leuchtturm gegen sechs Wellen von Bergungsdrohnen. Setze Schrott für Schnellfeuertürme, Mörser und Elektrotürme ein.",
+      "instructions": "Wähle einen Turm und tippe oder klicke auf einen Bauplatz. Wähle einen gebauten Turm, um ihn aufzurüsten oder zu verkaufen. Mit 1–3 wählst du den Turmtyp und mit den Pfeiltasten und der Leertaste den Bauplatz. U rüstet auf, S verkauft und R startet neu. Nach der Runde kannst du auch auf Play again tippen oder klicken."
+    }
+  }
+]

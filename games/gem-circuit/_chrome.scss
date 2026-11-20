@@ -1,0 +1,98 @@
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font: 10px monospace;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.top button {
+  border: 1px solid var(--line);
+  background: var(--raised-bg);
+  color: var(--text);
+  border-radius: var(--button-radius, 5px);
+  padding: 10px;
+  min-height: 44px;
+}
+
+h1 {
+  font-size: 30px;
+  letter-spacing: -1.3px;
+  margin: 16px 0 4px;
+  font-weight: 600;
+}
+
+.intro {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.hud div {
+  background: var(--raised-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius, 8px);
+  padding: 10px;
+}
+
+.hud span {
+  font: 8px monospace;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  display: block;
+}
+
+.hud strong {
+  font-size: 22px;
+  display: block;
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 16px;
+}
+
+.controls button {
+  border: 1px solid var(--line);
+  border-radius: var(--button-radius, 5px);
+  background: var(--raised-bg);
+  color: var(--text);
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.status {
+  min-height: 40px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--accent);
+  margin: 16px 0 4px;
+}
+
+.hint {
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin: 5px 0;
+}
+
+.footer {
+  font: 9px monospace;
+  color: var(--muted);
+  margin-top: 16px;
+}

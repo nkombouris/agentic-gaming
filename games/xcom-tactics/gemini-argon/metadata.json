@@ -1,0 +1,22 @@
+{
+  "agent": null,
+  "agentName": null,
+  "title": "BLACKSITE: ZERO PROTOCOL // Turn-Based Tactical Combat",
+  "model": "gemini-argon",
+  "reasoning": "high",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label and reasoning effort",
+  "sessionId": null,
+  "sourceFile": "blacksite_zero_protocol_tactical_turn_based_strategy (1).html",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript",
+    "structure": "Found one title, 1 canvas, 1 inline stylesheet, and 1 inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 2533,
+    "browser": "Browser smoke test not run"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "The board has 20 columns and a 28 CSS pixel minimum tile size, so it clips playable tiles on phone screens narrower than 560 CSS pixels. Physical phone gameplay was not tested."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "signal-match",
+  "runId": "prototype-session-001",
+  "genre": "puzzle",
+  "agent": "Codex session",
+  "model": null,
+  "reasoning": null,
+  "status": "integration-sample",
+  "generationDate": "2026-11-16",
+  "promptKind": "Illustrative brief; original submitted prompt not captured separately",
+  "exactSubmittedPrompt": null,
+  "notes": "Created in the implementation session from the project plan. Not a controlled model comparison.",
+  "integrationEdits": "Modular vanilla JavaScript and SCSS. Build bundles scripts into a classic IIFE for sandbox compatibility and compiles SCSS to CSS. Added a validated parent-to-frame palette message and theme query parameter for design previews; changing the palette preserves game state.",
+  "validation": "See game-engine tests and build verification. Browser/device QA is reported separately.",
+  "mobileSupported": true,
+  "mobileSupportNotes": "Cards and restart are tappable buttons, and the board has styles for narrow screens."
+}

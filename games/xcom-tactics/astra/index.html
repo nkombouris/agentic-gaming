@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LAST SIGNAL — Relay 09</title>
+<style>
+:root{color-scheme:dark;--ink:#dcebea;--cyan:#80f8d5;--muted:#839697}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#080f14;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}canvas{display:block;width:100%;height:100%;cursor:crosshair}button{font:inherit;cursor:pointer}.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#040b12b8;backdrop-filter:blur(6px);padding:20px}.overlay.hidden{display:none}.card{width:690px;max-width:100%;border:1px solid #405656;background:linear-gradient(145deg,#15252bed,#0b141bec);padding:42px;box-shadow:0 40px 140px #0008;position:relative}.card:before{content:"";position:absolute;top:-1px;left:-1px;width:100px;height:3px;background:var(--cyan)}.eyebrow{color:var(--cyan);letter-spacing:4px;font-size:11px;margin:0 0 19px}.card h1{font-family:Arial,sans-serif;font-size:64px;letter-spacing:-3px;line-height:.95;margin:0 0 10px;font-weight:900}.subtitle{font-size:12px;letter-spacing:4px;color:var(--muted);margin:0 0 28px}.description{font-size:14px;line-height:1.8;color:#b4c6c8;margin:0 0 24px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:15px 22px;border-top:1px solid #314347;padding-top:23px;margin:0 0 30px;font-size:12px;color:#a5babb}.controls b{display:block;color:#eef6ed;margin-bottom:5px;font-weight:500}.primary{width:100%;border:0;color:#07251f;background:var(--cyan);padding:17px;text-align:left;font-weight:bold;letter-spacing:2px;display:flex;justify-content:space-between}.primary:hover{background:#b1ffe8}.foot{font-size:10px;color:#718789;letter-spacing:1px;margin:17px 0 0}.result{font-size:15px;line-height:1.8;color:#b7c9cb;margin:22px 0 30px}@media(max-height:650px){.card{padding:24px}.card h1{font-size:44px}.controls{gap:10px;margin-bottom:18px}.description{margin-bottom:16px}.subtitle{margin-bottom:15px}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Last Signal, a turn based tactical game"></canvas>
+<div class="overlay" id="intro"><div class="card">
+<p class="eyebrow">A SINGLE-OPERATIVE TACTICAL OPERATION</p>
+<h1>LAST SIGNAL</h1><p class="subtitle">RELAY 09 / THE SILENT QUADRANT</p>
+<p class="description">The station is compromised. You are the last operative inside.<br>Reach the amber relay, download its payload, then get back to the extraction pad. Every angle matters. Every turn brings them closer.</p>
+<div class="controls"><div><b>CLICK A TILE</b>Move up to 4 tiles · 1 action</div><div><b>CLICK A VISIBLE HOSTILE</b>Fire · 1 action · range 7</div><div><b>F / INTERACT</b>Download or extract · 1 action</div><div><b>SPACE / END TURN</b>Let the enemy act</div><div><b>Q / OVERWATCH</b>Cover the next enemy movement</div><div><b>H / FIELD MEDIC</b>Heal 5 HP · 1 action · once</div></div>
+<button class="primary" id="start">BEGIN INFILTRATION <span>↗</span></button><p class="foot">2 ACTIONS PER TURN · FULL WALLS BLOCK SIGHT · LOW COVER REDUCES DAMAGE</p>
+</div></div>
+<div class="overlay hidden" id="pause"><div class="card"><p class="eyebrow">UPLINK HELD</p><h1>PAUSED</h1><p class="description" style="margin-top:24px">The operation will wait for you.</p><button class="primary" id="resume">RESUME OPERATION <span>↗</span></button></div></div>
+<div class="overlay hidden" id="ending"><div class="card"><p class="eyebrow" id="endLabel"></p><h1 id="endTitle"></h1><div class="result" id="endText"></div><button class="primary" id="restart">REDEPLOY <span>R ↻</span></button></div></div>
+<script>
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const VW=1440,VH=940,CELL=58,COLS=15,ROWS=11,BX=64,BY=166;
+const colors={cyan:'#80f8d5',amber:'#ffd587',red:'#ff7e79',text:'#d9e8e8',muted:'#789195',blue:'#78b8d3'};
+// # is a full-height wall; c is low cover. Both prevent movement.
+const layout=[
+'...............',
+'...##....##....',
+'...##....##....',
+'......c........',
+'..cc.....cc....',
+'.....##........',
+'.....##....#...',
+'..c......c.#...',
+'.......c.......',
+'....#..........',
+'...............'
+];
+const relay={x:12,y:2},exitPad={x:1,y:9};
+let scale=1,offsetX=0,offsetY=0,dpr=1;
+let phase='intro',paused=false,turn=1,ap=2,player,enemies=[],hasData=false,medUsed=false;
+let kills=0,score=0,best=0,mouse={x:-1,y:-1},hover=null,buttons=[],logs=[],particles=[],floaters=[],beams=[],tasks=[];
+let time=0,lastTime=0,shake=0,guarding=false,guardFired=false,notice='',noticeUntil=0;
+let explored=new Set(),visible=new Set(),reach=new Map(),hoverPath=[],enemyToken=0;
+try{best=Number(localStorage.getItem('last-signal-best'))||0;}catch(e){}
+const key=(x,y)=>x+','+y;
+const inside=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS;
+const tile=(x,y)=>inside(x,y)?layout[y][x]:'#';
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const center=(a)=>({x:BX+a.x*CELL+CELL/2,y:BY+a.y*CELL+CELL/2});
+function resize(){dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=innerWidth*dpr;canvas.height=innerHeight*dpr;scale=Math.min(innerWidth/VW,innerHeight/VH);offsetX=(innerWidth-VW*scale)/2;offsetY=(innerHeight-VH*scale)/2;}
+window.addEventListener('resize',resize);resize();
+function lineOfSight(a,b){
+  const dx=b.x-a.x,dy=b.y-a.y,n=Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))*12);
+  for(let i=1;i<n;i++){const x=Math.round(a.x+dx*i/n),y=Math.round(a.y+dy*i/n);if((x!==a.x||y!==a.y)&&(x!==b.x||y!==b.y)&&tile(x,y)==='#')return false;}
+  return true;
+}
+function sees(e){return e.hp>0&&visible.has(key(e.x,e.y));}
+function coverAgainst(target,source){
+  const dx=source.x-target.x,dy=source.y-target.y;
+  const sides=[];if(dx!==0)sides.push([Math.sign(dx),0,Math.abs(dx)]);if(dy!==0)sides.push([0,Math.sign(dy),Math.abs(dy)]);
+  return sides.some(([x,y,weight])=>weight>=Math.max(Math.abs(dx),Math.abs(dy))*.5&&['c','#'].includes(tile(target.x+x,target.y+y)));
+}
+function occupied(x,y,except){return enemies.some(e=>e!==except&&e.hp>0&&e.x===x&&e.y===y)||(player&&player!==except&&player.x===x&&player.y===y);}
+function walkable(x,y,except){return tile(x,y)==='.'&&!occupied(x,y,except);}
+function search(origin,max,except){
+  const result=new Map([[key(origin.x,origin.y),{x:origin.x,y:origin.y,d:0,prev:null}]]),queue=[result.get(key(origin.x,origin.y))];
+  for(let head=0;head<queue.length;head++){const cur=queue[head];if(cur.d>=max)continue;for(const [dx,dy]of [[0,-1],[1,0],[0,1],[-1,0]]){const x=cur.x+dx,y=cur.y+dy,k=key(x,y);if(!result.has(k)&&walkable(x,y,except)){const node={x,y,d:cur.d+1,prev:cur};result.set(k,node);queue.push(node);}}}
+  return result;
+}
+function updateVision(){
+  visible.clear();for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){if(dist(player,{x,y})<=8.8&&lineOfSight(player,{x,y})){visible.add(key(x,y));explored.add(key(x,y));}}
+  reach=search(player,4,player);
+}
+function log(text,color=colors.muted){logs.unshift({text,color});logs=logs.slice(0,5);}
+function notify(text){notice=text;noticeUntil=time+2.8;}
+function init(){
+  enemyToken++;tasks=[];phase='player';paused=false;turn=1;ap=2;kills=0;score=0;hasData=false;medUsed=false;guarding=false;guardFired=false;
+  player={x:1,y:9,hp:14,maxHp:14,rx:1,ry:9};
+  enemies=[{x:6,y:8,type:'scout'},{x:8,y:3,type:'rifle'},{x:13,y:5,type:'rifle'},{x:12,y:0,type:'heavy'}].map((e,i)=>makeEnemy(e.x,e.y,e.type,i));
+  logs=[];particles=[];floaters=[];beams=[];explored.clear();notice='';
+  log('RELAY 09 // signal acquired',colors.cyan);log('Recover the payload at the amber relay.');
+  updateVision();document.getElementById('intro').classList.add('hidden');document.getElementById('ending').classList.add('hidden');document.getElementById('pause').classList.add('hidden');
+}
+function makeEnemy(x,y,type,id){const hp=type==='heavy'?6:type==='rifle'?4:3;return{x,y,rx:x,ry:y,hp,maxHp:hp,type,id};}
+function actionAllowed(){return phase==='player'&&!paused&&ap>0;}
+function useAction(){ap--;updateVision();if(ap===0&&phase==='player'){notify('Actions spent. Press SPACE to end the turn.');}}
+function moveTo(x,y){
+  if(!actionAllowed())return;
+  const node=reach.get(key(x,y));if(!node||node.d===0){notify('Choose a highlighted tile within 4 steps.');return;}
+  player.x=x;player.y=y;useAction();log('Repositioned. '+ap+' action'+(ap===1?'':'s')+' remaining.');
+}
+function fireAt(enemy,isGuard=false){
+  if(!isGuard&&!actionAllowed())return false;
+  if(!sees(enemy)||dist(player,enemy)>7||!lineOfSight(player,enemy)){if(!isGuard)notify('No clear shot. Weapon range: 7 tiles.');return false;}
+  const covered=coverAgainst(enemy,player),damage=covered?2:4;
+  shot(player,enemy,colors.cyan);enemy.hp-=damage;floatText(enemy,'−'+damage,colors.cyan);burst(enemy,colors.cyan,13);shake=3;
+  log((isGuard?'OVERWATCH':'HIT')+' // '+enemy.type.toUpperCase()+' −'+damage+(covered?' / cover':''),colors.cyan);
+  if(enemy.hp<=0){kills++;score+=100;log('Hostile eliminated.',colors.amber);burst(enemy,colors.amber,20);}
+  if(!isGuard)useAction();else updateVision();return true;
+}
+function interact(){
+  if(!actionAllowed())return;
+  if(!hasData&&dist(player,relay)<=1.05){hasData=true;score+=300;useAction();burst(relay,colors.amber,35);log('PAYLOAD SECURED // return to extraction',colors.amber);notify('Payload secured. Get back to the green extraction pad.');}
+  else if(hasData&&dist(player,exitPad)<=1.05){useAction();finish(true);}
+  else notify(hasData?'Stand on or beside the extraction pad.':'Stand on or beside the amber relay to download.');
+}
+function heal(){if(!actionAllowed())return;if(medUsed){notify('Field kit already used.');return;}if(player.hp===player.maxHp){notify('Health is already full.');return;}medUsed=true;player.hp=Math.min(player.maxHp,player.hp+5);floatText(player,'+5',colors.cyan);burst(player,colors.cyan,20);log('FIELD KIT // restored 5 HP',colors.cyan);useAction();}
+function overwatch(){if(!actionAllowed())return;guarding=true;guardFired=false;log('OVERWATCH // watching for enemy movement',colors.cyan);endTurn();}
+function schedule(delay,fn){tasks.push({at:time+delay,fn,token:enemyToken});}
+function enemyAttack(e){
+  if(player.hp<=0||e.hp<=0)return;
+  const covered=coverAgainst(player,e),base=e.type==='heavy'?3:2,damage=Math.max(1,base-(covered?1:0));
+  shot(e,player,colors.red);player.hp-=damage;shake=6;burst(player,colors.red,14);floatText(player,'−'+damage,colors.red);
+  log(e.type.toUpperCase()+' // '+(covered?'cover absorbs impact, ':'')+'−'+damage+' HP',colors.red);
+  if(player.hp<=0){player.hp=0;finish(false);}
+}
+function enemyAct(e){
+  if(e.hp<=0||phase!=='enemy')return;
+  const hasShot=dist(e,player)<=6&&lineOfSight(e,player);
+  let moved=false;
+  if(!hasShot||dist(e,player)>4.5){
+    const moves=search(e,e.type==='scout'?3:2,e);let bestNode=null,bestValue=-1e9;
+    for(const n of moves.values()){if(n.d===0)continue;const sight=lineOfSight(n,player),range=dist(n,player);let value=-range+(sight&&range<=6?5:0)+(coverAgainst(n,player)?1.2:0);if(value>bestValue){bestValue=value;bestNode=n;}}
+    if(bestNode){e.x=bestNode.x;e.y=bestNode.y;moved=true;updateVision();}
+  }
+  if(moved&&guarding&&!guardFired&&sees(e)&&dist(player,e)<=7){guardFired=fireAt(e,true);}
+  if(e.hp>0&&dist(e,player)<=6&&lineOfSight(e,player))schedule(.33,()=>{if(phase==='enemy')enemyAttack(e);});
+  else if(sees(e))log(e.type.toUpperCase()+' // closing on your position');
+}
+function spawnReinforcement(){
+  let spots=[{x:14,y:10},{x:14,y:0},{x:0,y:0}],spot=spots.find(s=>!occupied(s.x,s.y));
+  if(!spot)return;enemies.push(makeEnemy(spot.x,spot.y,turn>=7?'rifle':'scout',enemies.length));log('REINFORCEMENT // east perimeter breached',colors.red);notify('A fresh hostile has entered the station.');
+}
+function endTurn(){
+  if(phase!=='player'||paused)return;
+  phase='enemy';ap=0;hoverPath=[];log('HOSTILE PHASE // hold position',colors.red);
+  const active=enemies.filter(e=>e.hp>0);active.forEach((e,i)=>schedule(.5+i*.8,()=>enemyAct(e)));
+  schedule(.65+active.length*.8,()=>{
+    if(phase!=='enemy')return;turn++;if(turn===4||turn===7||turn===10)spawnReinforcement();guarding=false;guardFired=false;phase='player';ap=2;updateVision();log('TURN '+String(turn).padStart(2,'0')+' // your move',colors.cyan);
+  });
+}
+function finish(won){
+  phase=won?'won':'lost';tasks=[];enemyToken++;
+  const finalScore=won?score+500+Math.max(0,20-turn)*30+player.hp*20:score;
+  best=Math.max(best,finalScore);try{localStorage.setItem('last-signal-best',String(best));}catch(e){}
+  document.getElementById('endLabel').textContent=won?'OPERATION COMPLETE / TRANSMISSION RECEIVED':'OPERATIVE LOST / SIGNAL TERMINATED';
+  document.getElementById('endTitle').textContent=won?'SIGNAL SAVED.':'LINE WENT DARK.';
+  document.getElementById('endText').innerHTML=(won?'You brought the relay data home. The station can fall. The truth survives.':'The station fell silent. Redeploy, use cover, and break sight lines before you end your turn.')+'<br><br>SCORE '+finalScore+' &nbsp; / &nbsp; BEST '+best+'<br>'+turn+' TURNS &nbsp; · &nbsp; '+kills+' HOSTILES ELIMINATED';
+  document.getElementById('ending').classList.remove('hidden');
+}
+function shot(from,to,color){const a=center(from),b=center(to);beams.push({a,b,color,t:.3,max:.3});}
+function burst(unit,color,count){const p=center(unit);for(let i=0;i<count;i++){let a=Math.random()*Math.PI*2,s=20+Math.random()*80;particles.push({x:p.x,y:p.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:.35+Math.random()*.5,color});}}
+function floatText(unit,text,color){const p=center(unit);floaters.push({x:p.x,y:p.y-26,text,color,t:1.2});}
+function pause(){if((phase==='player'||phase==='enemy')&&!paused){paused=true;mouse={x:-1,y:-1};hover=null;document.getElementById('pause').classList.remove('hidden');}}
+function resume(){paused=false;lastTime=performance.now();document.getElementById('pause').classList.add('hidden');}
+window.addEventListener('blur',pause);document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+document.getElementById('start').onclick=init;document.getElementById('restart').onclick=init;document.getElementById('resume').onclick=resume;
+window.addEventListener('keydown',e=>{
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyQ','KeyF','KeyH','KeyR','Escape'].includes(e.code))e.preventDefault();
+  if(e.repeat)return;
+  if(e.code==='KeyR'){init();return;}if(e.code==='Escape'){paused?resume():pause();return;}if(paused)return;
+  if(phase==='intro'&&e.code==='Enter'){init();return;}
+  if(e.code==='Space')endTurn();if(e.code==='KeyQ')overwatch();if(e.code==='KeyF')interact();if(e.code==='KeyH')heal();
+});
+canvas.addEventListener('mousemove',e=>{mouse={x:(e.clientX-offsetX)/scale,y:(e.clientY-offsetY)/scale};const x=Math.floor((mouse.x-BX)/CELL),y=Math.floor((mouse.y-BY)/CELL);hover=inside(x,y)?{x,y}:null;});
+canvas.addEventListener('mouseleave',()=>{mouse={x:-1,y:-1};hover=null;});
+canvas.addEventListener('click',()=>{
+  if(paused||phase!=='player')return;
+  const b=buttons.find(b=>mouse.x>=b.x&&mouse.x<=b.x+b.w&&mouse.y>=b.y&&mouse.y<=b.y+b.h);if(b){if(!b.disabled)b.fn();return;}
+  if(!hover)return;const e=enemies.find(e=>e.hp>0&&e.x===hover.x&&e.y===hover.y&&sees(e));
+  if(e)fireAt(e);else moveTo(hover.x,hover.y);
+});
+function text(t,x,y,size=14,color=colors.text,font='mono',align='left'){
+  ctx.font=(font==='bold'?'700 ':font==='heavy'?'900 ':'400 ')+size+'px '+(font==='mono'?'ui-monospace, SFMono-Regular, Consolas, monospace':'Arial, sans-serif');ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(t,x,y);
+}
+function rect(x,y,w,h,fill,stroke){if(fill){ctx.fillStyle=fill;ctx.fillRect(x,y,w,h);}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,w-1,h-1);}}
+function line(x1,y1,x2,y2,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function circle(x,y,r,fill,stroke,width=1){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
+function polygon(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}}
+function button(x,y,w,h,label,hotkey,fn,disabled=false,accent=false){
+  const hot=mouse.x>=x&&mouse.x<=x+w&&mouse.y>=y&&mouse.y<=y+h;
+  rect(x,y,w,h,disabled?'#142126':accent?'#80f8d5':hot?'#29413e':'#1b3032',disabled?'#273b40':accent?'#80f8d5':'#3b5b5b');
+  const color=disabled?'#577074':accent?'#0b3027':'#d0e5df';text(label,x+16,y+h/2+5,13,color,'bold');text(hotkey,x+w-15,y+h/2+4,11,color,'mono','right');buttons.push({x,y,w,h,fn,disabled});
+}
+function drawBoard(){
+  rect(BX-13,BY-13,COLS*CELL+26,ROWS*CELL+26,'#0b151c','#34454c');
+  for(let x=0;x<COLS;x++)text(String(x+1).padStart(2,'0'),BX+x*CELL+CELL/2,BY-23,10,'#566e76','mono','center');
+  for(let y=0;y<ROWS;y++)text(String.fromCharCode(65+y),BX-25,BY+y*CELL+34,10,'#566e76','mono','center');
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const px=BX+x*CELL,py=BY+y*CELL,k=key(x,y),inView=visible.has(k),known=explored.has(k),kind=tile(x,y);
+    rect(px,py,CELL,CELL,(x+y)%2?'#14232a':'#16262d','#22333a');
+    if((x*7+y*3)%8===0){line(px+10,py+10,px+14,py+10,'#294047');line(px+12,py+8,px+12,py+12,'#294047');}
+    if(phase==='player'&&ap>0&&reach.has(k)&&!(x===player.x&&y===player.y))rect(px+1,py+1,CELL-2,CELL-2,'#4dceb410');
+    if(kind==='#'){
+      rect(px+3,py+8,CELL-6,CELL-11,'#080e14');rect(px+3,py+3,CELL-6,CELL-11,inView?'#3d505a':'#293b45','#52646a');
+      rect(px+8,py+7,CELL-16,4,'#53656c');line(px+10,py+CELL-19,px+CELL-10,py+CELL-19,'#2b3c45');
+      rect(px+5,py+CELL-8,CELL-10,4,'#1d2e37');
+    }else if(kind==='c'){
+      rect(px+8,py+16,CELL-16,29,'#081319');rect(px+7,py+12,CELL-14,27,'#334d50','#64817c');
+      line(px+12,py+17,px+CELL-12,py+17,'#91aaa0',2);for(let i=0;i<3;i++)rect(px+12+i*12,py+23,7,9,'#1e363b');
+    }
+    if(!inView)rect(px+1,py+1,CELL-2,CELL-2,known?'#030b1450':'#030b1495');
+  }
+  drawObjective(exitPad,colors.cyan,hasData?'EXTRACT':'ENTRY',false);
+  drawObjective(relay,colors.amber,hasData?'SECURED':'RELAY',true);
+  if(hover&&phase==='player'){
+    const node=reach.get(key(hover.x,hover.y));hoverPath=[];
+    if(node&&node.d>0&&ap>0){let p=node;while(p){hoverPath.unshift(p);p=p.prev;}ctx.setLineDash([4,5]);for(let i=1;i<hoverPath.length;i++){const a=center(hoverPath[i-1]),b=center(hoverPath[i]);line(a.x,a.y,b.x,b.y,'#80f8d577',2);}ctx.setLineDash([]);}
+    const e=enemies.find(e=>e.hp>0&&e.x===hover.x&&e.y===hover.y&&sees(e));
+    const valid=e?dist(player,e)<=7:node&&ap>0;
+    const col=e?colors.red:valid?colors.cyan:'#65737a';rect(BX+hover.x*CELL+3,BY+hover.y*CELL+3,CELL-6,CELL-6,e?'#ff7e7912':'#80f8d510',col);
+    if(e){const a=center(player),b=center(e);ctx.setLineDash([6,7]);line(a.x,a.y,b.x,b.y,'#ff7e7970',1);ctx.setLineDash([]);circle(b.x,b.y,25,null,colors.red);}
+  }
+  for(const e of enemies)if(sees(e))drawUnit(e,false);
+  drawUnit(player,true);
+  // Board corner registration marks.
+  for(const [x,y,sx,sy]of [[BX-13,BY-13,1,1],[BX+COLS*CELL+13,BY-13,-1,1],[BX-13,BY+ROWS*CELL+13,1,-1],[BX+COLS*CELL+13,BY+ROWS*CELL+13,-1,-1]]){line(x,y,x+sx*20,y,'#82a3a2',2);line(x,y,x,y+sy*20,'#82a3a2',2);}
+}
+function drawObjective(p,color,label,isRelay){
+  const c=center(p),pulse=.5+Math.sin(time*2)*.2;
+  rect(c.x-24,c.y-24,48,48,isRelay?'#473e202c':'#2b6e5340',color+'88');
+  if(isRelay){polygon([[c.x,c.y-17],[c.x+15,c.y],[c.x,c.y+17],[c.x-15,c.y]],'#322f23',color);rect(c.x-4,c.y-8,8,16,hasData?'#a7b1a2':color);circle(c.x,c.y,23+Math.sin(time*2)*2,null,color+'44');}
+  else{ctx.globalAlpha=pulse;for(let i=-1;i<=1;i++)line(c.x-13,c.y+i*9+4,c.x,c.y+i*9-3,color,2);ctx.globalAlpha=1;for(let i=-1;i<=1;i++)line(c.x,c.y+i*9-3,c.x+13,c.y+i*9+4,color,2);}
+  if(!(player.x===p.x&&player.y===p.y))text(label,c.x,c.y+35,8,color,'mono','center');
+}
+function drawUnit(u,friendly){
+  const c=center({x:u.rx,y:u.ry}),color=friendly?colors.cyan:colors.red;
+  circle(c.x,c.y+6,20,'#00000044');
+  if(friendly){circle(c.x,c.y,22,null,'#80f8d544');circle(c.x,c.y,16,'#102e2c',color,2);polygon([[c.x,c.y-11],[c.x+9,c.y+7],[c.x,c.y+3],[c.x-9,c.y+7]],'#b0ffe3');rect(c.x+11,c.y-11,4,16,'#a2e8d1');if(guarding)circle(c.x,c.y,27,null,colors.amber,2);}
+  else{
+    const r=u.type==='heavy'?19:16;polygon([[c.x,c.y-r],[c.x+r,c.y],[c.x,c.y+r],[c.x-r,c.y]],'#4a292f',color);
+    if(u.type==='heavy'){rect(c.x-7,c.y-6,14,12,color);rect(c.x-3,c.y-3,6,6,'#4a292f');}else if(u.type==='scout'){polygon([[c.x-6,c.y+5],[c.x,c.y-7],[c.x+6,c.y+5]],color);}else{line(c.x-6,c.y-4,c.x+6,c.y-4,color,3);line(c.x-6,c.y+4,c.x+6,c.y+4,color,3);}
+  }
+  const hpw=friendly?36:30;rect(c.x-hpw/2,c.y+25,hpw,4,'#091216');rect(c.x-hpw/2,c.y+25,hpw*(u.hp/u.maxHp),4,color);
+  if(friendly)text('01',c.x,c.y-30,9,color,'mono','center');
+}
+function drawHud(){
+  text('NORTHSTAR / SPECIAL OPERATIONS',64,44,11,'#8da4a8');text('LAST SIGNAL',62,91,42,colors.text,'heavy');
+  text('RELAY 09',394,74,12,colors.cyan);text('RECOVER. RETURN. SURVIVE.',394,96,10,'#6e8c92');
+  text('TURN '+String(turn).padStart(2,'0'),1376,55,16,colors.text,'mono','right');
+  const phaseLabel=phase==='enemy'?'● HOSTILE ACTIVITY':'● OPERATIVE PHASE';text(phaseLabel,1376,83,11,phase==='enemy'?colors.red:colors.cyan,'mono','right');
+  line(64,119,1376,119,'#2d424a');
+  text('TACTICAL VIEW / SECTOR C',64,143,10,'#9bb3b7');text('LOS ACTIVE   •   1 TILE = 1 M',934,143,10,'#627e85','mono','right');
+  const px=980,pw=396;rect(px,153,pw,138,'#122129','#34474e');
+  rect(px,153,4,138,colors.cyan);text('OPERATIVE 01',px+23,182,11,colors.cyan);text('KESTREL',px+23,214,28,colors.text,'heavy');
+  text(player.hp+' / '+player.maxHp+' HP',px+pw-22,211,14,player.hp<=5?colors.red:colors.cyan,'mono','right');
+  for(let i=0;i<14;i++)rect(px+23+i*25,235,20,7,i<player.hp?(player.hp<=5?colors.red:colors.cyan):'#293e43');
+  text('ACTIONS',px+23,272,10,'#859fa4');for(let i=0;i<2;i++){circle(px+117+i*23,268,6,i<ap?colors.cyan:'#263c43');}
+  text('RIFLE / RANGE 7',px+pw-22,272,10,'#859fa4','mono','right');
+  text('MISSION DIRECTIVE',px,323,10,'#6c8a90');
+  const done=hasData;
+  text(done?'✓':'01',px+1,352,14,done?colors.cyan:colors.amber);text('RECOVER THE PAYLOAD',px+37,352,15,done?'#759c91':colors.amber,'bold');
+  text(done?'Relay data secured.':'Reach the amber relay at M03.',px+37,374,11,'#8aa2a7');
+  text('02',px+1,405,14,done?colors.cyan:'#59717a');text('REACH EXTRACTION',px+37,405,15,done?colors.cyan:'#7d939a','bold');
+  text('Return to the green pad at B10.',px+37,427,11,'#8aa2a7');
+  line(px,448,px+pw,448,'#2b424a');
+  const enemyHover=hover?enemies.find(e=>e.hp>0&&e.x===hover.x&&e.y===hover.y&&sees(e)):null;
+  text('FIELD INTELLIGENCE',px,477,10,'#6c8a90');
+  if(enemyHover){
+    const canHit=dist(player,enemyHover)<=7&&lineOfSight(player,enemyHover),covered=coverAgainst(enemyHover,player);
+    text(enemyHover.type.toUpperCase()+' / '+enemyHover.hp+' HP',px,505,21,colors.red,'bold');
+    text(canHit?(covered?'CLEAR SHOT / 2 DAMAGE / IN COVER':'CLEAR SHOT / 4 DAMAGE'):'OUT OF RANGE',px,532,12,canHit?colors.cyan:colors.amber);
+    text('Click hostile to fire. Costs 1 action.',px,554,11,'#9bb0b4');
+  }else{
+    text(hasData?'GET BACK ALIVE.':'MAKE EVERY ANGLE COUNT.',px,505,20,colors.text,'bold');
+    text('Solid walls break line of sight.',px,532,12,'#9bb0b4');text('Low cover reduces incoming damage.',px,554,12,'#9bb0b4');
+  }
+  const can=phase==='player'&&ap>0;
+  const near=hasData?dist(player,exitPad)<=1.05:dist(player,relay)<=1.05;
+  button(px,580,pw,46,hasData?'EXTRACT PAYLOAD':'DOWNLOAD PAYLOAD','F',interact,!can||!near,near&&can);
+  button(px,638,191,46,'OVERWATCH','Q',overwatch,!can);
+  button(px+205,638,191,46,medUsed?'KIT USED':'HEAL +5','H',heal,!can||medUsed||player.hp===player.maxHp);
+  button(px,696,pw,54,phase==='enemy'?'HOSTILES MOVING…':'END TURN','SPACE',endTurn,phase!=='player',phase==='player');
+  text('OVERWATCH: one reaction shot, ends turn.',px,773,10,'#7f999f');
+  text('REINFORCEMENTS AT TURNS 4 / 7 / 10',px,797,10,turn<4?colors.amber:'#8b9d9f');
+  line(64,838,1376,838,'#30464e');
+  text('OPERATION FEED',64,866,10,'#6e8b91');
+  logs.slice(0,3).forEach((entry,i)=>text((i===0?'› ':'  ')+entry.text,231,862+i*22,11,entry.color));
+  text('KILLS '+String(kills).padStart(2,'0')+'  /  BEST '+best,1376,866,11,'#8ba4a8','mono','right');
+  text('R RESTART  •  ESC PAUSE',1376,892,10,'#5f7e85','mono','right');
+}
+function drawEffects(){
+  for(const beam of beams){ctx.globalAlpha=beam.t/beam.max;line(beam.a.x,beam.a.y,beam.b.x,beam.b.y,beam.color,3);circle(beam.b.x,beam.b.y,9*(1-beam.t/beam.max),null,beam.color,2);ctx.globalAlpha=1;}
+  for(const p of particles){ctx.globalAlpha=Math.min(1,p.t*2);rect(p.x,p.y,3,3,p.color);ctx.globalAlpha=1;}
+  for(const f of floaters){ctx.globalAlpha=Math.min(1,f.t*2);text(f.text,f.x,f.y,21,f.color,'bold','center');ctx.globalAlpha=1;}
+  if(notice&&time<noticeUntil){const width=Math.min(830,notice.length*7.3+40);rect(BX+(COLS*CELL-width)/2,BY+COLS*0+ROWS*CELL-50,width,35,'#0a191fee','#516e6a');text(notice,BX+COLS*CELL/2,BY+ROWS*CELL-28,12,colors.amber,'mono','center');}
+}
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#080f14';ctx.fillRect(0,0,innerWidth,innerHeight);
+  ctx.translate(offsetX,offsetY);ctx.scale(scale,scale);buttons=[];
+  const bg=ctx.createRadialGradient(500,370,50,700,440,900);bg.addColorStop(0,'#172932');bg.addColorStop(1,'#080f14');ctx.fillStyle=bg;ctx.fillRect(0,0,VW,VH);
+  for(let y=0;y<VH;y+=6){ctx.fillStyle='#ffffff02';ctx.fillRect(0,y,VW,1);}
+  ctx.save();if(shake>0&&!paused)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);drawBoard();drawEffects();ctx.restore();drawHud();
+}
+function frame(now){
+  const dt=Math.min(.05,(now-lastTime)/1000||0);lastTime=now;
+  if(!paused){time+=dt;shake=Math.max(0,shake-dt*20);
+    for(const u of [player,...enemies]){u.rx+=(u.x-u.rx)*Math.min(1,dt*16);u.ry+=(u.y-u.ry)*Math.min(1,dt*16);}
+    for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=50*dt;p.t-=dt;}particles=particles.filter(p=>p.t>0);
+    for(const f of floaters){f.y-=22*dt;f.t-=dt;}floaters=floaters.filter(f=>f.t>0);
+    beams.forEach(b=>b.t-=dt);beams=beams.filter(b=>b.t>0);
+    const due=tasks.filter(t=>t.at<=time);tasks=tasks.filter(t=>t.at>time);for(const t of due)if(t.token===enemyToken)t.fn();
+  }
+  render();requestAnimationFrame(frame);
+}
+// Prepare the live scene underneath the briefing without starting the operation.
+init();phase='intro';document.getElementById('intro').classList.remove('hidden');requestAnimationFrame(frame);
+</script>
+</body>
+</html>

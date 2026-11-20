@@ -1,0 +1,22 @@
+{
+  "agent": null,
+  "agentName": null,
+  "title": "SHADOW SECTOR // Turn-Based Tactics",
+  "model": "gemini-hydrogen",
+  "reasoning": "medium",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label and reasoning effort",
+  "sessionId": null,
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript",
+    "structure": "Found 1 document title element, 1 canvas, 1 inline stylesheet, and 1 inline classic script out of 1 script elements. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 1489,
+    "browser": "Browser smoke test not run"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "Source review found a fixed action bar at least 550 CSS pixels wide, which clips controls in narrow phone viewports. The board uses mouse events. Phone gameplay was not tested.",
+  "integrationEdits": "Initialize the map before the initial render so the animation loop can start."
+}

@@ -1,0 +1,40 @@
+Build a small, immediately playable single-player browser game.
+Genre: match-3 / Bejeweled-style puzzle
+
+DELIVERY BUDGET: aim for 2 minutes, maximum 5 minutes after clarification.
+Track elapsed time if a clock is available. Include implementation, a quick
+check, and handoff in this budget. Get the core loop working first; simplify
+scope to meet the deadline. Hand over the playable file before optional polish.
+
+Use familiar conventions for the genre's camera, controls, and core loop.
+If a major ambiguity remains, ask one short multiple-choice question and wait
+(e.g. shooter: first-person or third-person). Otherwise choose sensible defaults,
+state the game concept in one sentence, and build immediately.
+
+Create all generated files in a unique temporary directory for this game. Prefer
+an available, writable agent session/scratch directory that remains accessible
+after handoff; otherwise use the operating system's temporary-directory API
+(e.g. tempfile.mkdtemp or mkdtemp with os.tmpdir). Keep the game, check files,
+and any screenshots there. Do not write into the current project, repository,
+Desktop, Documents, or global configuration. Keep the temporary game available
+after your reply; do not delete it during final cleanup.
+
+Create exactly one self-contained index.html with inline CSS and classic,
+non-module JavaScript. It must work when opened directly from disk via file://.
+Use Canvas 2D, or native WebGL when 3D is essential. Draw simple original visuals
+in code. No imports, fetch, external assets, dependencies, backend, HTTP server,
+build step, or deployment. Sound is optional once gameplay works.
+
+Implement the smallest recognizable version of the genre: one compact arena or
+level, essential mechanics, basic AI where needed, visible controls, a useful HUD,
+a win/lose condition, and restart. Use responsive input, requestAnimationFrame,
+frame-independent movement, and pause/clear inputs on focus loss.
+
+Do a quick syntax check and, only if already available within budget, one brief
+browser smoke check. Fix blocking errors. Skip test-suite setup and extended QA.
+
+Return a clickable absolute path to index.html and concise controls. If the
+agent's built-in browser can open local files, open it there. If local preview
+is unsupported, hand over the file for opening in a desktop browser. Preview
+must not delay delivery. Report only what you actually verified.
+Mention that the file is temporary and may be removed by session/system cleanup.

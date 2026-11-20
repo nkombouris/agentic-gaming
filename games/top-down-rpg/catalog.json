@@ -1,0 +1,137 @@
+[
+  {
+    "id": "lanternwake",
+    "directory": "astra",
+    "title": "Lanternwake — The Hollow Garden",
+    "model": "gpt-6-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Rekindle three shrines in a dark garden and face the king beneath its roots.",
+      "instructions": "Move with WASD or the arrow keys, strike with Space, dodge with Shift, and hold E to rekindle a shrine."
+    },
+    "de": {
+      "description": "Entzünde drei Schreine in einem dunklen Garten und stelle dich dem König unter seinen Wurzeln.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Greife mit der Leertaste an, weiche mit Umschalt aus und halte E zum Entzünden."
+    }
+  },
+  {
+    "id": "ashen-vale",
+    "directory": "luna",
+    "title": "Ashen Vale",
+    "model": "gpt-6-luna",
+    "reasoning": "medium",
+    "en": {
+      "description": "Gather glowshards, fend off shades, and find the sealed gate in an old forest.",
+      "instructions": "Move with WASD or the arrow keys, slash with Space, and dash with Shift."
+    },
+    "de": {
+      "description": "Sammle Leuchtsplitter, wehre Schatten ab und finde das versiegelte Tor im alten Wald.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten, greife mit der Leertaste an und sprinte mit Umschalt."
+    }
+  },
+  {
+    "id": "fenwake",
+    "directory": "sol",
+    "title": "Fenwake",
+    "model": "gpt-6.1-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Reclaim three ward flames on a flooded island and defeat the drowned sentinel before high tide.",
+      "instructions": "Move with WASD or the arrow keys, strike with Space, and dodge with Shift."
+    },
+    "de": {
+      "description": "Hole drei Schutzflammen zurück und besiege den ertrunkenen Wächter vor der Flut.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten, greife mit der Leertaste an und weiche mit Umschalt aus."
+    }
+  },
+  {
+    "id": "aethelgard",
+    "directory": "gemini-argon",
+    "title": "Aethelgard: Echoes of the Mana Seal",
+    "model": "gemini-argon",
+    "reasoning": "high",
+    "en": {
+      "description": "Purify three mana obelisks in the Sacred Ruins and defeat Malakor, the Obsidian Archon.",
+      "instructions": "Move with WASD or the arrow keys, slash with Space, cast a fireball with X, and dash with Shift."
+    },
+    "de": {
+      "description": "Reinige drei Mana-Obelisken in den Heiligen Ruinen und besiege Malakor, den Obsidian-Archon.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Die Leertaste greift an, X wirft einen Feuerball und Umschalt weicht aus."
+    }
+  },
+  {
+    "id": "aetherblade",
+    "directory": "gemini-hydrogen",
+    "title": "Aetherblade: Shrine of Echoes",
+    "model": "gemini-hydrogen",
+    "reasoning": "medium",
+    "en": {
+      "description": "Claim four shards from their guardians, awaken the Shrine Warden, and break the courtyard’s curse.",
+      "instructions": "Move with WASD or the arrow keys, slash with Space, cast an Aether Bolt with E, and dash with Shift."
+    },
+    "de": {
+      "description": "Hole vier Splitter von ihren Wächtern, erwecke den Schreinhüter und brich den Fluch des Innenhofs.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Greife mit der Leertaste an, wirke mit E einen Ätherblitz und weiche mit Umschalt aus."
+    }
+  },
+  {
+    "id": "the-bell-fen-astra-6-2",
+    "directory": "astra-6.2",
+    "title": "The Bell Fen",
+    "model": "gpt-6.2-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Three bells guide the ferry through the marsh. Follow the gold diamond through willow groves and across wooden bridges as night draws near.",
+      "instructions": "Walk with WASD or the arrow keys. Press E beside a bell, stay in its clearing until it finishes tolling, and hold Space to swing your blade in the direction you face. Each bell restores up to two hearts. Wake all three, then press E at the ferry before dusk. Press R or click Try again after a round."
+    },
+    "de": {
+      "description": "Drei Glocken weisen der Fähre den Weg durchs Moor. Folge der goldenen Raute durch Weidenhaine und über Holzbrücken, bevor die Nacht hereinbricht.",
+      "instructions": "Gehe mit WASD oder den Pfeiltasten. Drücke neben einer Glocke E und bleibe auf der Lichtung, bis sie verklungen ist. Halte die Leertaste gedrückt, um in Blickrichtung zuzuschlagen. Jede Glocke gibt dir bis zu zwei Herzen zurück. Läute alle drei und drücke vor Einbruch der Dunkelheit an der Fähre E. Nach der Runde kannst du mit R oder der Schaltfläche „Try again“ neu starten."
+    }
+  },
+  {
+    "id": "bellward-sol-6-2",
+    "directory": "sol-6.2",
+    "title": "Bellward",
+    "model": "gpt-6.2-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Explore flooded ruins in a top-down action RPG. Defeat three shrine keepers and carry their light to the bell before nightfall.",
+      "instructions": "Click Enter the Marsh. Move with WASD or the arrow keys, swing with Space or J, and dodge with Shift. Defeat each shrine keeper, then hold E to light the shrine. Return to the bell, hold E to ring it, and defend the marked circle for 15 seconds. Press Esc to pause or R to restart."
+    },
+    "de": {
+      "description": "Erkunde überflutete Ruinen in einem Action-Rollenspiel aus der Vogelperspektive. Besiege die drei Schreinwächter und bring ihr Licht vor Einbruch der Nacht zur Glocke.",
+      "instructions": "Klicke auf „Enter the Marsh“. Bewege dich mit WASD oder den Pfeiltasten, schlage mit der Leertaste oder J zu und weiche mit Umschalt aus. Besiege die Schreinwächter und halte an jedem Schrein E gedrückt, um ihn zu entzünden. Kehre zur Glocke zurück, läute sie mit gedrückter E-Taste und verteidige den markierten Kreis 15 Sekunden lang. Esc pausiert das Spiel, R startet es neu."
+    }
+  },
+  {
+    "id": "shardwood",
+    "directory": "claude-fable-5.2",
+    "title": "Shardwood",
+    "model": "claude-fable-5.2",
+    "reasoning": "medium",
+    "en": {
+      "description": "Recover three rune shards from forest shrines, cut through monsters, and defeat the awakened Thorn King.",
+      "instructions": "Move with WASD or the arrow keys. Swing with Space, J, or a mouse click, and dash with Shift or K. Press P to pause and R to restart."
+    },
+    "de": {
+      "description": "Sammle drei Runensplitter an Waldschreinen, bekämpfe Monster und besiege den erwachten Dornenkönig.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Greife mit der Leertaste, J oder einem Mausklick an und weiche mit Umschalt oder K aus. P pausiert das Spiel und R startet neu."
+    }
+  },
+  {
+    "id": "sunshard-vale",
+    "directory": "claude-opus-5.5",
+    "title": "Sunshard Vale",
+    "model": "claude-opus-5.5",
+    "reasoning": "high",
+    "en": {
+      "description": "Recover three Sun Shards from guarded chests, gain experience, and defeat the Thornheart at the central shrine.",
+      "instructions": "Move with WASD or the arrow keys. Swing with Space, J, or a mouse click to fight, cut bushes, and open chests. Cast fire with X, K, or right-click. Press R to restart."
+    },
+    "de": {
+      "description": "Berge drei Sonnensplitter aus bewachten Truhen, sammle Erfahrung und besiege das Dornenherz am zentralen Schrein.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Mit der Leertaste, J oder einem Mausklick greifst du an, schneidest Büsche und öffnest Truhen. X, K oder ein Rechtsklick wirkt einen Feuerzauber. R startet neu."
+    }
+  }
+]

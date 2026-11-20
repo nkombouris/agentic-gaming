@@ -1,0 +1,27 @@
+{
+  "agent": "Codex",
+  "title": "Relay Under Glass",
+  "model": "gpt-6.2-sol",
+  "reasoning": "max",
+  "startedAt": "2026-11-20T06:31:31Z",
+  "finishedAt": "2026-11-20T06:38:07Z",
+  "elapsedSeconds": 396,
+  "timingBasis": "UTC wall-clock timestamps recorded at the start of the gameplay brief and after the JavaScript syntax check.",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1f7a7-0abb-76d0-b9f6-6946e2cfd62c",
+  "mobileSupported": false,
+  "mobileSupportNotes": "Designed for desktop keyboard and mouse. Touch input was excluded by the brief.",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript; independently rechecked by the parent.",
+    "browser": "Passed parent smoke test in the Codex browser through the local project preview. The start screen appeared and gameplay started without console errors.",
+    "interaction": "Start, End turn, enemy attacks, and return to player round 2 with restored action points were verified in a real browser.",
+    "render": "Canvas tactical scene confirmed visually in the captured gameplay screenshot."
+  },
+  "agentName": "Ptolemy",
+  "prompt": {
+    "file": "game-prompt.txt",
+    "sha256": "b4c464bb1f24270f40ddf9f6abd4167138e27fd49eeca70afaa78af3c7ca2d1a",
+    "matchesEarlierRun": true,
+    "earlierSessionId": "01a1e938-5517-7c22-8a3b-23cc7dca189b"
+  }
+}

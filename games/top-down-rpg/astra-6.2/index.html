@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bell Fen</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:dark;--ink:#131e20;--cream:#f4e5bd;--gold:#f2bd68;--sage:#a8c4a6}
+body{margin:0;min-height:100vh;background:#121e20;color:var(--cream);font-family:Georgia,'Times New Roman',serif;display:grid;place-items:center}
+main{width:min(100%,1520px);height:100vh;height:100dvh;display:grid;grid-template-rows:68px 1fr 43px;padding:0 clamp(10px,2vw,32px)}
+header,footer{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.identity{display:flex;align-items:center;gap:12px}
+.emblem{color:var(--gold);font-size:29px;line-height:1}
+.brand{font-weight:bold;font-size:clamp(19px,2.2vw,29px);letter-spacing:-1.2px}
+.hud{display:flex;align-items:center;gap:clamp(15px,3vw,42px);font:700 12px/1.2 monospace;letter-spacing:.05em}
+.stat{display:flex;align-items:center;gap:9px}.stat small,.label,.controls,footer{font:600 10px/1.5 monospace;letter-spacing:.13em;text-transform:uppercase;color:var(--sage)}
+#hearts{color:#f39879;letter-spacing:2px;font:20px/1 monospace}
+#field{position:relative;isolation:isolate;min-height:0;border:1px solid #61766b;overflow:hidden;background:#516759}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+#quest{position:absolute;top:15px;left:15px;display:flex;align-items:center;gap:10px;background:#17282aee;border:1px solid #788979;padding:8px 13px;color:var(--cream);font:600 12px/1.4 monospace}
+#quest b{color:var(--gold)}
+#notice{pointer-events:none;position:absolute;bottom:19px;left:50%;transform:translateX(-50%);background:#142827ee;border:1px solid #a8ac86;color:var(--cream);font:600 13px/1.4 monospace;padding:8px 16px;text-align:center;max-width:88%;width:max-content;opacity:0}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;padding:clamp(16px,5vw,70px);background:linear-gradient(90deg,#101e20bd,transparent 85%)}
+#overlay[hidden],#quest[hidden]{display:none}
+.card{background:#172727f7;border:1px solid #b9ac7a;width:min(410px,93%);padding:clamp(16px,3.3vw,42px);box-shadow:5px 5px 0 #14232677}
+.rule{width:48px;height:2px;background:var(--gold);margin:16px 0 17px}
+h1{font-size:clamp(41px,5.3vw,77px);letter-spacing:-.065em;line-height:.91;font-weight:normal;margin:8px 0 16px}
+p{font-size:clamp(15px,1.65vw,21px);line-height:1.36;margin:0 0 22px;color:#e4dec3}
+.controls{display:grid;grid-template-columns:auto 1fr;gap:5px 15px;margin:0 0 21px;letter-spacing:.07em}
+kbd{color:#f4d196;font:inherit;white-space:nowrap}
+button{background:var(--gold);border:1px solid #e5c58a;box-shadow:3px 3px 0 #0d191a;color:#192728;padding:11px 19px;font:700 13px/1.25 monospace;cursor:pointer}
+button:hover,button:focus-visible{background:#fbd69c;outline:2px solid var(--cream);outline-offset:3px}
+footer{font-size:10px}footer strong{color:#dfc690}footer span:last-child{text-align:right}
+@media(max-width:700px){main{grid-template-rows:49px 1fr 34px}.stat small{display:none}.brand{font-size:20px}.emblem{font-size:22px}.hud{gap:12px}.identity{gap:6px}footer{letter-spacing:.02em;font-size:9px}}
+@media(max-height:550px){main{grid-template-rows:40px 1fr 25px}.card{padding:13px 22px}h1{font-size:36px}.rule{margin:9px 0}p,.controls{margin-bottom:10px}#overlay{padding:10px 32px}.controls{gap:2px 15px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="identity"><span class="emblem" aria-hidden="true">♧</span><span class="brand">The Bell Fen</span></div>
+<div class="hud"><span class="stat"><small>Vitality</small><span id="hearts" aria-label="Health"></span></span><span class="stat"><small>Bells</small><span id="bells">0 / 3</span></span><span class="stat"><small>Dusk</small><span id="time">2:45</span></span></div></header>
+<div id="field">
+<canvas id="scene" aria-label="Overhead pixel-art marsh adventure"></canvas>
+<div id="quest" hidden><b>◇</b><span id="goal"></span></div><div id="notice"></div>
+<div id="overlay"><section class="card"><div class="label" id="eyebrow">A marshland adventure</div><h1 id="heading">The Bell Fen</h1><div class="rule"></div>
+<p id="copy">Wake three old bells before dusk. Hold back the mire creatures while each bell sings, then find your way back to the ferry.</p>
+<div class="controls" id="keys"><kbd>WASD / ↑↓←→</kbd><span>Walk</span><kbd>SPACE</kbd><span>Swing blade</span><kbd>E</kbd><span>Ring bell / board ferry</span></div>
+<button id="start" type="button">Enter the fen →</button></section></div>
+</div><footer><span><strong>WASD</strong> Walk &nbsp; <strong>SPACE</strong> Blade &nbsp; <strong>E</strong> Interact</span><span id="record">Ferry landing</span></footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const canvas=$('scene'),ctx=canvas.getContext('2d');
+const surface=document.createElement('canvas'),g=surface.getContext('2d');
+const map=document.createElement('canvas'),m=map.getContext('2d');
+const MW=740,MH=490,TAU=Math.PI*2;
+map.width=MW;map.height=MH;
+const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+let seed=1819;
+function rand(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296}
+function rect(c,x,y,w,h,color){c.fillStyle=color;c.fillRect(Math.floor(x),Math.floor(y),Math.ceil(w),Math.ceil(h))}
+function poly(c,points,color){
+ c.fillStyle=color;c.beginPath();
+ points.forEach(([x,y],i)=>i?c.lineTo(Math.round(x),Math.round(y)):c.moveTo(Math.round(x),Math.round(y)));
+ c.closePath();c.fill();
+}
+function oval(c,x,y,rx,ry,col){c.fillStyle=col;c.beginPath();c.ellipse(Math.round(x),Math.round(y),rx,ry,0,0,TAU);c.fill()}
+function line(c,x,y,X,Y,col,w=1){c.strokeStyle=col;c.lineWidth=w;c.beginPath();c.moveTo(Math.round(x)+.5,Math.round(y)+.5);c.lineTo(Math.round(X)+.5,Math.round(Y)+.5);c.stroke()}
+function river(y){return 372+24*Math.sin(y*.015)+15*Math.cos(y*.029)}
+function span(y){return 32+6*Math.sin(y*.028)}
+const bridges=[131,335],home={x:256,y:304};
+const sites=[{x:139,y:102,name:'Reed Bell'},{x:576,y:109,name:'Heron Bell'},{x:556,y:377,name:'Lantern Bell'}];
+function water(x,y){return Math.abs(x-river(y))<span(y)}
+function onBridge(y){return bridges.some(v=>Math.abs(y-v)<12)}
+function terrain(x,y){return x>12&&x<MW-12&&y>17&&y<MH-10&&(!water(x,y)||onBridge(y))}
+const paths=[
+ [[61,443],[163,362],[256,304],[213,223],[162,168],[139,102],[99,40]],
+ [[100,142],[200,141],[276,129],[454,131],[517,119],[576,109],[663,67]],
+ [[256,304],[308,334],[458,335],[511,347],[556,377],[651,435]],
+ [[576,109],[548,184],[520,239],[506,286],[511,347]],
+ [[213,223],[254,180],[276,129]]
+];
+function pathDistance(x,y){
+ let nearest=Infinity;
+ for(const path of paths)for(let i=1;i<path.length;i++){
+  const [a,b]=path[i-1],[c,d]=path[i],dx=c-a,dy=d-b;
+  const t=clamp(((x-a)*dx+(y-b)*dy)/(dx*dx+dy*dy),0,1);
+  nearest=Math.min(nearest,Math.hypot(x-a-t*dx,y-b-t*dy));
+ }return nearest;
+}
+function bush(c,x,y,s,t){
+ const colors=t?['#283f3c','#47624d','#7c895d','#aba06c']:['#364c40','#556d4d','#8d9760','#c0ad70'];
+ oval(c,x+2,y+1,8*s,3*s,'#526341');oval(c,x,y-3*s,8*s,5*s,colors[0]);oval(c,x-3*s,y-5*s,5*s,4*s,colors[1]);oval(c,x+3*s,y-5*s,5*s,4*s,colors[1]);
+ rect(c,x-5*s,y-7*s,3*s,s,colors[2]);rect(c,x+s,y-8*s,3*s,s,colors[2]);rect(c,x-4*s,y-8*s,s,s,colors[3]);
+}
+function willow(c,x,y,s){
+ c.save();c.translate(Math.floor(x),Math.floor(y));c.scale(s,s);
+ oval(c,4,0,16,5,'#4e6248');poly(c,[[-4,0],[-2,-18],[-8,-27],[-3,-27],[2,-21],[9,-29],[11,-27],[4,-16],[3,-2],[7,1]],'#35423c');
+ rect(c,-1,-16,2,15,'#886f4f');
+ const clumps=[[-10,-24,8,8],[7,-25,10,10],[-3,-32,10,8],[-15,-19,7,7],[14,-19,7,6]];
+ for(const [a,b,w,h] of clumps){
+  oval(c,a,b,w,h,'#293f3b');oval(c,a-1,b-2,w-1,h-1,'#4b6651');oval(c,a-2,b-4,w-3,h-3,'#768561');
+  for(let k=-w+2;k<w;k+=4){const yy=b+((k+25)%4);rect(c,a+k,yy,2,5+((k+21)%6),'#46634e');rect(c,a+k,yy,1,4,'#87936b')}
+  rect(c,a-4,b-h+1,5,1,'#b3a879');
+ }
+ c.restore();
+}
+function reed(c,x,y,s){
+ line(c,x-3*s,y,x-5*s,y-6*s,'#536b49');line(c,x,y,x+s,y-10*s,'#5a6848');line(c,x+2*s,y,x+5*s,y-7*s,'#777b4b');
+ rect(c,x+s-1,y-12*s,2,4*s,'#86694b');rect(c,x+s-1,y-12*s,1,2*s,'#cba66b');
+}
+function stone(c,x,y,s){
+ poly(c,[[x-5*s,y],[x-4*s,y-4*s],[x,y-6*s],[x+4*s,y-4*s],[x+6*s,y],[x+3*s,y+s]],'#4d5b4f');
+ poly(c,[[x-4*s,y-2*s],[x-3*s,y-4*s],[x,y-5*s],[x+3*s,y-4*s],[x+s,y-2*s]],'#9d9d7e');
+}
+const objects=[];
+function buildMap(){
+ rect(m,0,0,MW,MH,'#849469');
+ for(let i=0;i<1600;i++){
+  const x=rand()*MW,y=rand()*MH;
+  oval(m,x,y,3+rand()*16,2+rand()*7,['#8c986b','#819168','#8f9a6c','#798d66'][i%4]);
+ }
+ for(const path of paths){
+  m.lineCap='round';m.lineJoin='round';
+  for(const [w,col] of [[21,'#8e9269'],[17,'#ad9f72'],[12,'#b9aa7b']]){
+   m.strokeStyle=col;m.lineWidth=w;m.beginPath();
+   path.forEach(([x,y],i)=>i?m.lineTo(x,y):m.moveTo(x,y));m.stroke();
+  }
+ }
+ for(let i=0;i<11000;i++){
+  const x=rand()*MW,y=rand()*MH;
+  const onPath=pathDistance(x,y)<10;
+  rect(m,x,y,1+rand()*2,1,onPath?(i%2?'#a7976c':'#c3b684'):(i%3?'#778a60':'#a1a575'));
+  if(!onPath&&i%9===0){rect(m,x,y-2,1,2,'#6a8158');rect(m,x+2,y-1,1,1,'#afaf74')}
+ }
+ for(let y=0;y<MH;y++){
+  const center=river(y),r=span(y);
+  for(const [offset,col] of [[7,'#6b805a'],[4,'#c1b382'],[2,'#586f5c'],[0,'#447976'],[-4,'#366b6c'],[-10,'#326366']]){
+   rect(m,center-r-offset,y,2*(r+offset),1,col);
+  }
+ }
+ for(let i=0;i<1800;i++){
+  const y=rand()*MH,x=river(y)+(rand()-.5)*span(y)*1.94;
+  rect(m,x,y,2+rand()*7,1,i%4?'#447a76':'#6e9383');
+ }
+ for(const y of bridges){
+  const left=Math.floor(river(y)-span(y)-13),right=Math.ceil(river(y)+span(y)+13);
+  rect(m,left,y-11,right-left,26,'#344b44');rect(m,left,y-10,right-left,21,'#9a7754');
+  for(let x=left;x<right-2;x+=5){
+   rect(m,x,y-10,4,20,x%3?'#b09468':'#bea97b');rect(m,x,y-9,1,17,'#c5ad7b');rect(m,x+2,y+4,1,3,'#987e59');
+  }
+  for(const side of [-11,10]){
+   rect(m,left-1,y+side-3,right-left+2,2,'#655c48');
+   for(let x=left;x<=right;x+=17){rect(m,x,y+side-5,3,8,'#625740');rect(m,x,y+side-6,3,2,'#d0bb8a')}
+  }
+ }
+ for(let i=0;i<1050;i++){
+  const x=7+rand()*(MW-14),y=12+rand()*(MH-22),edge=Math.abs(Math.abs(x-river(y))-span(y));
+  if(water(x,y)||pathDistance(x,y)<14||[home,...sites].some(p=>dist(p,{x,y})<30))continue;
+  if(edge<15)reed(m,x,y,.7+rand()*.5);
+  else if(i%14===0&&objects.every(o=>Math.hypot(x-o.x,y-o.y)>24))objects.push({x,y,s:.7+rand()*.47,type:'tree'});
+  else if(i%7===0)bush(m,x,y,.6+rand()*.5,i%2);
+  else if(i%13===0)stone(m,x,y,.6+rand()*.6);
+  else if(i%4===0){
+   for(let k=0;k<4;k++){const a=x+rand()*8,b=y+rand()*4;rect(m,a,b,1,3,'#687a54');rect(m,a-1,b-1,3,2,i%3?'#d3bf83':'#d3a68b')}
+  }
+ }
+ for(const p of sites){
+  oval(m,p.x,p.y+2,23,13,'#707e63');oval(m,p.x,p.y,22,12,'#a4a184');oval(m,p.x,p.y,17,8,'#959980');
+  for(let i=0;i<12;i++){const a=i*TAU/12;rect(m,p.x+19*Math.cos(a)-2,p.y+10*Math.sin(a),4,2,'#cac3a0')}
+ }
+ // Moss-covered ferry landing with its shallow skiff.
+ const x=home.x,y=home.y;
+ oval(m,x-9,y+3,29,14,'#64806a');oval(m,x-11,y+4,26,12,'#4c7771');
+ poly(m,[[x-30,y+4],[x-24,y-4],[x-4,y-4],[x+2,y],[x-5,y+5],[x-22,y+8]],'#354c47');
+ poly(m,[[x-27,y+3],[x-22,y-2],[x-6,y-3],[x-2,y],[x-8,y+3],[x-21,y+5]],'#b48b60');
+ line(m,x-23,y+2,x-8,y,'#665c49',2);
+ for(let k=0;k<6;k++){rect(m,x-3+k*3,y+4,3,9,k%2?'#a58b61':'#baa374')}
+ objects.sort((a,b)=>a.y-b.y);
+}
+buildMap();
+const player={x:0,y:0,dx:0,dy:1,hp:5,inv:0,swing:0,cd:0,walk:0};
+let state='intro',viewW=400,viewH=230,cam={x:0,y:0},clock=0,elapsed=0,dusk=165,active=-1,enemies=[],bits=[],held=new Set(),kills=0,spawnIn=2,shake=0,noticeTimer=0,target=0;
+let best=null;
+try{const v=localStorage.getItem('the-bell-fen-score');if(v!==null&&Number.isFinite(+v))best=+v}catch(e){}
+function resize(){
+ const box=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,3);
+ canvas.width=Math.max(1,Math.round(box.width*dpr));canvas.height=Math.max(1,Math.round(box.height*dpr));
+ const ratio=Math.max(.2,box.width/Math.max(1,box.height));
+ viewH=Math.round(clamp(445/ratio,225,340));viewW=Math.max(120,Math.round(viewH*ratio));
+ surface.width=viewW;surface.height=viewH;g.imageSmoothingEnabled=false;ctx.imageSmoothingEnabled=false;
+}
+function announce(txt,seconds=2.6){$('notice').textContent=txt;noticeTimer=seconds;$('notice').style.opacity='1'}
+function nextTarget(){
+ if(active>=0)return active;
+ const open=sites.map((p,i)=>({p,i})).filter(v=>!v.p.done).sort((a,b)=>dist(player,a.p)-dist(player,b.p));
+ return open.length?open[0].i:3;
+}
+function hud(){
+ const n=sites.filter(s=>s.done).length,remaining=Math.max(0,Math.ceil(dusk-elapsed));
+ $('bells').textContent=n+' / 3';$('hearts').textContent='♥'.repeat(player.hp)+'♡'.repeat(5-player.hp);
+ $('hearts').setAttribute('aria-label',player.hp+' of 5 health');
+ $('time').textContent=Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0');
+ target=nextTarget();
+ $('goal').textContent=active>=0?'Guard '+sites[active].name+' · '+Math.floor(sites[active].progress/11*100)+'%':target===3?'Return to the ferry':'Find the '+sites[target].name;
+ $('record').textContent=best===null?'Ferry landing':'Best crossing · '+best+' points';
+}
+function reset(){
+ Object.assign(player,{x:home.x+8,y:home.y+8,dx:0,dy:1,hp:5,inv:0,swing:0,cd:0,walk:0});
+ sites.forEach(s=>Object.assign(s,{done:false,progress:0}));enemies=[];bits=[];held.clear();active=-1;elapsed=0;kills=0;shake=0;spawnIn=4;noticeTimer=0;$('notice').style.opacity='0';hud();
+}
+function begin(){reset();state='play';$('overlay').hidden=true;$('quest').hidden=false;announce('Follow the gold diamond to a bell.');}
+function finish(win){
+ state=win?'won':'lost';held.clear();$('quest').hidden=true;$('overlay').hidden=false;$('keys').style.display='none';$('notice').style.opacity='0';
+ const pts=Math.max(0,Math.ceil(dusk-elapsed))*5+kills*12+player.hp*25;
+ if(win&&(best===null||pts>best)){best=pts;try{localStorage.setItem('the-bell-fen-score',String(best))}catch(e){}}
+ $('eyebrow').textContent=win?'The ferry log':'At nightfall';
+ $('heading').textContent=win?'Safe passage':'Lost in the fen';
+ $('copy').textContent=win?'The ferry slips away to the sound of three bells. Your crossing earned '+pts+' points.':player.hp<=0?'The mire took your last light. Keep moving and swing as the creatures close in.':'Dusk has fallen, and the ferry can no longer find the landing.';
+ $('start').textContent='Try again · R';hud();
+}
+function pause(){
+ held.clear();if(state!=='play')return;state='pause';$('overlay').hidden=false;$('eyebrow').textContent='At the water’s edge';
+ $('heading').textContent='Paused';$('copy').textContent='Your crossing will continue here.';$('keys').style.display='grid';$('start').textContent='Continue →';
+}
+$('start').addEventListener('click',()=>{if(state==='pause'){state='play';$('overlay').hidden=true}else begin();$('start').blur()});
+window.addEventListener('blur',pause);document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+const gameKeys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','KeyE','KeyR'];
+window.addEventListener('keydown',e=>{
+ if(!gameKeys.includes(e.code))return;
+ if(state==='play'||['won','lost'].includes(state))e.preventDefault();
+ if(e.code==='KeyR'&&!e.repeat&&['won','lost'].includes(state)){begin();return}
+ if(state!=='play')return;held.add(e.code);
+ if(e.code==='KeyE'&&!e.repeat)interact();
+});
+window.addEventListener('keyup',e=>held.delete(e.code));
+function move(obj,dx,dy){
+ if(terrain(obj.x+dx,obj.y))obj.x+=dx;
+ if(terrain(obj.x,obj.y+dy))obj.y+=dy;
+}
+function spawn(site,kind){
+ for(let t=0;t<40;t++){
+  const a=Math.random()*TAU,r=40+Math.random()*38,x=site.x+Math.cos(a)*r,y=site.y+Math.sin(a)*r;
+  if(!terrain(x,y)||water(x,y)||dist({x,y},player)<31)continue;
+  enemies.push({x,y,kind,hp:kind==='crab'?3:kind==='moth'?1:2,hit:0,awayX:0,awayY:0,phase:Math.random()*9});break;
+ }
+}
+function spark(x,y,col,n=8){
+ for(let i=0;i<n;i++){const a=Math.random()*TAU,v=8+Math.random()*26;bits.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-5,t:.2+Math.random()*.34,col})}
+}
+function interact(){
+ if(sites.every(s=>s.done)&&dist(player,home)<29){finish(true);return}
+ const i=sites.findIndex(p=>dist(player,p)<30);
+ if(i<0){announce(sites.every(s=>s.done)?'Find the ferry landing.':'Stand beside a bell to ring it.',1.6);return}
+ if(sites[i].done){announce('This bell is already awake.',1.4);return}
+ if(active>=0){announce('Stay near the tolling bell.',1.5);return}
+ active=i;spawnIn=1.7;const n=sites.filter(p=>p.done).length;
+ for(let j=0;j<2+n;j++)spawn(sites[i],j%2?'moth':'toad');
+ announce('Hold this clearing while the bell tolls.');spark(sites[i].x,sites[i].y-14,'#ffe19b',14);hud();
+}
+function attack(){
+ player.swing=.22;player.cd=.35;
+ for(const e of enemies){
+  const dx=e.x-player.x,dy=e.y-player.y,r=Math.hypot(dx,dy);
+  if(r>26||(r>10&&(dx*player.dx+dy*player.dy)/r<-.1))continue;
+  e.hp--;e.hit=.19;e.awayX=dx/(r||1)*69;e.awayY=dy/(r||1)*69;spark(e.x,e.y-4,'#fbd79c',6);shake=Math.max(1,shake);
+  if(e.hp<=0){kills++;spark(e.x,e.y-4,'#e5b585',10)}
+ }
+ enemies=enemies.filter(e=>e.hp>0);
+}
+function update(dt){
+ elapsed+=dt;noticeTimer-=dt;if(noticeTimer<=0)$('notice').style.opacity='0';
+ shake=Math.max(0,shake-11*dt);player.inv=Math.max(0,player.inv-dt);player.cd-=dt;player.swing=Math.max(0,player.swing-dt);
+ const dx=Number(held.has('ArrowRight')||held.has('KeyD'))-Number(held.has('ArrowLeft')||held.has('KeyA'));
+ const dy=Number(held.has('ArrowDown')||held.has('KeyS'))-Number(held.has('ArrowUp')||held.has('KeyW'));
+ if(dx||dy){const l=Math.hypot(dx,dy);player.dx=dx/l;player.dy=dy/l;const speed=player.swing>0?42:59;move(player,player.dx*speed*dt,player.dy*speed*dt);player.walk+=dt*10}
+ if(held.has('Space')&&player.cd<=0)attack();
+ const count=sites.filter(p=>p.done).length;
+ spawnIn-=dt;
+ if(active>=0){
+  const s=sites[active];
+  if(dist(player,s)<44)s.progress+=dt;
+  if(spawnIn<=0&&enemies.length<7){spawn(s,['toad','moth','crab'][Math.floor(Math.random()*(count?3:2))]);spawnIn=2.7-count*.35}
+  if(s.progress>=11){s.progress=11;s.done=true;active=-1;player.hp=Math.min(5,player.hp+2);spark(s.x,s.y-14,'#ffeab4',26);shake=2.4;
+   enemies.forEach(e=>spark(e.x,e.y-4,'#d6dca1',4));enemies=[];spawnIn=5;
+   announce(count===2?'Three bells awake. Return to the ferry.':s.name+' is awake. Two hearts restored.');
+  }
+ }else if(spawnIn<=0){if(enemies.length<2+count)spawn(player,count&&Math.random()>.6?'crab':'toad');spawnIn=6-count*.5}
+ enemies.forEach(e=>{
+  e.phase+=dt;e.hit=Math.max(0,e.hit-dt);
+  const x=player.x-e.x,y=player.y-e.y,l=Math.hypot(x,y)||1;
+  const speed=e.kind==='moth'?30:e.kind==='crab'?16:13+Math.max(0,Math.sin(e.phase*5))*12;
+  const wob=e.kind==='moth'?Math.sin(e.phase*5)*.65:0;
+  if(e.hit>0)move(e,e.awayX*dt,e.awayY*dt);
+  else move(e,(x/l-y/l*wob)*speed*dt,(y/l+x/l*wob)*speed*dt);
+  if(l<9&&player.inv<=0&&e.hit<=0){player.hp--;player.inv=1.25;shake=3;spark(player.x,player.y-7,'#f1a687',10);move(player,-x/l*-4,-y/l*-4)}
+ });
+ bits.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt;b.vy+=20*dt;b.t-=dt});bits=bits.filter(b=>b.t>0);
+ hud();if(player.hp<=0||elapsed>=dusk)finish(false);
+}
+function bell(s){
+ const x=s.x,y=s.y,activeNow=sites[active]===s;
+ const swing=activeNow?Math.sin(clock*5)*1.8:0;
+ oval(g,x+2,y+1,12,4,'#59695a');
+ for(const a of [-9,7]){rect(g,x+a,y-18,4,20,'#43544d');rect(g,x+a,y-18,2,18,'#929781');rect(g,x+a-1,y-2,6,3,'#bac0a3')}
+ rect(g,x-12,y-21,25,5,'#44594e');rect(g,x-13,y-22,26,2,'#c3c3a0');rect(g,x-10,y-18,20,2,'#798b78');
+ rect(g,x,y-18,1,4,'#554e40');const bx=x+swing;
+ poly(g,[[bx-2,y-15],[bx+2,y-15],[bx+4,y-12],[bx+4,y-9],[bx+6,y-7],[bx-6,y-7],[bx-4,y-10],[bx-4,y-12]],s.done?'#f4d883':'#c08a48');
+ rect(g,bx-3,y-13,2,4,s.done?'#fff0b6':'#efd18a');rect(g,bx-6,y-7,13,2,'#e8b765');rect(g,bx,y-5,2,2,'#785e42');
+ if(s.done||activeNow){
+  const r=7+(clock*12%22);g.globalAlpha=(1-(r-7)/22)*.65;g.strokeStyle='#ffe2a0';g.lineWidth=1;g.beginPath();g.ellipse(x,y-8,r,r*.48,0,0,TAU);g.stroke();g.globalAlpha=1;
+ }
+}
+function ferry(){
+ const x=home.x+8,y=home.y;rect(g,x,y-25,2,28,'#655744');rect(g,x-1,y-26,4,2,'#d1b67c');
+ poly(g,[[x+2,y-25],[x+16,y-23],[x+12,y-19],[x+16,y-17],[x+2,y-18]],'#c37859');rect(g,x+4,y-23,2,4,'#edc382');
+}
+function keeper(){
+ if(player.inv>0&&Math.floor(player.inv*13)%2===0)g.globalAlpha=.48;
+ const x=Math.round(player.x),y=Math.round(player.y),bob=Math.sin(player.walk)>.45?1:0;
+ oval(g,x+1,y+1,6.5,2.5,'#4f624f');rect(g,x-4,y-3,3,4,'#403e38');rect(g,x+2,y-3-bob,3,4,'#403e38');
+ poly(g,[[x-4,y-11-bob],[x+3,y-11-bob],[x+6,y-3-bob],[x+2,y-2-bob],[x-5,y-3-bob]],'#7e493c');
+ rect(g,x-3,y-10-bob,6,6,'#ce7650');rect(g,x-3,y-10-bob,2,5,'#f1a671');
+ rect(g,x-3,y-15-bob,7,5,'#6a4938');rect(g,x-2,y-14-bob,5,4,'#e3b886');
+ if(player.dy<-.4)rect(g,x-2,y-13-bob,5,3,'#735a41');else rect(g,x+(player.dx<0?-2:2),y-13-bob,1,1,'#393f36');
+ poly(g,[[x-7,y-15-bob],[x-4,y-17-bob],[x-2,y-21-bob],[x+1,y-22-bob],[x+4,y-18-bob],[x+7,y-16-bob],[x+6,y-15-bob]],'#d9b16d');
+ rect(g,x-6,y-16-bob,12,1,'#f3d18f');rect(g,x-3,y-18-bob,6,1,'#986d49');
+ if(player.swing>0){
+  const dir=Math.atan2(player.dy,player.dx),f=1-player.swing/.22,a=dir-.95+1.9*f;
+  g.strokeStyle='#f7e7b6';g.lineWidth=2;g.beginPath();g.arc(x,y-6,18,a-.55,a+.1);g.stroke();
+  line(g,x+Math.cos(a)*5,y-6+Math.sin(a)*5,x+Math.cos(a)*19,y-6+Math.sin(a)*19,'#fff3c9',2);
+ }else{line(g,x+5,y-5,x+9,y-13,'#e2dac2',2);rect(g,x+3,y-6,4,2,'#7b5a3e')}
+ g.globalAlpha=1;
+}
+function creature(e){
+ const x=Math.round(e.x),y=Math.round(e.y),p=e.phase;
+ oval(g,x+1,y+1,e.kind==='crab'?8:6,2.5,'#596b54');
+ const light=e.hit>0?'#fff2c2':null;
+ if(e.kind==='moth'){
+  const b=Math.round(Math.sin(p*13)*2);
+  poly(g,[[x,y-10],[x-9,y-15-b],[x-7,y-6],[x-2,y-5]],light||'#e1b17d');
+  poly(g,[[x+1,y-10],[x+9,y-15+b],[x+7,y-6],[x+2,y-5]],light||'#d99a70');
+  rect(g,x-1,y-12,3,8,'#5d4f49');rect(g,x-6,y-10,2,2,'#845d56');rect(g,x+4,y-10,2,2,'#845d56');
+ }else if(e.kind==='crab'){
+  for(const s of [-1,1]){line(g,x+s*4,y-5,x+s*9,y-1,'#633f39',2);rect(g,x+s*8-1,y-9,3,5,'#b9654d')}
+  oval(g,x,y-5,7,5,light||'#a95343');rect(g,x-4,y-9,7,2,'#df9569');rect(g,x-4,y-5,2,1,'#f6df9c');rect(g,x+2,y-5,2,1,'#f6df9c');
+ }else{
+  const b=Math.round(Math.max(0,Math.sin(p*5))*2);
+  oval(g,x,y-4-b,7,4,light||'#52604b');rect(g,x-5,y-9-b,3,4,'#597355');rect(g,x+2,y-9-b,3,4,'#597355');
+  rect(g,x-5,y-8-b,2,2,'#f1c582');rect(g,x+3,y-8-b,2,2,'#f1c582');rect(g,x-3,y-3-b,6,1,'#9cac72');rect(g,x-7,y-1,3,2,'#556949');rect(g,x+4,y-1,3,2,'#556949');
+ }
+}
+function diamond(x,y){
+ poly(g,[[x,y-4],[x+4,y],[x,y+4],[x-4,y]],'#403f32');poly(g,[[x,y-3],[x+3,y],[x,y+3],[x-3,y]],'#f9d87e');
+}
+function miniMap(){
+ const w=60,h=40,x=viewW-w-6,y=6;
+ rect(g,x-2,y-2,w+4,h+4,'#213332');rect(g,x-1,y-1,w+2,h+2,'#aba985');rect(g,x,y,w,h,'#566e5b');
+ for(let j=0;j<h;j++){const yy=j*MH/h;rect(g,x+(river(yy)-span(yy))*w/MW,y+j,span(yy)*2*w/MW,1,'#315658')}
+ for(const yy of bridges)rect(g,x+(river(yy)-span(yy)-4)*w/MW,y+yy*h/MH,(span(yy)*2+8)*w/MW,1,'#c2ad7b');
+ for(const [i,s] of [...sites,home].entries()){
+  const xx=x+s.x*w/MW,yy=y+s.y*h/MH;rect(g,xx-1,yy-1,3,3,i===target?'#ffda80':s.done?'#d5dab0':'#9c9273');
+ }
+ rect(g,x+player.x*w/MW-1,y+player.y*h/MH-1,3,3,'#f9eee1');
+}
+function render(){
+ const sx=state==='intro'?home.x+58:player.x,sy=state==='intro'?home.y-4:player.y;
+ cam.x=clamp(sx-viewW/2,0,Math.max(0,MW-viewW));cam.y=clamp(sy-viewH/2,0,Math.max(0,MH-viewH));
+ const ox=Math.round(-cam.x+(viewW>MW?(viewW-MW)/2:0)+(shake?(Math.random()-.5)*shake:0)),oy=Math.round(-cam.y+(shake?(Math.random()-.5)*shake:0));
+ rect(g,0,0,viewW,viewH,'#536e57');g.save();g.translate(ox,oy);g.drawImage(map,0,0);
+ for(let i=0;i<30;i++){
+  const y=(i*47.7+clock*1.5)%MH,x=river(y)+Math.sin(i*29.1)*21;
+  if(!onBridge(y))rect(g,x,y,2+Math.sin(i+clock)*1.3,1,'#7a9d8c');
+ }
+ const rows=objects.filter(o=>o.x+ox>-30&&o.x+ox<viewW+30&&o.y+oy>-10&&o.y+oy<viewH+55).map(o=>({y:o.y,paint:()=>willow(g,o.x,o.y,o.s)}));
+ for(const s of sites)rows.push({y:s.y,paint:()=>bell(s)});
+ rows.push({y:home.y,paint:ferry},{y:player.y,paint:keeper});
+ enemies.forEach(e=>rows.push({y:e.y,paint:()=>creature(e)}));rows.sort((a,b)=>a.y-b.y).forEach(o=>o.paint());
+ for(const b of bits)rect(g,b.x,b.y,2,2,b.col);
+ g.restore();
+ if(state==='play'||state==='pause'){
+  const to=target===3?home:sites[target],tx=to.x+ox,ty=to.y+oy-30,near=dist(player,to)<29;
+  if(tx>8&&tx<viewW-8&&ty>9&&ty<viewH-8){
+   if(near&&active<0){rect(g,tx-6,ty-5,13,10,'#253a35');g.font='bold 8px monospace';g.fillStyle='#ffe7a3';g.textAlign='center';g.fillText('E',Math.round(tx),Math.round(ty+3))}
+   else diamond(tx,ty+Math.sin(clock*3)*2);
+  }else{
+   const dx=tx-viewW/2,dy=ty-viewH/2,k=Math.min((viewW/2-13)/Math.max(.01,Math.abs(dx)),(viewH/2-17)/Math.max(.01,Math.abs(dy)));
+   const x=Math.round(viewW/2+dx*k),y=Math.round(viewH/2+dy*k);
+   oval(g,x,y,7,7,'#304539');diamond(x,y);
+  }
+  miniMap();
+ }
+ ctx.drawImage(surface,0,0,canvas.width,canvas.height);
+}
+let previous=0;
+function frame(now){const dt=Math.min(.05,Math.max(0,(now-previous)/1000));previous=now;if(state!=='pause')clock+=dt;if(state==='play')update(dt);render();requestAnimationFrame(frame)}
+reset();resize();window.addEventListener('resize',resize);requestAnimationFrame(frame);
+</script>
+</body>
+</html>

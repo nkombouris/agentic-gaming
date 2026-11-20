@@ -1,0 +1,44 @@
+[
+  {
+    "id": "lunar-survey",
+    "directory": "luna",
+    "en": {
+      "description": "Reveal every safe site on a lunar grid with 14 buried charges and two minutes to spare.",
+      "instructions": "Left-click to reveal a tile and right-click to flag it. Press Space to arm a scan before clicking a tile. Press R to restart."
+    },
+    "de": {
+      "description": "Decke in zwei Minuten alle sicheren Felder eines Mondrasters mit 14 Sprengladungen auf.",
+      "instructions": "Decke Felder per Linksklick auf und markiere sie per Rechtsklick. Aktiviere den Scanner mit der Leertaste und klicke dann auf ein Feld. Starte mit R neu."
+    }
+  },
+  {
+    "id": "shoal-signal-astra-6-2",
+    "directory": "astra-6.2",
+    "title": "Shoal Signal",
+    "model": "gpt-6.2-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Survey a coastal chart around Blackfin Light, where 18 mines lie hidden in the water.",
+      "instructions": "Choose Begin survey. Left-click water to reveal it and right-click to place or remove a flag. Numbers count nearby mines, including diagonals. Reveal all 90 safe squares to win. Click a number once its adjacent flags match to reveal the remaining neighbors. Press R to restart."
+    },
+    "de": {
+      "description": "Kartiere die Gewässer rund um den Leuchtturm Blackfin Light und spüre 18 versteckte Minen auf.",
+      "instructions": "Wähle „Begin survey“. Decke mit einem Linksklick ein Feld auf. Ein Rechtsklick setzt oder entfernt eine Flagge. Jede Zahl gibt an, wie viele Minen auf den angrenzenden Feldern liegen, auch diagonal. Decke alle 90 sicheren Felder auf. Entspricht die Anzahl der benachbarten Flaggen der Zahl, deckt ein Klick auf die Zahl die übrigen Nachbarfelder auf. Mit R startest du neu."
+    }
+  },
+  {
+    "id": "silt-signal-sol-6-2",
+    "directory": "sol-6.2",
+    "title": "Silt Signal",
+    "model": "gpt-6.2-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Sweep a tidal chart for submerged mines in this three-minute Minesweeper game.",
+      "instructions": "Click a cell to reveal it and right-click to place or remove a flag. Numbers count the mines in the eight surrounding cells. Click a clue again when the number of neighboring flags matches it. Reveal every safe cell before the tide arrives. Use the arrow keys, Space, and F to play with the keyboard. Press R to restart."
+    },
+    "de": {
+      "description": "Suche in diesem dreiminütigen Minesweeper-Spiel auf einer Wattkarte nach versunkenen Minen.",
+      "instructions": "Decke ein Feld mit einem Linksklick auf und setze oder entferne eine Flagge mit einem Rechtsklick. Die Zahlen geben an, wie viele Minen in den acht Nachbarfeldern liegen. Klicke erneut auf eine Zahl, sobald die Anzahl der angrenzenden Flaggen mit ihr übereinstimmt. Decke alle sicheren Felder auf, bevor die Flut einsetzt. Mit den Pfeiltasten bewegst du den Cursor, mit der Leertaste deckst du ein Feld auf und mit F setzt oder entfernst du eine Flagge. Drücke R für einen Neustart."
+    }
+  }
+]

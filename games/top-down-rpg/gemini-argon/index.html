@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Aethelgard: Echoes of the Mana Seal</title>
+  <style>
+    :root {
+      --bg-dark: #0b0e17;
+      --panel-bg: rgba(14, 19, 32, 0.88);
+      --border-gold: #d4af37;
+      --border-light: #f7e594;
+      --hp-color: #ef4444;
+      --mp-color: #3b82f6;
+      --xp-color: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+      color: var(--text-main);
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+
+    /* SNES / Final Fantasy inspired HUD Window Styling */
+    .retro-box {
+      background: linear-gradient(180deg, rgba(24, 34, 68, 0.92) 0%, rgba(11, 16, 36, 0.94) 100%);
+      border: 2px solid var(--border-gold);
+      box-shadow: 0 0 0 2px #090d16, 0 6px 16px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+    }
+
+    /* Top HUD Layout */
+    #hud {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 10;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hud-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+    }
+
+    .level-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fbbf24, #b45309);
+      border: 2px solid #fef08a;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .level-badge span.lbl {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #451a03;
+      line-height: 1;
+    }
+
+    .level-badge span.val {
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px #451a03;
+      line-height: 1.1;
+    }
+
+    .bars-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 190px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bar-label {
+      width: 26px;
+      color: #fde68a;
+      text-shadow: 1px 1px 1px #000;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 12px;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.12s ease-out;
+    }
+
+    .hp-fill {
+      background: linear-gradient(90deg, #b91c1c, #ef4444, #f87171);
+    }
+
+    .mp-fill {
+      background: linear-gradient(90deg, #1d4ed8, #3b82f6, #60a5fa);
+    }
+
+    .xp-fill {
+      background: linear-gradient(90deg, #047857, #10b981, #34d399);
+    }
+
+    .bar-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .hud-center {
+      padding: 8px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .objective-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fde68a;
+      font-weight: 800;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .obelisk-pips {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .pip {
+      width: 18px;
+      height: 18px;
+      transform: rotate(45deg);
+      border: 2px solid #94a3b8;
+      background: #1e293b;
+      transition: all 0.3s ease;
+    }
+
+    .pip.purified {
+      border-color: #67e8f9;
+      background: radial-gradient(circle, #cffafe 0%, #06b6d4 70%);
+      box-shadow: 0 0 10px #22d3ee;
+    }
+
+    .hud-right {
+      padding: 10px 16px;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .stat-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .stat-col .lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+
+    .stat-col .val {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .stat-col .val.gold {
+      color: #fbbf24;
+    }
+
+    /* Boss Health Bar */
+    #bossHud {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(560px, 90vw);
+      padding: 10px 16px;
+      z-index: 10;
+      pointer-events: none;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #bossHud.active {
+      display: flex;
+    }
+
+    .boss-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #fca5a5;
+      text-shadow: 0 2px 4px #000;
+    }
+
+    .boss-bar-track {
+      width: 100%;
+      height: 16px;
+      background: #1a0505;
+      border: 2px solid #dc2626;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #bossBarFill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #7f1d1d, #dc2626, #f87171);
+      transition: width 0.1s linear;
+    }
+
+    /* Overlays (Start, Pause, Game Over / Victory) */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.84) 0%, rgba(4, 7, 15, 0.95) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      padding: 20px;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .modal-card {
+      max-width: 580px;
+      width: 100%;
+      padding: 28px 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .game-title {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 900;
+      color: #fef08a;
+      text-shadow: 0 3px 0 #92400e, 0 6px 14px rgba(0,0,0,0.85);
+      letter-spacing: 1px;
+      line-height: 1.15;
+    }
+
+    .game-subtitle {
+      font-size: 14px;
+      color: #67e8f9;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+      margin-top: -10px;
+    }
+
+    .premise {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #e2e8f0;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 12px 16px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      text-align: left;
+    }
+
+    .ctrl-item {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      padding: 9px 12px;
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .ctrl-keys {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fde68a;
+    }
+
+    .ctrl-desc {
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+
+    .btn-primary {
+      margin-top: 6px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #1e1b4b;
+      background: linear-gradient(180deg, #fde047 0%, #eab308 50%, #ca8a04 100%);
+      border: 2px solid #fef9c3;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #854d0e, 0 8px 20px rgba(0, 0, 0, 0.6);
+      transition: transform 0.1s, filter 0.15s;
+      align-self: center;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #854d0e;
+    }
+
+    .stats-summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 4px 0;
+    }
+
+    .stat-box {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .stat-box .s-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .stat-box .s-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: #fde68a;
+      margin-top: 2px;
+    }
+
+    #pauseBanner {
+      position: fixed;
+      top: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 18px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #fde68a;
+      z-index: 20;
+      display: none;
+      letter-spacing: 1.5px;
+    }
+
+    @media (max-width: 680px) {
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+      .hud-center {
+        order: 3;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top HUD -->
+  <div id="hud">
+    <div class="hud-left retro-box">
+      <div class="level-badge">
+        <span class="lbl">LVL</span>
+        <span class="val" id="hudLevel">1</span>
+      </div>
+      <div class="bars-container">
+        <div class="bar-row">
+          <span class="bar-label">HP</span>
+          <div class="bar-track">
+            <div class="bar-fill hp-fill" id="hpBar"></div>
+            <div class="bar-text" id="hpText">100 / 100</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">MP</span>
+          <div class="bar-track">
+            <div class="bar-fill mp-fill" id="mpBar"></div>
+            <div class="bar-text" id="mpText">50 / 50</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">EXP</span>
+          <div class="bar-track">
+            <div class="bar-fill xp-fill" id="xpBar" style="width: 0%"></div>
+            <div class="bar-text" id="xpText">0 / 40</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-center retro-box">
+      <div class="objective-title" id="objectiveText">Purify the 3 Mana Obelisks</div>
+      <div class="obelisk-pips">
+        <div class="pip" id="pip0"></div>
+        <div class="pip" id="pip1"></div>
+        <div class="pip" id="pip2"></div>
+      </div>
+    </div>
+
+    <div class="hud-right retro-box">
+      <div class="stat-col">
+        <span class="lbl">Time</span>
+        <span class="val" id="hudTime">00:00</span>
+      </div>
+      <div class="stat-col">
+        <span class="lbl">Score</span>
+        <span class="val gold" id="hudScore">0</span>
+      </div>
+      <div class="stat-col">
+        <span class="lbl">Best</span>
+        <span class="val gold" id="hudBest">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boss HP Bar -->
+  <div id="bossHud" class="retro-box">
+    <div class="boss-header">
+      <span>MALAKOR, THE OBSIDIAN ARCHON</span>
+      <span id="bossHpText">800 / 800</span>
+    </div>
+    <div class="boss-bar-track">
+      <div id="bossBarFill"></div>
+    </div>
+  </div>
+
+  <div id="pauseBanner" class="retro-box">GAME PAUSED — CLICK OR FOCUS TO RESUME</div>
+
+  <!-- Start Screen Overlay -->
+  <div id="startOverlay" class="overlay">
+    <div class="modal-card retro-box">
+      <div class="game-title">AETHELGARD</div>
+      <div class="game-subtitle">Echoes of the Mana Seal</div>
+      <div class="premise">
+        Explore the Sacred Ruins, stand near or strike the <strong>3 Corrupted Mana Obelisks</strong> to purify them, level up with EXP gems, and vanquish <strong>Malakor, the Obsidian Archon</strong>!
+      </div>
+      <div class="controls-grid">
+        <div class="ctrl-item">
+          <span class="ctrl-keys">WASD / Arrow Keys</span>
+          <span class="ctrl-desc">8-Directional Movement</span>
+        </div>
+        <div class="ctrl-item">
+          <span class="ctrl-keys">Left Click / Space / Z / J</span>
+          <span class="ctrl-desc">Mana Blade Slash (Knockback + Crit)</span>
+        </div>
+        <div class="ctrl-item">
+          <span class="ctrl-keys">Right Click / X / K</span>
+          <span class="ctrl-desc">Arcane Fireball (15 MP, Explosive)</span>
+        </div>
+        <div class="ctrl-item">
+          <span class="ctrl-keys">Shift / C / L</span>
+          <span class="ctrl-desc">Shadow Dash (Invulnerable Roll)</span>
+        </div>
+      </div>
+      <button id="startBtn" class="btn-primary">Click to Begin Quest</button>
+    </div>
+  </div>
+
+  <!-- Game Over / Victory Overlay -->
+  <div id="endOverlay" class="overlay hidden">
+    <div class="modal-card retro-box">
+      <div class="game-title" id="endTitle">VICTORY!</div>
+      <div class="game-subtitle" id="endSubtitle">The Mana Seal is Restored</div>
+      <div class="stats-summary">
+        <div class="stat-box">
+          <div class="s-lbl">Final Score</div>
+          <div class="s-val" id="endScore">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-lbl">High Score</div>
+          <div class="s-val" id="endBest">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-lbl">Hero Level</div>
+          <div class="s-val" id="endLevel">1</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-lbl">Clear Time</div>
+          <div class="s-val" id="endTime">00:00</div>
+        </div>
+      </div>
+      <button id="restartBtn" class="btn-primary">Play Again (Press R)</button>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ==========================================
+      // 1. WEBAUDIO RETRO 16-BIT SYNTHESIZER
+      // ==========================================
+      var Sfx = {
+        ctx: null,
+        init: function () {
+          if (!this.ctx) {
+            var AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              this.ctx = new AudioCtx();
+            }
+          }
+          if (this.ctx && this.ctx.state === "suspended") {
+            this.ctx.resume();
+          }
+        },
+        playTone: function (freq, endFreq, duration, type, vol, delay) {
+          if (!this.ctx) return;
+          var t = this.ctx.currentTime + (delay || 0);
+          var osc = this.ctx.createOscillator();
+          var gain = this.ctx.createGain();
+          osc.type = type || "square";
+          osc.frequency.setValueAtTime(freq, t);
+          if (endFreq && endFreq !== freq) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), t + duration);
+          }
+          gain.gain.setValueAtTime(vol || 0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + duration);
+        },
+        slash: function () {
+          this.playTone(420, 110, 0.11, "sawtooth", 0.12, 0);
+          this.playTone(260, 80, 0.13, "triangle", 0.10, 0.02);
+        },
+        fireball: function () {
+          this.playTone(540, 140, 0.22, "sawtooth", 0.14, 0);
+          this.playTone(300, 90, 0.25, "square", 0.08, 0.03);
+        },
+        explosion: function () {
+          this.playTone(150, 35, 0.28, "sawtooth", 0.18, 0);
+          this.playTone(95, 28, 0.32, "square", 0.14, 0.02);
+        },
+        dash: function () {
+          this.playTone(280, 620, 0.12, "triangle", 0.12, 0);
+        },
+        hitEnemy: function (crit) {
+          if (crit) {
+            this.playTone(680, 220, 0.14, "square", 0.16, 0);
+            this.playTone(920, 440, 0.12, "sawtooth", 0.14, 0.04);
+          } else {
+            this.playTone(240, 90, 0.09, "square", 0.12, 0);
+          }
+        },
+        hurtPlayer: function () {
+          this.playTone(190, 65, 0.22, "sawtooth", 0.18, 0);
+          this.playTone(140, 50, 0.22, "square", 0.15, 0.04);
+        },
+        enemyDie: function () {
+          this.playTone(320, 110, 0.14, "square", 0.11, 0);
+          this.playTone(460, 160, 0.14, "triangle", 0.10, 0.05);
+        },
+        pickup: function (kind) {
+          if (kind === "heart") {
+            this.playTone(440, 660, 0.1, "triangle", 0.12, 0);
+            this.playTone(660, 880, 0.14, "triangle", 0.12, 0.08);
+          } else {
+            this.playTone(740, 1120, 0.08, "sine", 0.10, 0);
+          }
+        },
+        levelUp: function () {
+          var notes = [523.25, 659.25, 783.99, 1046.5];
+          for (var i = 0; i < notes.length; i++) {
+            this.playTone(notes[i], notes[i], 0.16, "square", 0.13, i * 0.09);
+          }
+        },
+        obeliskPurified: function () {
+          var notes = [440, 554.37, 659.25, 880, 1108.73];
+          for (var i = 0; i < notes.length; i++) {
+            this.playTone(notes[i], notes[i] * 1.02, 0.22, "triangle", 0.14, i * 0.08);
+          }
+        },
+        bossSpawn: function () {
+          this.playTone(130, 65, 0.5, "sawtooth", 0.2, 0);
+          this.playTone(98, 49, 0.6, "square", 0.18, 0.2);
+        },
+        victory: function () {
+          var notes = [523.25, 659.25, 783.99, 1046.5, 987.77, 1046.5];
+          var times = [0, 0.12, 0.24, 0.36, 0.52, 0.68];
+          for (var i = 0; i < notes.length; i++) {
+            this.playTone(notes[i], notes[i], 0.22, "square", 0.14, times[i]);
+          }
+        },
+        gameOver: function () {
+          var notes = [392.0, 349.23, 329.63, 261.63];
+          for (var i = 0; i < notes.length; i++) {
+            this.playTone(notes[i], notes[i] * 0.96, 0.28, "sawtooth", 0.13, i * 0.18);
+          }
+        }
+      };
+
+      // ==========================================
+      // 2. CANVAS & WORLD CONSTANTS
+      // ==========================================
+      var canvas = document.getElementById("gameCanvas");
+      var ctx = canvas.getContext("2d");
+
+      var viewW = window.innerWidth;
+      var viewH = window.innerHeight;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function resizeCanvas() {
+        viewW = window.innerWidth;
+        viewH = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(viewW * dpr);
+        canvas.height = Math.floor(viewH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      // World dimensions (Sacred Island Ruins surrounded by moat water)
+      var WORLD_W = 1920;
+      var WORLD_H = 1440;
+      var BORDER_WATER = 96; // outer water rim
+      var PLAY_MIN_X = BORDER_WATER + 26;
+      var PLAY_MAX_X = WORLD_W - BORDER_WATER - 26;
+      var PLAY_MIN_Y = BORDER_WATER + 26;
+      var PLAY_MAX_Y = WORLD_H - BORDER_WATER - 26;
+
+      var HIGH_SCORE_KEY = "aethelgard_mana_seal_best_v1";
+      var highScore = 0;
+      try {
+        highScore = parseInt(localStorage.getItem(HIGH_SCORE_KEY) || "0", 10) || 0;
+      } catch (e) {
+        highScore = 0;
+      }
+
+      // DOM elements
+      var hudLevel = document.getElementById("hudLevel");
+      var hpBar = document.getElementById("hpBar");
+      var hpText = document.getElementById("hpText");
+      var mpBar = document.getElementById("mpBar");
+      var mpText = document.getElementById("mpText");
+      var xpBar = document.getElementById("xpBar");
+      var xpText = document.getElementById("xpText");
+      var objectiveText = document.getElementById("objectiveText");
+      var pips = [
+        document.getElementById("pip0"),
+        document.getElementById("pip1"),
+        document.getElementById("pip2")
+      ];
+      var hudTime = document.getElementById("hudTime");
+      var hudScore = document.getElementById("hudScore");
+      var hudBest = document.getElementById("hudBest");
+      var bossHud = document.getElementById("bossHud");
+      var bossHpText = document.getElementById("bossHpText");
+      var bossBarFill = document.getElementById("bossBarFill");
+      var startOverlay = document.getElementById("startOverlay");
+      var endOverlay = document.getElementById("endOverlay");
+      var endTitle = document.getElementById("endTitle");
+      var endSubtitle = document.getElementById("endSubtitle");
+      var endScore = document.getElementById("endScore");
+      var endBest = document.getElementById("endBest");
+      var endLevel = document.getElementById("endLevel");
+      var endTime = document.getElementById("endTime");
+      var pauseBanner = document.getElementById("pauseBanner");
+
+      hudBest.textContent = String(highScore);
+
+      // ==========================================
+      // 3. INPUT HANDLING
+      // ==========================================
+      var keys = {};
+      var mouse = { x: viewW / 2, y: viewH / 2, worldX: WORLD_W / 2, worldY: WORLD_H / 2, leftDown: false, rightDown: false, usedMouse: false };
+      var gameState = "START"; // START | PLAYING | PAUSED | ENDED
+
+      var PREVENT_KEYS = {
+        ArrowUp: true,
+        ArrowDown: true,
+        ArrowLeft: true,
+        ArrowRight: true,
+        Space: true,
+        " ": true
+      };
+
+      window.addEventListener("keydown", function (e) {
+        if (PREVENT_KEYS[e.key] || PREVENT_KEYS[e.code]) {
+          e.preventDefault();
+        }
+        var k = e.key.toLowerCase();
+        keys[k] = true;
+        keys[e.code] = true;
+
+        if (k === "r" && (gameState === "ENDED" || gameState === "PLAYING")) {
+          if (gameState === "ENDED") {
+            startNewGame();
+          }
+        }
+        if (gameState === "PAUSED") {
+          gameState = "PLAYING";
+          pauseBanner.style.display = "none";
+        }
+      });
+
+      window.addEventListener("keyup", function (e) {
+        var k = e.key.toLowerCase();
+        keys[k] = false;
+        keys[e.code] = false;
+      });
+
+      window.addEventListener("mousemove", function (e) {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+        mouse.usedMouse = true;
+      });
+
+      window.addEventListener("mousedown", function (e) {
+        if (gameState === "PAUSED") {
+          gameState = "PLAYING";
+          pauseBanner.style.display = "none";
+        }
+        if (gameState !== "PLAYING") return;
+        mouse.usedMouse = true;
+        if (e.button === 0) {
+          mouse.leftDown = true;
+          trySwordAttack(true);
+        } else if (e.button === 2) {
+          mouse.rightDown = true;
+          tryCastFireball(true);
+        }
+      });
+
+      window.addEventListener("mouseup", function (e) {
+        if (e.button === 0) mouse.leftDown = false;
+        if (e.button === 2) mouse.rightDown = false;
+      });
+
+      window.addEventListener("contextmenu", function (e) {
+        e.preventDefault();
+      });
+
+      function clearInputs() {
+        keys = {};
+        mouse.leftDown = false;
+        mouse.rightDown = false;
+      }
+
+      window.addEventListener("blur", function () {
+        clearInputs();
+        if (gameState === "PLAYING") {
+          gameState = "PAUSED";
+          pauseBanner.style.display = "block";
+        }
+      });
+
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+          clearInputs();
+          if (gameState === "PLAYING") {
+            gameState = "PAUSED";
+            pauseBanner.style.display = "block";
+          }
+        }
+      });
+
+      // ==========================================
+      // 4. GAME STATE & ENTITIES
+      // ==========================================
+      var camera = { x: 0, y: 0, shakeTimer: 0, shakeMag: 0 };
+      var elapsedTime = 0;
+      var score = 0;
+      var spawnTimer = 0;
+      var bossSpawned = false;
+      var boss = null;
+
+      var player = null;
+      var pillars = [];
+      var torches = [];
+      var obelisks = [];
+      var props = []; // pots & bushes
+      var enemies = [];
+      var projectiles = [];
+      var pickups = [];
+      var particles = [];
+      var floatingTexts = [];
+      var afterimages = [];
+      var floorDetails = [];
+
+      function randRange(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function dist(x1, y1, x2, y2) {
+        var dx = x2 - x1;
+        var dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function clamp(val, min, max) {
+        return Math.max(min, Math.min(max, val));
+      }
+
+      function angleDiff(a, b) {
+        var d = b - a;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        return d;
+      }
+
+      function addScreenShake(mag, dur) {
+        camera.shakeMag = Math.max(camera.shakeMag, mag);
+        camera.shakeTimer = Math.max(camera.shakeTimer, dur);
+      }
+
+      function addFloatingText(x, y, text, color, scale) {
+        floatingTexts.push({
+          x: x + randRange(-8, 8),
+          y: y - 12,
+          vx: randRange(-18, 18),
+          vy: -68,
+          text: text,
+          color: color || "#ffffff",
+          scale: scale || 1,
+          life: 0.85,
+          maxLife: 0.85
+        });
+      }
+
+      function spawnParticles(x, y, count, color, speedMin, speedMax, sizeMin, sizeMax, life) {
+        for (var i = 0; i < count; i++) {
+          var ang = Math.random() * Math.PI * 2;
+          var spd = randRange(speedMin || 30, speedMax || 140);
+          particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            color: color,
+            size: randRange(sizeMin || 2, sizeMax || 5),
+            life: randRange((life || 0.35) * 0.6, life || 0.35),
+            maxLife: life || 0.35
+          });
+        }
+      }
+
+      // ==========================================
+      // 5. WORLD INITIALIZATION
+      // ==========================================
+      function buildWorld() {
+        pillars = [];
+        torches = [];
+        obelisks = [];
+        props = [];
+        enemies = [];
+        projectiles = [];
+        pickups = [];
+        particles = [];
+        floatingTexts = [];
+        afterimages = [];
+        floorDetails = [];
+
+        var cx = WORLD_W / 2;
+        var cy = WORLD_H / 2;
+
+        // Decorative stone tiles & moss spots
+        for (var i = 0; i < 160; i++) {
+          floorDetails.push({
+            x: randRange(PLAY_MIN_X + 20, PLAY_MAX_X - 20),
+            y: randRange(PLAY_MIN_Y + 20, PLAY_MAX_Y - 20),
+            w: randRange(24, 54),
+            h: randRange(20, 44),
+            type: i % 3 === 0 ? "moss" : "stone"
+          });
+        }
+
+        // 3 Mana Obelisks in a grand triangle around the central altar
+        var obeliskCoords = [
+          { x: cx, y: 340 },
+          { x: 430, y: WORLD_H - 340 },
+          { x: WORLD_W - 430, y: WORLD_H - 340 }
+        ];
+        for (var o = 0; o < obeliskCoords.length; o++) {
+          obelisks.push({
+            id: o,
+            x: obeliskCoords[o].x,
+            y: obeliskCoords[o].y,
+            radius: 28,
+            charge: 0, // 0 to 100
+            purified: false,
+            pulse: o * 2.1
+          });
+        }
+
+        // Ancient Pillars
+        var pillarCoords = [
+          { x: cx - 220, y: cy - 170 },
+          { x: cx + 220, y: cy - 170 },
+          { x: cx - 220, y: cy + 170 },
+          { x: cx + 220, y: cy + 170 },
+          { x: 320, y: 360 },
+          { x: WORLD_W - 320, y: 360 },
+          { x: 320, y: WORLD_H - 580 },
+          { x: WORLD_W - 320, y: WORLD_H - 580 }
+        ];
+        for (var p = 0; p < pillarCoords.length; p++) {
+          pillars.push({
+            x: pillarCoords[p].x,
+            y: pillarCoords[p].y,
+            r: 30
+          });
+        }
+
+        // Flickering Braziers / Torches around central altar and obelisks
+        var torchCoords = [
+          { x: cx - 110, y: cy - 110 },
+          { x: cx + 110, y: cy - 110 },
+          { x: cx - 110, y: cy + 110 },
+          { x: cx + 110, y: cy + 110 },
+          { x: cx - 90, y: 340 },
+          { x: cx + 90, y: 340 },
+          { x: 430 - 90, y: WORLD_H - 340 },
+          { x: 430 + 90, y: WORLD_H - 340 },
+          { x: WORLD_W - 430 - 90, y: WORLD_H - 340 },
+          { x: WORLD_W - 430 + 90, y: WORLD_H - 340 }
+        ];
+        for (var t = 0; t < torchCoords.length; t++) {
+          torches.push({
+            x: torchCoords[t].x,
+            y: torchCoords[t].y,
+            r: 14
+          });
+        }
+
+        // Destructible Pots & Mana Bushes
+        for (var k = 0; k < 42; k++) {
+          var px = randRange(PLAY_MIN_X + 60, PLAY_MAX_X - 60);
+          var py = randRange(PLAY_MIN_Y + 60, PLAY_MAX_Y - 60);
+          if (dist(px, py, cx, cy) < 150) continue;
+          var tooClose = false;
+          for (var j = 0; j < obelisks.length; j++) {
+            if (dist(px, py, obelisks[j].x, obelisks[j].y) < 110) tooClose = true;
+          }
+          for (var m = 0; m < pillars.length; m++) {
+            if (dist(px, py, pillars[m].x, pillars[m].y) < 70) tooClose = true;
+          }
+          if (!tooClose) {
+            props.push({
+              x: px,
+              y: py,
+              r: 16,
+              type: k % 2 === 0 ? "pot" : "bush",
+              hp: 1
+            });
+          }
+        }
+      }
+
+      function startNewGame() {
+        Sfx.init();
+        elapsedTime = 0;
+        score = 0;
+        spawnTimer = 1.2;
+        bossSpawned = false;
+        boss = null;
+        bossHud.classList.remove("active");
+
+        buildWorld();
+
+        player = {
+          x: WORLD_W / 2,
+          y: WORLD_H / 2 + 40,
+          r: 16,
+          hp: 100,
+          maxHp: 100,
+          mp: 50,
+          maxMp: 50,
+          mpRegen: 4.5,
+          xp: 0,
+          nextXp: 40,
+          level: 1,
+          atk: 24,
+          speed: 225,
+          facing: Math.PI * 0.5, // Downward initially
+          walkAnim: 0,
+          attackTimer: 0,
+          attackCooldown: 0,
+          attackAngle: 0,
+          fireCooldown: 0,
+          dashTimer: 0,
+          dashCooldown: 0,
+          dashVx: 0,
+          dashVy: 0,
+          invulnTimer: 0,
+          hurtFlash: 0
+        };
+
+        // Spawn initial wave of monsters near the obelisks
+        for (var i = 0; i < 3; i++) {
+          spawnEnemyNear(obelisks[i].x + randRange(-90, 90), obelisks[i].y + randRange(-90, 90), "slime");
+        }
+
+        camera.x = player.x - viewW / 2;
+        camera.y = player.y - viewH / 2;
+
+        startOverlay.classList.add("hidden");
+        endOverlay.classList.add("hidden");
+        pauseBanner.style.display = "none";
+        gameState = "PLAYING";
+        updateHud();
+      }
+
+      document.getElementById("startBtn").addEventListener("click", startNewGame);
+      document.getElementById("restartBtn").addEventListener("click", startNewGame);
+
+      // ==========================================
+      // 6. PLAYER ACTIONS (SWORD, FIREBALL, DASH)
+      // ==========================================
+      function getAimAngle(useMouseCursor) {
+        if (useMouseCursor && mouse.usedMouse) {
+          var wx = mouse.x + camera.x;
+          var wy = mouse.y + camera.y;
+          return Math.atan2(wy - player.y, wx - player.x);
+        }
+        return player.facing;
+      }
+
+      function trySwordAttack(fromMouse) {
+        if (!player || player.attackCooldown > 0 || player.dashTimer > 0) return;
+
+        var aim = getAimAngle(fromMouse);
+        player.facing = aim;
+        player.attackAngle = aim;
+        player.attackTimer = 0.20;
+        player.attackCooldown = 0.28;
+        Sfx.slash();
+
+        var reach = 68;
+        var arcHalf = Math.PI * 0.48; // Wide 172-degree SNES-style arc
+
+        // Check destructible props
+        for (var i = props.length - 1; i >= 0; i--) {
+          var pr = props[i];
+          var d = dist(player.x, player.y, pr.x, pr.y);
+          if (d <= reach + pr.r) {
+            var ang = Math.atan2(pr.y - player.y, pr.x - player.x);
+            if (Math.abs(angleDiff(aim, ang)) <= arcHalf + 0.25) {
+              destroyProp(i);
+            }
+          }
+        }
+
+        // Check Mana Obelisks (striking an obelisk boosts purification!)
+        for (var o = 0; o < obelisks.length; o++) {
+          var ob = obelisks[o];
+          if (!ob.purified) {
+            var dob = dist(player.x, player.y, ob.x, ob.y);
+            if (dob <= reach + ob.radius + 8) {
+              var aob = Math.atan2(ob.y - player.y, ob.x - player.x);
+              if (Math.abs(angleDiff(aim, aob)) <= arcHalf + 0.2) {
+                chargeObelisk(ob, 12);
+                spawnParticles(ob.x, ob.y, 8, "#38bdf8", 40, 120, 2, 4, 0.35);
+              }
+            }
+          }
+        }
+
+        // Check Enemies
+        for (var e = enemies.length - 1; e >= 0; e--) {
+          var en = enemies[e];
+          var de = dist(player.x, player.y, en.x, en.y);
+          if (de <= reach + en.r) {
+            var aen = Math.atan2(en.y - player.y, en.x - player.x);
+            if (Math.abs(angleDiff(aim, aen)) <= arcHalf) {
+              var isCrit = Math.random() < 0.22;
+              var dmg = Math.round(player.atk * randRange(0.9, 1.15) * (isCrit ? 1.75 : 1));
+              damageEnemy(en, dmg, isCrit, Math.cos(aen) * 240, Math.sin(aen) * 240);
+            }
+          }
+        }
+      }
+
+      function tryCastFireball(fromMouse) {
+        if (!player || player.fireCooldown > 0) return;
+        var mpCost = 15;
+        if (player.mp < mpCost) {
+          addFloatingText(player.x, player.y - 16, "LOW MP!", "#60a5fa", 0.9);
+          return;
+        }
+        player.mp -= mpCost;
+        player.fireCooldown = 0.42;
+
+        var aim = getAimAngle(fromMouse);
+        player.facing = aim;
+        Sfx.fireball();
+
+        projectiles.push({
+          x: player.x + Math.cos(aim) * 20,
+          y: player.y + Math.sin(aim) * 20,
+          vx: Math.cos(aim) * 440,
+          vy: Math.sin(aim) * 440,
+          r: 10,
+          fromPlayer: true,
+          dmg: Math.round(player.atk * 1.65),
+          life: 1.15,
+          color: "#f97316"
+        });
+      }
+
+      function tryDash() {
+        if (!player || player.dashCooldown > 0 || player.dashTimer > 0) return;
+        var dx = 0;
+        var dy = 0;
+        if (keys["w"] || keys["arrowup"]) dy -= 1;
+        if (keys["s"] || keys["arrowdown"]) dy += 1;
+        if (keys["a"] || keys["arrowleft"]) dx -= 1;
+        if (keys["d"] || keys["arrowright"]) dx += 1;
+
+        var ang = (dx !== 0 || dy !== 0) ? Math.atan2(dy, dx) : player.facing;
+        player.facing = ang;
+        player.dashVx = Math.cos(ang) * 560;
+        player.dashVy = Math.sin(ang) * 560;
+        player.dashTimer = 0.18;
+        player.dashCooldown = 0.65;
+        player.invulnTimer = Math.max(player.invulnTimer, 0.24);
+        Sfx.dash();
+        spawnParticles(player.x, player.y, 10, "#93c5fd", 30, 100, 2, 4, 0.28);
+      }
+
+      function destroyProp(idx) {
+        var pr = props[idx];
+        props.splice(idx, 1);
+        Sfx.hitEnemy(false);
+        var col = pr.type === "pot" ? "#d97706" : "#22c55e";
+        spawnParticles(pr.x, pr.y, 12, col, 40, 130, 3, 5, 0.35);
+
+        // Drop loot from pots/bushes
+        var roll = Math.random();
+        if (roll < 0.45) {
+          spawnPickup(pr.x, pr.y, "xp", 8);
+        } else if (roll < 0.72) {
+          spawnPickup(pr.x, pr.y, "heart", 20);
+        } else if (roll < 0.92) {
+          spawnPickup(pr.x, pr.y, "mana", 18);
+        } else {
+          spawnPickup(pr.x, pr.y, "gold", 50);
+        }
+      }
+
+      function chargeObelisk(ob, amount) {
+        if (ob.purified) return;
+        ob.charge = Math.min(100, ob.charge + amount);
+        if (ob.charge >= 100) {
+          ob.purified = true;
+          score += 300;
+          Sfx.obeliskPurified();
+          addScreenShake(7, 0.3);
+          addFloatingText(ob.x, ob.y - 30, "OBELISK PURIFIED! +300", "#67e8f9", 1.3);
+          spawnParticles(ob.x, ob.y, 36, "#22d3ee", 60, 220, 3, 6, 0.65);
+
+          // Drop bonus gems around purified obelisk
+          for (var i = 0; i < 4; i++) {
+            spawnPickup(ob.x + randRange(-35, 35), ob.y + randRange(-35, 35), "xp", 12);
+          }
+          spawnPickup(ob.x, ob.y + 28, "heart", 30);
+
+          checkBossTrigger();
+        }
+      }
+
+      function checkBossTrigger() {
+        if (bossSpawned) return;
+        var allPurified = true;
+        for (var i = 0; i < obelisks.length; i++) {
+          if (!obelisks[i].purified) allPurified = false;
+        }
+        if (allPurified || elapsedTime >= 75) {
+          spawnBoss();
+        }
+      }
+
+      // ==========================================
+      // 7. ENEMIES & BOSS LOGIC
+      // ==========================================
+      function spawnEnemyNear(x, y, forcedType) {
+        var sx = clamp(x, PLAY_MIN_X + 30, PLAY_MAX_X - 30);
+        var sy = clamp(y, PLAY_MIN_Y + 30, PLAY_MAX_Y - 30);
+
+        var difficultyMult = 1 + elapsedTime * 0.008;
+        var type = forcedType;
+        if (!type) {
+          var r = Math.random();
+          if (elapsedTime < 20) {
+            type = r < 0.7 ? "slime" : "skeleton";
+          } else {
+            if (r < 0.45) type = "slime";
+            else if (r < 0.78) type = "skeleton";
+            else type = "mage";
+          }
+        }
+
+        if (type === "slime") {
+          enemies.push({
+            type: "slime",
+            x: sx,
+            y: sy,
+            vx: 0,
+            vy: 0,
+            r: 15,
+            hp: Math.round(42 * difficultyMult),
+            maxHp: Math.round(42 * difficultyMult),
+            speed: 105,
+            dmg: 12,
+            xpVal: 12,
+            scoreVal: 40,
+            flash: 0,
+            aiTimer: randRange(0.5, 1.5),
+            anim: Math.random() * 6
+          });
+        } else if (type === "skeleton") {
+          enemies.push({
+            type: "skeleton",
+            x: sx,
+            y: sy,
+            vx: 0,
+            vy: 0,
+            r: 17,
+            hp: Math.round(78 * difficultyMult),
+            maxHp: Math.round(78 * difficultyMult),
+            speed: 120,
+            dmg: 18,
+            xpVal: 20,
+            scoreVal: 75,
+            flash: 0,
+            aiTimer: randRange(1.0, 2.2),
+            chargeTimer: 0,
+            chargeAngle: 0,
+            anim: Math.random() * 6
+          });
+        } else if (type === "mage") {
+          enemies.push({
+            type: "mage",
+            x: sx,
+            y: sy,
+            vx: 0,
+            vy: 0,
+            r: 16,
+            hp: Math.round(56 * difficultyMult),
+            maxHp: Math.round(56 * difficultyMult),
+            speed: 95,
+            dmg: 16,
+            xpVal: 24,
+            scoreVal: 90,
+            flash: 0,
+            aiTimer: randRange(1.2, 2.4),
+            castTelegraph: 0,
+            anim: Math.random() * 6
+          });
+        }
+        spawnParticles(sx, sy, 10, "#a855f7", 20, 80, 2, 4, 0.3);
+      }
+
+      function spawnBoss() {
+        if (bossSpawned) return;
+        bossSpawned = true;
+        Sfx.bossSpawn();
+        addScreenShake(12, 0.55);
+
+        var bx = WORLD_W / 2;
+        var by = WORLD_H / 2 - 40;
+        // If player is right on the altar, offset boss slightly
+        if (dist(player.x, player.y, bx, by) < 110) {
+          by -= 140;
+        }
+
+        boss = {
+          type: "boss",
+          isBoss: true,
+          x: bx,
+          y: by,
+          vx: 0,
+          vy: 0,
+          r: 34,
+          hp: 850,
+          maxHp: 850,
+          speed: 115,
+          dmg: 24,
+          xpVal: 150,
+          scoreVal: 1500,
+          flash: 0,
+          phaseTimer: 2.2,
+          actionState: "orbit", // orbit | spiral | dash | teleport
+          spiralCount: 0,
+          spiralAngle: 0,
+          dashAngle: 0,
+          anim: 0
+        };
+        enemies.push(boss);
+        bossHud.classList.add("active");
+        objectiveText.textContent = "VANQUISH MALAKOR, THE OBSIDIAN ARCHON!";
+        addFloatingText(bx, by - 45, "MALAKOR AWAKENS!", "#f87171", 1.45);
+        spawnParticles(bx, by, 45, "#ef4444", 60, 240, 3, 7, 0.7);
+      }
+
+      function damageEnemy(en, dmg, isCrit, knockVx, knockVy) {
+        en.hp -= dmg;
+        en.flash = 0.14;
+        en.vx += knockVx * (en.isBoss ? 0.18 : 1);
+        en.vy += knockVy * (en.isBoss ? 0.18 : 1);
+
+        Sfx.hitEnemy(isCrit);
+        if (isCrit) {
+          addScreenShake(5, 0.14);
+          addFloatingText(en.x, en.y - en.r, dmg + "!", "#facc15", 1.35);
+          spawnParticles(en.x, en.y, 12, "#fde047", 50, 170, 3, 5, 0.3);
+        } else {
+          addFloatingText(en.x, en.y - en.r, String(dmg), "#ffffff", 1.0);
+          spawnParticles(en.x, en.y, 7, "#f8fafc", 40, 120, 2, 4, 0.22);
+        }
+
+        if (en.hp <= 0) {
+          killEnemy(en);
+        }
+      }
+
+      function killEnemy(en) {
+        var idx = enemies.indexOf(en);
+        if (idx !== -1) enemies.splice(idx, 1);
+
+        score += en.scoreVal;
+        Sfx.enemyDie();
+        spawnParticles(en.x, en.y, en.isBoss ? 65 : 18, en.isBoss ? "#f43f5e" : "#a855f7", 50, 220, 3, 6, 0.45);
+
+        if (en.isBoss) {
+          boss = null;
+          bossHud.classList.remove("active");
+          triggerGameEnd(true);
+          return;
+        }
+
+        // Drop EXP & occasional Heart/Mana
+        spawnPickup(en.x, en.y, "xp", en.xpVal);
+        var r = Math.random();
+        if (r < 0.22) {
+          spawnPickup(en.x + randRange(-14, 14), en.y + randRange(-14, 14), "heart", 22);
+        } else if (r < 0.42) {
+          spawnPickup(en.x + randRange(-14, 14), en.y + randRange(-14, 14), "mana", 18);
+        }
+      }
+
+      function explodeFireball(proj) {
+        Sfx.explosion();
+        addScreenShake(4.5, 0.15);
+        var blastR = 68;
+        spawnParticles(proj.x, proj.y, 22, "#fb923c", 40, 190, 3, 6, 0.38);
+        spawnParticles(proj.x, proj.y, 10, "#fef08a", 20, 110, 2, 4, 0.28);
+
+        // Damage props in blast
+        for (var i = props.length - 1; i >= 0; i--) {
+          if (dist(proj.x, proj.y, props[i].x, props[i].y) <= blastR + props[i].r) {
+            destroyProp(i);
+          }
+        }
+        // Charge obelisks in blast
+        for (var o = 0; o < obelisks.length; o++) {
+          var ob = obelisks[o];
+          if (!ob.purified && dist(proj.x, proj.y, ob.x, ob.y) <= blastR + ob.radius) {
+            chargeObelisk(ob, 16);
+          }
+        }
+        // Damage enemies in blast
+        for (var e = enemies.length - 1; e >= 0; e--) {
+          var en = enemies[e];
+          if (dist(proj.x, proj.y, en.x, en.y) <= blastR + en.r) {
+            var ang = Math.atan2(en.y - proj.y, en.x - proj.x);
+            var isCrit = Math.random() < 0.25;
+            var dmg = Math.round(proj.dmg * (isCrit ? 1.5 : 1));
+            damageEnemy(en, dmg, isCrit, Math.cos(ang) * 200, Math.sin(ang) * 200);
+          }
+        }
+      }
+
+      // ==========================================
+      // 8. PICKUPS & LEVEL UP SYSTEM
+      // ==========================================
+      function spawnPickup(x, y, kind, val) {
+        pickups.push({
+          x: clamp(x, PLAY_MIN_X + 20, PLAY_MAX_X - 20),
+          y: clamp(y, PLAY_MIN_Y + 20, PLAY_MAX_Y - 20),
+          kind: kind, // xp | heart | mana | gold
+          val: val,
+          r: 10,
+          life: 18,
+          bob: Math.random() * 6
+        });
+      }
+
+      function gainXp(amount) {
+        player.xp += amount;
+        score += amount * 2;
+        while (player.xp >= player.nextXp) {
+          player.xp -= player.nextXp;
+          player.level += 1;
+          player.nextXp = Math.round(player.nextXp * 1.38 + 15);
+          player.maxHp += 20;
+          player.hp = player.maxHp;
+          player.maxMp += 10;
+          player.mp = player.maxMp;
+          player.atk += 6;
+          player.mpRegen += 0.8;
+
+          Sfx.levelUp();
+          addScreenShake(6, 0.25);
+          addFloatingText(player.x, player.y - 28, "LEVEL UP! LV." + player.level, "#fde047", 1.45);
+          spawnParticles(player.x, player.y, 32, "#fde047", 50, 200, 3, 6, 0.55);
+        }
+      }
+
+      function hurtPlayer(dmg) {
+        if (player.invulnTimer > 0 || gameState !== "PLAYING") return;
+        player.hp = Math.max(0, player.hp - dmg);
+        player.invulnTimer = 0.75;
+        player.hurtFlash = 0.25;
+        Sfx.hurtPlayer();
+        addScreenShake(8, 0.25);
+        addFloatingText(player.x, player.y - 20, "-" + dmg, "#ef4444", 1.2);
+        spawnParticles(player.x, player.y, 14, "#ef4444", 40, 150, 2, 5, 0.35);
+
+        if (player.hp <= 0) {
+          triggerGameEnd(false);
+        }
+      }
+
+      function triggerGameEnd(victory) {
+        gameState = "ENDED";
+        clearInputs();
+
+        if (victory) {
+          var hpBonus = player.hp * 10;
+          var timeBonus = Math.max(0, Math.round((180 - elapsedTime) * 12));
+          score += hpBonus + timeBonus;
+          Sfx.victory();
+          endTitle.textContent = "VICTORY!";
+          endTitle.style.color = "#fde047";
+          endSubtitle.textContent = "Malakor Banished — The Mana Seal Shines Anew!";
+        } else {
+          Sfx.gameOver();
+          endTitle.textContent = "FALLEN IN BATTLE";
+          endTitle.style.color = "#f87171";
+          endSubtitle.textContent = "The Shadows Claim the Ruins of Aethelgard";
+        }
+
+        if (score > highScore) {
+          highScore = score;
+          try {
+            localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
+          } catch (e) {}
+        }
+
+        updateHud();
+        endScore.textContent = String(score);
+        endBest.textContent = String(highScore);
+        endLevel.textContent = String(player.level);
+        endTime.textContent = formatTime(elapsedTime);
+        endOverlay.classList.remove("hidden");
+      }
+
+      function formatTime(sec) {
+        var total = Math.floor(sec);
+        var m = Math.floor(total / 60);
+        var s = total % 60;
+        return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+      }
+
+      function updateHud() {
+        if (!player) return;
+        hudLevel.textContent = String(player.level);
+        var hpPct = clamp((player.hp / player.maxHp) * 100, 0, 100);
+        hpBar.style.width = hpPct + "%";
+        hpText.textContent = Math.ceil(player.hp) + " / " + player.maxHp;
+
+        var mpPct = clamp((player.mp / player.maxMp) * 100, 0, 100);
+        mpBar.style.width = mpPct + "%";
+        mpText.textContent = Math.floor(player.mp) + " / " + player.maxMp;
+
+        var xpPct = clamp((player.xp / player.nextXp) * 100, 0, 100);
+        xpBar.style.width = xpPct + "%";
+        xpText.textContent = player.xp + " / " + player.nextXp;
+
+        for (var i = 0; i < 3; i++) {
+          if (obelisks[i] && obelisks[i].purified) {
+            pips[i].classList.add("purified");
+          } else {
+            pips[i].classList.remove("purified");
+          }
+        }
+
+        hudTime.textContent = formatTime(elapsedTime);
+        hudScore.textContent = String(score);
+        hudBest.textContent = String(Math.max(score, highScore));
+
+        if (boss && boss.hp > 0) {
+          var bPct = clamp((boss.hp / boss.maxHp) * 100, 0, 100);
+          bossBarFill.style.width = bPct + "%";
+          bossHpText.textContent = Math.ceil(boss.hp) + " / " + boss.maxHp;
+        }
+      }
+
+      // ==========================================
+      // 9. COLLISION RESOLUTION
+      // ==========================================
+      function resolveWorldCollisions(ent) {
+        ent.x = clamp(ent.x, PLAY_MIN_X + ent.r, PLAY_MAX_X - ent.r);
+        ent.y = clamp(ent.y, PLAY_MIN_Y + ent.r, PLAY_MAX_Y - ent.r);
+
+        // Collide with Pillars
+        for (var i = 0; i < pillars.length; i++) {
+          var p = pillars[i];
+          var dx = ent.x - p.x;
+          var dy = ent.y - p.y;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          var minD = ent.r + p.r;
+          if (d < minD && d > 0.001) {
+            ent.x = p.x + (dx / d) * minD;
+            ent.y = p.y + (dy / d) * minD;
+          }
+        }
+
+        // Collide with Obelisks
+        for (var o = 0; o < obelisks.length; o++) {
+          var ob = obelisks[o];
+          var dx2 = ent.x - ob.x;
+          var dy2 = ent.y - ob.y;
+          var d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+          var minD2 = ent.r + ob.radius;
+          if (d2 < minD2 && d2 > 0.001) {
+            ent.x = ob.x + (dx2 / d2) * minD2;
+            ent.y = ob.y + (dy2 / d2) * minD2;
+          }
+        }
+      }
+
+      // ==========================================
+      // 10. MAIN UPDATE LOOP
+      // ==========================================
+      function update(dt) {
+        if (gameState !== "PLAYING") return;
+
+        elapsedTime += dt;
+        checkBossTrigger();
+
+        // Keyboard action triggers
+        if (keys[" "] || keys["space"] || keys["z"] || keys["j"]) {
+          trySwordAttack(false);
+        }
+        if (keys["x"] || keys["k"]) {
+          tryCastFireball(false);
+        }
+        if (keys["shift"] || keys["c"] || keys["l"]) {
+          tryDash();
+        }
+        if (mouse.leftDown) {
+          trySwordAttack(true);
+        }
+
+        // Update Player Timers & Movement
+        player.mp = Math.min(player.maxMp, player.mp + player.mpRegen * dt);
+        if (player.attackTimer > 0) player.attackTimer -= dt;
+        if (player.attackCooldown > 0) player.attackCooldown -= dt;
+        if (player.fireCooldown > 0) player.fireCooldown -= dt;
+        if (player.dashCooldown > 0) player.dashCooldown -= dt;
+        if (player.invulnTimer > 0) player.invulnTimer -= dt;
+        if (player.hurtFlash > 0) player.hurtFlash -= dt;
+
+        if (player.dashTimer > 0) {
+          player.dashTimer -= dt;
+          player.x += player.dashVx * dt;
+          player.y += player.dashVy * dt;
+          afterimages.push({
+            x: player.x,
+            y: player.y,
+            facing: player.facing,
+            life: 0.16,
+            maxLife: 0.16
+          });
+        } else {
+          var mx = 0;
+          var my = 0;
+          if (keys["w"] || keys["arrowup"]) my -= 1;
+          if (keys["s"] || keys["arrowdown"]) my += 1;
+          if (keys["a"] || keys["arrowleft"]) mx -= 1;
+          if (keys["d"] || keys["arrowright"]) mx += 1;
+
+          if (mx !== 0 || my !== 0) {
+            var len = Math.sqrt(mx * mx + my * my);
+            mx /= len;
+            my /= len;
+            player.x += mx * player.speed * dt;
+            player.y += my * player.speed * dt;
+            if (player.attackTimer <= 0) {
+              player.facing = Math.atan2(my, mx);
+            }
+            player.walkAnim += dt * 12;
+          } else {
+            player.walkAnim = 0;
+          }
+        }
+
+        resolveWorldCollisions(player);
+
+        // Update Obelisks proximity purification
+        for (var o = 0; o < obelisks.length; o++) {
+          var ob = obelisks[o];
+          ob.pulse += dt * 3.5;
+          if (!ob.purified) {
+            var dOb = dist(player.x, player.y, ob.x, ob.y);
+            if (dOb <= 135) {
+              chargeObelisk(ob, 16 * dt);
+              if (Math.random() < 0.35) {
+                particles.push({
+                  x: ob.x + randRange(-25, 25),
+                  y: ob.y + randRange(-25, 25),
+                  vx: (ob.x - player.x) * 0.4,
+                  vy: -45,
+                  color: "#38bdf8",
+                  size: 3,
+                  life: 0.4,
+                  maxLife: 0.4
+                });
+              }
+            }
+          }
+        }
+
+        // Periodic Monster Spawning (scales with elapsed time)
+        spawnTimer -= dt;
+        var maxEnemies = bossSpawned ? 8 : 13;
+        if (spawnTimer <= 0 && enemies.length < maxEnemies) {
+          var interval = Math.max(1.8, 3.8 - elapsedTime * 0.02);
+          spawnTimer = interval;
+
+          // Pick an unpurified obelisk or random edge around player
+          var unpurified = [];
+          for (var u = 0; u < obelisks.length; u++) {
+            if (!obelisks[u].purified) unpurified.push(obelisks[u]);
+          }
+          if (unpurified.length > 0 && Math.random() < 0.65) {
+            var chosen = unpurified[Math.floor(Math.random() * unpurified.length)];
+            var a = Math.random() * Math.PI * 2;
+            spawnEnemyNear(chosen.x + Math.cos(a) * 140, chosen.y + Math.sin(a) * 140);
+          } else {
+            var ang = Math.random() * Math.PI * 2;
+            spawnEnemyNear(player.x + Math.cos(ang) * 420, player.y + Math.sin(ang) * 420);
+          }
+        }
+
+        // Update Enemies & Boss
+        for (var e = enemies.length - 1; e >= 0; e--) {
+          var en = enemies[e];
+          en.anim += dt * 6;
+          if (en.flash > 0) en.flash -= dt;
+
+          // Apply knockback decay
+          en.x += en.vx * dt;
+          en.y += en.vy * dt;
+          en.vx *= Math.pow(0.04, dt);
+          en.vy *= Math.pow(0.04, dt);
+
+          var toPlayerX = player.x - en.x;
+          var toPlayerY = player.y - en.y;
+          var dPlayer = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY) || 1;
+          var angToPlayer = Math.atan2(toPlayerY, toPlayerX);
+
+          if (en.type === "slime") {
+            en.aiTimer -= dt;
+            if (en.aiTimer <= 0 && dPlayer < 260) {
+              // Slime lunge!
+              en.vx += Math.cos(angToPlayer) * 230;
+              en.vy += Math.sin(angToPlayer) * 230;
+              en.aiTimer = randRange(1.4, 2.2);
+            } else {
+              en.x += (toPlayerX / dPlayer) * en.speed * dt;
+              en.y += (toPlayerY / dPlayer) * en.speed * dt;
+            }
+          } else if (en.type === "skeleton") {
+            if (en.chargeTimer > 0) {
+              en.chargeTimer -= dt;
+              en.x += Math.cos(en.chargeAngle) * (en.speed * 2.35) * dt;
+              en.y += Math.sin(en.chargeAngle) * (en.speed * 2.35) * dt;
+            } else {
+              en.x += (toPlayerX / dPlayer) * en.speed * dt;
+              en.y += (toPlayerY / dPlayer) * en.speed * dt;
+              en.aiTimer -= dt;
+              if (en.aiTimer <= 0 && dPlayer < 320) {
+                en.chargeTimer = 0.45;
+                en.chargeAngle = angToPlayer;
+                en.aiTimer = randRange(2.0, 3.0);
+              }
+            }
+          } else if (en.type === "mage") {
+            if (dPlayer < 180) {
+              en.x -= (toPlayerX / dPlayer) * en.speed * 0.8 * dt;
+              en.y -= (toPlayerY / dPlayer) * en.speed * 0.8 * dt;
+            } else if (dPlayer > 280) {
+              en.x += (toPlayerX / dPlayer) * en.speed * dt;
+              en.y += (toPlayerY / dPlayer) * en.speed * dt;
+            }
+            en.aiTimer -= dt;
+            if (en.aiTimer <= 0.55) {
+              en.castTelegraph = 1;
+            }
+            if (en.aiTimer <= 0) {
+              en.castTelegraph = 0;
+              en.aiTimer = randRange(2.1, 3.1);
+              projectiles.push({
+                x: en.x,
+                y: en.y,
+                vx: Math.cos(angToPlayer) * 250,
+                vy: Math.sin(angToPlayer) * 250,
+                r: 7,
+                fromPlayer: false,
+                dmg: en.dmg,
+                life: 2.2,
+                color: "#c084fc"
+              });
+            }
+          } else if (en.isBoss) {
+            en.phaseTimer -= dt;
+            if (en.actionState === "orbit") {
+              en.x += (toPlayerX / dPlayer) * en.speed * dt;
+              en.y += (toPlayerY / dPlayer) * en.speed * dt;
+              if (en.phaseTimer <= 0) {
+                var roll = Math.random();
+                if (roll < 0.42) {
+                  en.actionState = "spiral";
+                  en.phaseTimer = 1.6;
+                  en.spiralCount = 0;
+                } else if (roll < 0.78) {
+                  en.actionState = "dash";
+                  en.dashAngle = angToPlayer;
+                  en.phaseTimer = 0.55;
+                } else {
+                  // Teleport near player & summon a minion
+                  var tang = Math.random() * Math.PI * 2;
+                  spawnParticles(en.x, en.y, 24, "#a855f7", 40, 160, 3, 6, 0.4);
+                  en.x = clamp(player.x + Math.cos(tang) * 220, PLAY_MIN_X + 80, PLAY_MAX_X - 80);
+                  en.y = clamp(player.y + Math.sin(tang) * 220, PLAY_MIN_Y + 80, PLAY_MAX_Y - 80);
+                  spawnParticles(en.x, en.y, 24, "#f43f5e", 40, 160, 3, 6, 0.4);
+                  if (enemies.length < 7) {
+                    spawnEnemyNear(en.x + randRange(-70, 70), en.y + randRange(-70, 70), "skeleton");
+                  }
+                  en.actionState = "orbit";
+                  en.phaseTimer = 2.0;
+                }
+              }
+            } else if (en.actionState === "spiral") {
+              en.spiralAngle += dt * 4.5;
+              en.spiralCount += dt;
+              if (en.spiralCount >= 0.32) {
+                en.spiralCount = 0;
+                for (var k = 0; k < 6; k++) {
+                  var ba = en.spiralAngle + (k * Math.PI * 2) / 6;
+                  projectiles.push({
+                    x: en.x,
+                    y: en.y,
+                    vx: Math.cos(ba) * 230,
+                    vy: Math.sin(ba) * 230,
+                    r: 8,
+                    fromPlayer: false,
+                    dmg: 18,
+                    life: 2.6,
+                    color: "#f43f5e"
+                  });
+                }
+              }
+              if (en.phaseTimer <= 0) {
+                en.actionState = "orbit";
+                en.phaseTimer = 2.1;
+              }
+            } else if (en.actionState === "dash") {
+              en.x += Math.cos(en.dashAngle) * 340 * dt;
+              en.y += Math.sin(en.dashAngle) * 340 * dt;
+              if (en.phaseTimer <= 0) {
+                en.actionState = "orbit";
+                en.phaseTimer = 1.8;
+              }
+            }
+          }
+
+          resolveWorldCollisions(en);
+
+          // Check contact with player
+          if (dist(player.x, player.y, en.x, en.y) < player.r + en.r - 2) {
+            hurtPlayer(en.dmg);
+          }
+        }
+
+        // Update Projectiles
+        for (var i = projectiles.length - 1; i >= 0; i--) {
+          var pr = projectiles[i];
+          pr.x += pr.vx * dt;
+          pr.y += pr.vy * dt;
+          pr.life -= dt;
+
+          if (Math.random() < 0.6) {
+            particles.push({
+              x: pr.x,
+              y: pr.y,
+              vx: randRange(-20, 20),
+              vy: randRange(-20, 20),
+              color: pr.color,
+              size: pr.fromPlayer ? 4 : 3,
+              life: 0.18,
+              maxLife: 0.18
+            });
+          }
+
+          var hitSomething = false;
+          // Hit world boundary or pillar
+          if (pr.x < PLAY_MIN_X || pr.x > PLAY_MAX_X || pr.y < PLAY_MIN_Y || pr.y > PLAY_MAX_Y) {
+            hitSomething = true;
+          }
+          for (var p = 0; p < pillars.length; p++) {
+            if (dist(pr.x, pr.y, pillars[p].x, pillars[p].y) < pr.r + pillars[p].r) {
+              hitSomething = true;
+              break;
+            }
+          }
+
+          if (pr.fromPlayer) {
+            for (var e2 = enemies.length - 1; e2 >= 0; e2--) {
+              var en2 = enemies[e2];
+              if (dist(pr.x, pr.y, en2.x, en2.y) <= pr.r + en2.r) {
+                hitSomething = true;
+                break;
+              }
+            }
+            for (var o2 = 0; o2 < obelisks.length; o2++) {
+              if (!obelisks[o2].purified && dist(pr.x, pr.y, obelisks[o2].x, obelisks[o2].y) <= pr.r + obelisks[o2].radius) {
+                hitSomething = true;
+                break;
+              }
+            }
+            if (hitSomething || pr.life <= 0) {
+              explodeFireball(pr);
+              projectiles.splice(i, 1);
+              continue;
+            }
+          } else {
+            // Enemy projectile hitting player
+            if (dist(pr.x, pr.y, player.x, player.y) < pr.r + player.r) {
+              hurtPlayer(pr.dmg);
+              hitSomething = true;
+            }
+            if (hitSomething || pr.life <= 0) {
+              spawnParticles(pr.x, pr.y, 6, pr.color, 20, 80, 2, 4, 0.2);
+              projectiles.splice(i, 1);
+            }
+          }
+        }
+
+        // Update Pickups (Magnet pull toward hero)
+        for (var pk = pickups.length - 1; pk >= 0; pk--) {
+          var item = pickups[pk];
+          item.life -= dt;
+          item.bob += dt * 5;
+          var dp = dist(player.x, player.y, item.x, item.y);
+          if (dp < 130) {
+            item.x += ((player.x - item.x) / dp) * 290 * dt;
+            item.y += ((player.y - item.y) / dp) * 290 * dt;
+          }
+          if (dp < player.r + item.r + 6) {
+            if (item.kind === "xp") {
+              Sfx.pickup("xp");
+              gainXp(item.val);
+              addFloatingText(item.x, item.y, "+" + item.val + " EXP", "#34d399", 0.9);
+            } else if (item.kind === "heart") {
+              Sfx.pickup("heart");
+              player.hp = Math.min(player.maxHp, player.hp + item.val);
+              addFloatingText(item.x, item.y, "+" + item.val + " HP", "#4ade80", 1.0);
+            } else if (item.kind === "mana") {
+              Sfx.pickup("mana");
+              player.mp = Math.min(player.maxMp, player.mp + item.val);
+              addFloatingText(item.x, item.y, "+" + item.val + " MP", "#60a5fa", 1.0);
+            } else if (item.kind === "gold") {
+              Sfx.pickup("xp");
+              score += item.val;
+              addFloatingText(item.x, item.y, "+" + item.val + " GOLD", "#fbbf24", 1.05);
+            }
+            pickups.splice(pk, 1);
+            continue;
+          }
+          if (item.life <= 0) {
+            pickups.splice(pk, 1);
+          }
+        }
+
+        // Update Particles, Afterimages & Floating Damage Numbers
+        for (var pt = particles.length - 1; pt >= 0; pt--) {
+          var part = particles[pt];
+          part.x += part.vx * dt;
+          part.y += part.vy * dt;
+          part.life -= dt;
+          if (part.life <= 0) particles.splice(pt, 1);
+        }
+
+        for (var ai = afterimages.length - 1; ai >= 0; ai--) {
+          afterimages[ai].life -= dt;
+          if (afterimages[ai].life <= 0) afterimages.splice(ai, 1);
+        }
+
+        for (var ft = floatingTexts.length - 1; ft >= 0; ft--) {
+          var f = floatingTexts[ft];
+          f.x += f.vx * dt;
+          f.y += f.vy * dt;
+          f.vy += 110 * dt; // subtle gravity bounce
+          f.life -= dt;
+          if (f.life <= 0) floatingTexts.splice(ft, 1);
+        }
+
+        // Smooth Camera Follow + Screen Shake
+        var targetCamX = clamp(player.x - viewW / 2, 0, Math.max(0, WORLD_W - viewW));
+        var targetCamY = clamp(player.y - viewH / 2, 0, Math.max(0, WORLD_H - viewH));
+        camera.x += (targetCamX - camera.x) * Math.min(1, dt * 10);
+        camera.y += (targetCamY - camera.y) * Math.min(1, dt * 10);
+
+        if (camera.shakeTimer > 0) {
+          camera.shakeTimer -= dt;
+        } else {
+          camera.shakeMag = 0;
+        }
+
+        updateHud();
+      }
+
+      // ==========================================
+      // 11. RENDERING (16-BIT SNES TOP-DOWN ART)
+      // ==========================================
+      function render() {
+        ctx.clearRect(0, 0, viewW, viewH);
+
+        if (!player) return;
+
+        var shakeX = camera.shakeTimer > 0 ? randRange(-camera.shakeMag, camera.shakeMag) : 0;
+        var shakeY = camera.shakeTimer > 0 ? randRange(-camera.shakeMag, camera.shakeMag) : 0;
+
+        ctx.save();
+        ctx.translate(-Math.round(camera.x + shakeX), -Math.round(camera.y + shakeY));
+
+        // 1. Deep Animated Water Moat Background
+        ctx.fillStyle = "#0c4a6e";
+        ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+        // Animated water ripples
+        ctx.fillStyle = "#0284c7";
+        var waveOffset = Math.sin(elapsedTime * 2.5) * 8;
+        for (var wx = 20; wx < WORLD_W; wx += 96) {
+          for (var wy = 20; wy < WORLD_H; wy += 72) {
+            if (wx < BORDER_WATER || wx > WORLD_W - BORDER_WATER || wy < BORDER_WATER || wy > WORLD_H - BORDER_WATER) {
+              ctx.fillRect(wx + waveOffset, wy, 28, 4);
+              ctx.fillRect(wx - waveOffset + 16, wy + 24, 18, 3);
+            }
+          }
+        }
+
+        // 2. Sacred Courtyard Stone Island
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(BORDER_WATER - 10, BORDER_WATER - 10, WORLD_W - BORDER_WATER * 2 + 20, WORLD_H - BORDER_WATER * 2 + 20);
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(BORDER_WATER, BORDER_WATER, WORLD_W - BORDER_WATER * 2, WORLD_H - BORDER_WATER * 2);
+
+        // Subtle courtyard tile grid
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+        ctx.lineWidth = 2;
+        var gridStep = 64;
+        ctx.beginPath();
+        for (var gx = BORDER_WATER; gx <= WORLD_W - BORDER_WATER; gx += gridStep) {
+          ctx.moveTo(gx, BORDER_WATER);
+          ctx.lineTo(gx, WORLD_H - BORDER_WATER);
+        }
+        for (var gy = BORDER_WATER; gy <= WORLD_H - BORDER_WATER; gy += gridStep) {
+          ctx.moveTo(BORDER_WATER, gy);
+          ctx.lineTo(WORLD_W - BORDER_WATER, gy);
+        }
+        ctx.stroke();
+
+        // Floor moss & stone slabs
+        for (var fd = 0; fd < floorDetails.length; fd++) {
+          var d = floorDetails[fd];
+          ctx.fillStyle = d.type === "moss" ? "rgba(22, 101, 52, 0.35)" : "rgba(51, 65, 85, 0.45)";
+          ctx.fillRect(d.x, d.y, d.w, d.h);
+        }
+
+        // Central Mana Seal Altar
+        var cx = WORLD_W / 2;
+        var cy = WORLD_H / 2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.strokeStyle = bossSpawned ? "rgba(244, 63, 94, 0.45)" : "rgba(56, 189, 248, 0.35)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, 96, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, 68, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // 3. Flickering Torches / Braziers
+        for (var t = 0; t < torches.length; t++) {
+          var tr = torches[t];
+          var glowR = 65 + Math.sin(elapsedTime * 10 + t) * 8;
+          var grad = ctx.createRadialGradient(tr.x, tr.y, 4, tr.x, tr.y, glowR);
+          grad.addColorStop(0, "rgba(251, 191, 36, 0.35)");
+          grad.addColorStop(1, "rgba(251, 191, 36, 0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(tr.x, tr.y, glowR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Brazier base
+          ctx.fillStyle = "#475569";
+          ctx.beginPath();
+          ctx.arc(tr.x, tr.y, 11, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#f97316";
+          ctx.beginPath();
+          ctx.arc(tr.x, tr.y - 2, 7 + Math.sin(elapsedTime * 14 + t) * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fef08a";
+          ctx.beginPath();
+          ctx.arc(tr.x, tr.y - 3, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 4. Destructible Pots & Bushes
+        for (var pr = 0; pr < props.length; pr++) {
+          var prop = props[pr];
+          if (prop.type === "pot") {
+            ctx.fillStyle = "rgba(0,0,0,0.35)";
+            ctx.beginPath();
+            ctx.ellipse(prop.x, prop.y + 10, 13, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#b45309";
+            ctx.beginPath();
+            ctx.arc(prop.x, prop.y, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#f59e0b";
+            ctx.beginPath();
+            ctx.arc(prop.x - 3, prop.y - 4, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#78350f";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(prop.x, prop.y - 5, 7, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = "#15803d";
+            ctx.beginPath();
+            ctx.arc(prop.x, prop.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#22c55e";
+            ctx.beginPath();
+            ctx.arc(prop.x - 4, prop.y - 4, 9, 0, Math.PI * 2);
+            ctx.arc(prop.x + 5, prop.y - 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // 5. Ancient Pillars
+        for (var p = 0; p < pillars.length; p++) {
+          var pil = pillars[p];
+          ctx.fillStyle = "rgba(0,0,0,0.4)";
+          ctx.beginPath();
+          ctx.ellipse(pil.x, pil.y + 18, pil.r + 4, 14, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#475569";
+          ctx.beginPath();
+          ctx.arc(pil.x, pil.y, pil.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#64748b";
+          ctx.beginPath();
+          ctx.arc(pil.x, pil.y - 8, pil.r - 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#94a3b8";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // 6. Three Mana Obelisks
+        for (var o = 0; o < obelisks.length; o++) {
+          var ob = obelisks[o];
+          var isPure = ob.purified;
+          var mainCol = isPure ? "#06b6d4" : "#9333ea";
+          var glowCol = isPure ? "#67e8f9" : "#d8b4fe";
+
+          // Proximity charging ring
+          if (!isPure) {
+            ctx.strokeStyle = "rgba(168, 85, 247, 0.28)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(ob.x, ob.y, 130, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Pedestal & crystal diamond
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(ob.x - 22, ob.y + 4, 44, 18);
+
+          ctx.save();
+          ctx.translate(ob.x, ob.y - 10 + Math.sin(ob.pulse) * 5);
+          ctx.fillStyle = mainCol;
+          ctx.beginPath();
+          ctx.moveTo(0, -28);
+          ctx.lineTo(18, 0);
+          ctx.lineTo(0, 24);
+          ctx.lineTo(-18, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = glowCol;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+
+          // Progress bar above unpurified obelisk
+          if (!isPure) {
+            var bw = 54;
+            ctx.fillStyle = "rgba(0,0,0,0.75)";
+            ctx.fillRect(ob.x - bw / 2, ob.y - 54, bw, 8);
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillRect(ob.x - bw / 2 + 1, ob.y - 53, (bw - 2) * (ob.charge / 100), 6);
+          }
+        }
+
+        // 7. Pickups (EXP Gems, Hearts, Mana Drops, Gold)
+        for (var pk = 0; pk < pickups.length; pk++) {
+          var item = pickups[pk];
+          var by = item.y + Math.sin(item.bob) * 3;
+          if (item.kind === "xp") {
+            ctx.fillStyle = "#10b981";
+            ctx.beginPath();
+            ctx.moveTo(item.x, by - 7);
+            ctx.lineTo(item.x + 6, by);
+            ctx.lineTo(item.x, by + 7);
+            ctx.lineTo(item.x - 6, by);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = "#a7f3d0";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          } else if (item.kind === "heart") {
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath();
+            ctx.arc(item.x - 3.5, by - 2, 4.5, 0, Math.PI * 2);
+            ctx.arc(item.x + 3.5, by - 2, 4.5, 0, Math.PI * 2);
+            ctx.lineTo(item.x, by + 7);
+            ctx.closePath();
+            ctx.fill();
+          } else if (item.kind === "mana") {
+            ctx.fillStyle = "#3b82f6";
+            ctx.beginPath();
+            ctx.arc(item.x, by + 2, 5.5, 0, Math.PI * 2);
+            ctx.moveTo(item.x - 5, by);
+            ctx.lineTo(item.x, by - 8);
+            ctx.lineTo(item.x + 5, by);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath();
+            ctx.arc(item.x, by, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // 8. Dash Afterimages
+        for (var ai = 0; ai < afterimages.length; ai++) {
+          var img = afterimages[ai];
+          ctx.fillStyle = "rgba(96, 165, 250, " + (img.life / img.maxLife) * 0.45 + ")";
+          ctx.beginPath();
+          ctx.arc(img.x, img.y, 14, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 9. Enemies & Boss
+        for (var e = 0; e < enemies.length; e++) {
+          var en = enemies[e];
+          var isFlash = en.flash > 0;
+
+          ctx.fillStyle = "rgba(0,0,0,0.4)";
+          ctx.beginPath();
+          ctx.ellipse(en.x, en.y + en.r - 2, en.r * 0.85, en.r * 0.4, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (en.type === "slime") {
+            var stretch = Math.sin(en.anim * 2) * 2.5;
+            ctx.fillStyle = isFlash ? "#ffffff" : "#10b981";
+            ctx.beginPath();
+            ctx.ellipse(en.x, en.y, en.r + stretch, en.r - stretch * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#064e3b";
+            ctx.fillRect(en.x - 5, en.y - 3, 3, 4);
+            ctx.fillRect(en.x + 2, en.y - 3, 3, 4);
+          } else if (en.type === "skeleton") {
+            ctx.fillStyle = isFlash ? "#ffffff" : "#e2e8f0";
+            ctx.beginPath();
+            ctx.arc(en.x, en.y, en.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Red glowing eyes
+            ctx.fillStyle = "#ef4444";
+            ctx.fillRect(en.x - 6, en.y - 4, 4, 4);
+            ctx.fillRect(en.x + 2, en.y - 4, 4, 4);
+          } else if (en.type === "mage") {
+            if (en.castTelegraph) {
+              ctx.strokeStyle = "#e879f9";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(en.x, en.y, en.r + 8, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.fillStyle = isFlash ? "#ffffff" : "#6b21a8";
+            ctx.beginPath();
+            ctx.arc(en.x, en.y, en.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#facc15";
+            ctx.fillRect(en.x - 5, en.y - 3, 3, 3);
+            ctx.fillRect(en.x + 2, en.y - 3, 3, 3);
+          } else if (en.isBoss) {
+            // Malakor, the Obsidian Archon
+            ctx.save();
+            ctx.translate(en.x, en.y);
+            // Outer dark aura
+            ctx.strokeStyle = "rgba(244, 63, 94, 0.55)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, en.r + 8 + Math.sin(en.anim) * 4, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Mantle & Armor
+            ctx.fillStyle = isFlash ? "#ffffff" : "#881337";
+            ctx.beginPath();
+            ctx.arc(0, 0, en.r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = isFlash ? "#ffffff" : "#1e1b4b";
+            ctx.beginPath();
+            ctx.arc(0, -2, en.r * 0.72, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Golden Crown Horns & Blazing Eyes
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath();
+            ctx.moveTo(-16, -18);
+            ctx.lineTo(-24, -36);
+            ctx.lineTo(-6, -24);
+            ctx.moveTo(16, -18);
+            ctx.lineTo(24, -36);
+            ctx.lineTo(6, -24);
+            ctx.fill();
+
+            ctx.fillStyle = "#f43f5e";
+            ctx.fillRect(-10, -6, 6, 5);
+            ctx.fillRect(4, -6, 6, 5);
+            ctx.restore();
+          }
+
+          // Overhead mini HP bar for standard monsters
+          if (!en.isBoss && en.hp < en.maxHp) {
+            var mw = 28;
+            ctx.fillStyle = "rgba(0,0,0,0.75)";
+            ctx.fillRect(en.x - mw / 2, en.y - en.r - 10, mw, 4);
+            ctx.fillStyle = "#ef4444";
+            ctx.fillRect(en.x - mw / 2, en.y - en.r - 10, mw * (en.hp / en.maxHp), 4);
+          }
+        }
+
+        // 10. Hero Character (Tunic, Cape, Hair, Directional Eyes & Sword Slash Arc)
+        drawHero();
+
+        // 11. Projectiles
+        for (var prj = 0; prj < projectiles.length; prj++) {
+          var p2 = projectiles[prj];
+          ctx.fillStyle = p2.color;
+          ctx.beginPath();
+          ctx.arc(p2.x, p2.y, p2.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(p2.x, p2.y, p2.r * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 12. Particles
+        for (var pt = 0; pt < particles.length; pt++) {
+          var part = particles[pt];
+          ctx.globalAlpha = clamp(part.life / part.maxLife, 0, 1);
+          ctx.fillStyle = part.color;
+          ctx.fillRect(part.x - part.size / 2, part.y - part.size / 2, part.size, part.size);
+        }
+        ctx.globalAlpha = 1;
+
+        // 13. Floating Bouncing Damage Numbers
+        for (var ft = 0; ft < floatingTexts.length; ft++) {
+          var f = floatingTexts[ft];
+          ctx.save();
+          ctx.globalAlpha = clamp(f.life / f.maxLife, 0, 1);
+          ctx.font = "900 " + Math.round(14 * f.scale) + "px 'Trebuchet MS', sans-serif";
+          ctx.textAlign = "center";
+          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = 3;
+          ctx.strokeText(f.text, f.x, f.y);
+          ctx.fillStyle = f.color;
+          ctx.fillText(f.text, f.x, f.y);
+          ctx.restore();
+        }
+
+        ctx.restore();
+
+        // 14. Screen-Space Radar Indicators for Off-Screen Obelisks / Boss
+        drawRadarIndicators();
+      }
+
+      function drawHero() {
+        var bob = Math.sin(player.walkAnim) * 2.5;
+        var px = player.x;
+        var py = player.y + bob;
+
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.45)";
+        ctx.beginPath();
+        ctx.ellipse(player.x, player.y + 14, 13, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sword Slash Gleaming Arc
+        if (player.attackTimer > 0) {
+          var prog = 1 - player.attackTimer / 0.20;
+          var startAng = player.attackAngle - Math.PI * 0.48;
+          var endAng = player.attackAngle + Math.PI * 0.48;
+          var curBladeAng = startAng + (endAng - startAng) * prog;
+
+          ctx.save();
+          ctx.translate(player.x, player.y);
+
+          // Glowing crescent trail
+          ctx.strokeStyle = "rgba(125, 211, 252, 0.65)";
+          ctx.lineWidth = 18;
+          ctx.beginPath();
+          ctx.arc(0, 0, 48, startAng, curBladeAng);
+          ctx.stroke();
+
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.arc(0, 0, 56, startAng, curBladeAng);
+          ctx.stroke();
+
+          // Physical Mana Blade
+          ctx.rotate(curBladeAng);
+          ctx.fillStyle = "#facc15";
+          ctx.fillRect(14, -5, 6, 10);
+          ctx.fillStyle = "#e0f2fe";
+          ctx.beginPath();
+          ctx.moveTo(20, -4);
+          ctx.lineTo(64, 0);
+          ctx.lineTo(20, 4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Crimson Hero Cape
+        var capeX = px - Math.cos(player.facing) * 8;
+        var capeY = py - Math.sin(player.facing) * 8;
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath();
+        ctx.arc(capeX, capeY + 2, 13, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Emerald Adventurer Tunic
+        ctx.fillStyle = player.hurtFlash > 0 ? "#ffffff" : "#16a34a";
+        ctx.beginPath();
+        ctx.arc(px, py, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#052e16";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Golden Hair & Headband
+        ctx.fillStyle = "#facc15";
+        ctx.beginPath();
+        ctx.arc(px, py - 3, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Directional Eyes
+        var ex = px + Math.cos(player.facing) * 5;
+        var ey = py - 2 + Math.sin(player.facing) * 5;
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(ex, ey, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawRadarIndicators() {
+        var targets = [];
+        if (boss && boss.hp > 0) {
+          targets.push({ x: boss.x, y: boss.y, color: "#f43f5e", label: "BOSS" });
+        } else {
+          for (var i = 0; i < obelisks.length; i++) {
+            if (!obelisks[i].purified) {
+              targets.push({ x: obelisks[i].x, y: obelisks[i].y, color: "#38bdf8", label: "SEAL" });
+            }
+          }
+        }
+
+        var margin = 46;
+        for (var t = 0; t < targets.length; t++) {
+          var tg = targets[t];
+          var sx = tg.x - camera.x;
+          var sy = tg.y - camera.y;
+          if (sx >= margin && sx <= viewW - margin && sy >= margin && sy <= viewH - margin) {
+            continue; // Already visible on screen
+          }
+          var ang = Math.atan2(tg.y - player.y, tg.x - player.x);
+          var rx = clamp(sx, margin, viewW - margin);
+          var ry = clamp(sy, margin + 60, viewH - margin);
+
+          ctx.save();
+          ctx.translate(rx, ry);
+          ctx.rotate(ang);
+          ctx.fillStyle = tg.color;
+          ctx.beginPath();
+          ctx.moveTo(12, 0);
+          ctx.lineTo(-8, -8);
+          ctx.lineTo(-4, 0);
+          ctx.lineTo(-8, 8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // ==========================================
+      // 12. REQUESTANIMATIONFRAME GAME LOOP
+      // ==========================================
+      var lastTime = performance.now();
+      function frame(now) {
+        var dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+        lastTime = now;
+
+        update(dt);
+        render();
+        requestAnimationFrame(frame);
+      }
+
+      // Build background preview world so the start screen has a rich backdrop
+      buildWorld();
+      player = {
+        x: WORLD_W / 2,
+        y: WORLD_H / 2 + 40,
+        r: 16,
+        hp: 100,
+        maxHp: 100,
+        mp: 50,
+        maxMp: 50,
+        xp: 0,
+        nextXp: 40,
+        level: 1,
+        facing: Math.PI * 0.5,
+        walkAnim: 0,
+        attackTimer: 0,
+        hurtFlash: 0
+      };
+      camera.x = player.x - viewW / 2;
+      camera.y = player.y - viewH / 2;
+
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

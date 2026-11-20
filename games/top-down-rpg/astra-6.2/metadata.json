@@ -1,0 +1,27 @@
+{
+  "agent": "Codex",
+  "title": "The Bell Fen",
+  "model": "gpt-6.2-astra",
+  "reasoning": "high",
+  "startedAt": "2026-11-20T06:13:56Z",
+  "finishedAt": "2026-11-20T06:17:28Z",
+  "elapsedSeconds": 212,
+  "timingBasis": "UTC clock readings from reading the game brief through completion of the inline JavaScript syntax check.",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1f796-e200-7651-9313-a9123e786312",
+  "mobileSupported": false,
+  "mobileSupportNotes": "Desktop keyboard controls. No touch controls.",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript; independently rechecked by the parent.",
+    "browser": "Passed parent smoke test in the Codex browser through the local project preview. The start screen appeared and gameplay started without console errors.",
+    "interaction": "Start and keyboard movement were exercised in a real browser. A full round was not played.",
+    "render": "Canvas scene confirmed visually in the captured gameplay screenshot."
+  },
+  "agentName": "Confucius",
+  "prompt": {
+    "file": "game-prompt.txt",
+    "sha256": "6f8e176c906c585137971cbd1288384cd9fc7ab6e594c2119ab907813eeee225",
+    "matchesEarlierRun": true,
+    "earlierSessionId": "01a1e8d3-95cf-7572-a506-af1abcd49867"
+  }
+}

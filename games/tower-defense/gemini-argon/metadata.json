@@ -1,0 +1,22 @@
+{
+  "agent": null,
+  "agentName": null,
+  "title": "AEGIS PROTOCOL: NEXUS DEFENSE",
+  "model": "gemini-argon",
+  "reasoning": "high",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label and reasoning effort",
+  "sessionId": null,
+  "sourceFile": "aegis_protocol_nexus_defense.html",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript",
+    "structure": "Found 1 title, 1 canvas, 1 inline stylesheet, and 1 inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 2076,
+    "browser": "Browser smoke test not run"
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "The 16-column board uses a minimum tile width of 32 CSS pixels, so screens narrower than 512 CSS pixels clip playable tiles. Tower placement also relies on coordinates captured by mousemove. Physical phone gameplay was not tested."
+}

@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEGIS PROTOCOL: NEXUS DEFENSE</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #050912;
+    color: #e4f2ff;
+    font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace, sans-serif;
+  }
+  #gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+
+  /* HUD Overlay */
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 18px;
+  }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .hud-card {
+    background: rgba(8, 15, 28, 0.9);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    border-left: 4px solid #00e5ff;
+    border-radius: 6px;
+    padding: 8px 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .stat-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-lbl {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #7ea6cc;
+  }
+  .stat-val {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.8px;
+    color: #ffffff;
+  }
+  .stat-val.gold { color: #ffd54f; text-shadow: 0 0 10px rgba(255, 213, 79, 0.4); }
+  .stat-val.core { color: #00e676; }
+  .stat-val.core.low { color: #ff2a5f; text-shadow: 0 0 12px rgba(255, 42, 95, 0.6); }
+  .stat-val.wave { color: #00e5ff; }
+
+  .top-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    pointer-events: auto;
+  }
+  .ctrl-btn {
+    cursor: pointer;
+    background: rgba(10, 20, 38, 0.92);
+    border: 1px solid rgba(0, 229, 255, 0.45);
+    border-bottom: 3px solid #00e5ff;
+    color: #e4f2ff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.12s ease;
+  }
+  .ctrl-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: rgba(0, 229, 255, 0.18);
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+  }
+  .ctrl-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ctrl-btn.wave-btn {
+    background: linear-gradient(135deg, rgba(255, 179, 0, 0.22), rgba(255, 109, 0, 0.28));
+    border-color: #ffb300;
+    border-bottom-color: #ff9100;
+    color: #ffd54f;
+  }
+  .ctrl-btn.wave-btn:hover:not(:disabled) {
+    background: rgba(255, 179, 0, 0.32);
+    box-shadow: 0 0 18px rgba(255, 179, 0, 0.45);
+  }
+  .ctrl-btn.emp-btn {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(124, 77, 255, 0.28));
+    border-color: #00e5ff;
+    border-bottom-color: #7c4dff;
+  }
+  .ctrl-btn.speed-active {
+    background: rgba(0, 230, 118, 0.22);
+    border-color: #00e676;
+    border-bottom-color: #00c853;
+    color: #00e676;
+  }
+
+  /* Boss / Wave Banner */
+  #alertBanner {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(24, 8, 18, 0.92);
+    border: 1px solid #ff2a5f;
+    border-bottom: 3px solid #ff2a5f;
+    padding: 6px 24px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 2.5px;
+    color: #ff4d79;
+    box-shadow: 0 0 24px rgba(255, 42, 95, 0.45);
+    display: none;
+    pointer-events: none;
+  }
+
+  /* Bottom Bar: Turret Shop + Selected Turret Inspector */
+  .bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .shop-dock {
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+    flex-wrap: wrap;
+  }
+  .turret-btn {
+    cursor: pointer;
+    background: rgba(8, 16, 30, 0.92);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-bottom: 3px solid #00e5ff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    min-width: 148px;
+    text-align: left;
+    color: #e4f2ff;
+    transition: all 0.12s ease;
+    position: relative;
+  }
+  .turret-btn:hover:not(.cant-afford) {
+    transform: translateY(-3px);
+    background: rgba(0, 229, 255, 0.14);
+    border-color: #00e5ff;
+  }
+  .turret-btn.active {
+    background: rgba(0, 229, 255, 0.24);
+    border-color: #00e5ff;
+    border-bottom-color: #ffd54f;
+    transform: translateY(-4px);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.45);
+  }
+  .turret-btn.cant-afford {
+    opacity: 0.48;
+  }
+  .t-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+  .t-key { color: #00e5ff; }
+  .t-cost { color: #ffd54f; font-size: 12px; }
+  .t-name {
+    font-size: 13px;
+    font-weight: 900;
+    color: #ffffff;
+    margin-top: 2px;
+  }
+  .t-desc {
+    font-size: 10px;
+    color: #90b4d8;
+    margin-top: 2px;
+  }
+
+  /* Inspector Panel */
+  #inspectorPanel {
+    background: rgba(8, 16, 32, 0.95);
+    border: 1px solid rgba(255, 213, 79, 0.5);
+    border-left: 4px solid #ffd54f;
+    border-radius: 6px;
+    padding: 10px 14px;
+    min-width: 340px;
+    pointer-events: auto;
+    display: none;
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.75);
+  }
+  .insp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+  }
+  .insp-title {
+    font-size: 14px;
+    font-weight: 900;
+    color: #ffd54f;
+    letter-spacing: 1px;
+  }
+  .insp-node-badge {
+    font-size: 10px;
+    font-weight: 800;
+    color: #00e5ff;
+    background: rgba(0, 229, 255, 0.14);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .insp-stats {
+    display: flex;
+    gap: 14px;
+    font-size: 11px;
+    color: #b8d4f0;
+    margin-bottom: 8px;
+  }
+  .insp-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .insp-btn {
+    flex: 1;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    color: #ffffff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    transition: all 0.12s ease;
+  }
+  .insp-btn:hover:not(:disabled) {
+    background: rgba(0, 229, 255, 0.22);
+  }
+  .insp-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .insp-btn.upg {
+    border-color: #00e676;
+    color: #00e676;
+  }
+  .insp-btn.sell {
+    border-color: #ff2a5f;
+    color: #ff4d79;
+  }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: radial-gradient(circle at center, rgba(10, 22, 42, 0.88) 0%, rgba(4, 8, 16, 0.96) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(6px);
+  }
+  .modal-card {
+    max-width: 720px;
+    width: 100%;
+    background: rgba(8, 16, 30, 0.96);
+    border: 2px solid #00e5ff;
+    border-radius: 10px;
+    padding: 28px 34px;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(0, 229, 255, 0.25);
+  }
+  .modal-title {
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #ffffff;
+    text-shadow: 0 0 18px rgba(0, 229, 255, 0.7);
+  }
+  .modal-sub {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: #00e5ff;
+    margin: 6px 0 18px;
+    text-transform: uppercase;
+  }
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    text-align: left;
+    background: rgba(4, 9, 18, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 12px;
+  }
+  .ctrl-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    padding-bottom: 4px;
+  }
+  .kbd {
+    background: rgba(0, 229, 255, 0.15);
+    border: 1px solid rgba(0, 229, 255, 0.45);
+    color: #00e5ff;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .briefing-text {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #b6d1ee;
+    margin-bottom: 20px;
+  }
+  .btn-launch {
+    cursor: pointer;
+    pointer-events: auto;
+    background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+    border: 1px solid #00e5ff;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 13px 34px;
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(0, 229, 255, 0.5);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .btn-launch:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 0 32px rgba(0, 229, 255, 0.85);
+  }
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 16px 0 22px;
+    flex-wrap: wrap;
+  }
+  .stat-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    padding: 12px 18px;
+    min-width: 125px;
+  }
+  .stat-box .v {
+    font-size: 25px;
+    font-weight: 900;
+    color: #ffd54f;
+  }
+  .stat-box .l {
+    font-size: 10px;
+    color: #90b4d8;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 2px;
+  }
+  .hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- Tactical HUD -->
+<div id="hud">
+  <div class="top-bar">
+    <div class="hud-card">
+      <div class="stat-group">
+        <span class="stat-lbl">Nexus Integrity</span>
+        <span class="stat-val core" id="coreHpDisplay">20 / 20</span>
+      </div>
+      <div class="stat-group">
+        <span class="stat-lbl">Credits</span>
+        <span class="stat-val gold" id="goldDisplay">180g</span>
+      </div>
+      <div class="stat-group">
+        <span class="stat-lbl">Threat Wave</span>
+        <span class="stat-val wave" id="waveDisplay">1 / 10</span>
+      </div>
+      <div class="stat-group">
+        <span class="stat-lbl">Score // Best</span>
+        <span class="stat-val" id="scoreDisplay">0 <span style="font-size:13px;color:#7ea6cc;">// 0</span></span>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <button class="ctrl-btn emp-btn" id="btnEmp">
+        [E] ORBITAL EMP: READY
+      </button>
+      <button class="ctrl-btn wave-btn" id="btnCallWave">
+        [SPACE] CALL WAVE 1
+      </button>
+      <button class="ctrl-btn" id="btnSpeed">
+        [F] SPEED: 1x
+      </button>
+    </div>
+  </div>
+
+  <div id="alertBanner">WARNING // APEX BEHEMOTH DETECTED IN SECTOR</div>
+
+  <div class="bottom-bar">
+    <div class="shop-dock">
+      <button class="turret-btn active" id="shopBtn0" data-idx="0">
+        <div class="t-top"><span class="t-key">[1] KINETIC</span><span class="t-cost">60g</span></div>
+        <div class="t-name">PULSE GATLING</div>
+        <div class="t-desc">Rapid Dual-Barrel DPS</div>
+      </button>
+      <button class="turret-btn" id="shopBtn1" data-idx="1">
+        <div class="t-top"><span class="t-key">[2] CRYO TECH</span><span class="t-cost">85g</span></div>
+        <div class="t-name">CRYO EMITTER</div>
+        <div class="t-desc">AoE 45% Slow + Frost</div>
+      </button>
+      <button class="turret-btn" id="shopBtn2" data-idx="2">
+        <div class="t-top"><span class="t-key">[3] ARTILLERY</span><span class="t-cost">120g</span></div>
+        <div class="t-name">PLASMA MORTAR</div>
+        <div class="t-desc">Heavy AoE + Armor Shred</div>
+      </button>
+      <button class="turret-btn" id="shopBtn3" data-idx="3">
+        <div class="t-top"><span class="t-key">[4] ARC COIL</span><span class="t-cost">150g</span></div>
+        <div class="t-name">TESLA SPIRE</div>
+        <div class="t-desc">4-Target Chain Lightning</div>
+      </button>
+    </div>
+
+    <div id="inspectorPanel">
+      <div class="insp-header">
+        <span class="insp-title" id="inspTitle">PULSE GATLING // LVL 1</span>
+        <span class="insp-node-badge hidden" id="inspNodeBadge">OVERCHARGED +20%</span>
+      </div>
+      <div class="insp-stats" id="inspStats">
+        <span>DMG: 14</span>
+        <span>RNG: 3.2</span>
+        <span>ROF: 4.5/s</span>
+        <span>KILLS: 0</span>
+      </div>
+      <div class="insp-actions">
+        <button class="insp-btn upg" id="btnUpgrade">[U] UPGRADE (75g)</button>
+        <button class="insp-btn" id="btnTargetMode">[T] TARGET: FIRST</button>
+        <button class="insp-btn sell" id="btnSell">[X] SELL (+45g)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Start / Pause Modal -->
+<div class="modal-overlay" id="startModal">
+  <div class="modal-card">
+    <div class="modal-title">AEGIS PROTOCOL</div>
+    <div class="modal-sub" id="startModalSub">NEXUS DEFENSE // TACTICAL TOWER DEFENSE</div>
+
+    <div class="controls-grid">
+      <div class="ctrl-row"><span>Build / Select Turret</span><span class="kbd">Left Click Grid</span></div>
+      <div class="ctrl-row"><span>Select Turret Blueprint</span><span class="kbd">1 / 2 / 3 / 4</span></div>
+      <div class="ctrl-row"><span>Upgrade Selected Turret</span><span class="kbd">U</span></div>
+      <div class="ctrl-row"><span>Cycle Target Priority</span><span class="kbd">T</span></div>
+      <div class="ctrl-row"><span>Sell Selected Turret (75%)</span><span class="kbd">X / Backspace</span></div>
+      <div class="ctrl-row"><span>Orbital EMP Shockwave</span><span class="kbd">E</span></div>
+      <div class="ctrl-row"><span>Call Next Wave (Early Bonus)</span><span class="kbd">Space</span></div>
+      <div class="ctrl-row"><span>Toggle 1x/2x Speed / Restart</span><span class="kbd">F / R</span></div>
+    </div>
+
+    <div class="briefing-text">
+      Defend the <strong>Nexus Core</strong> on the eastern edge against <strong>10 escalating waves</strong> of cybernetic invaders.<br>
+      Construct turrets on tactical pads or the 4 glowing <strong>Overcharge Nodes (+20% Range & Fire Rate)</strong>, combine <strong>Cryo Slows</strong> with <strong>Armor-Shredding Mortars</strong> and <strong>Tesla Arcs</strong>, and trigger <strong>Orbital EMP Strikes</strong> in emergencies!
+    </div>
+
+    <button class="btn-launch" id="startBtn">INITIALIZE DEFENSE GRID</button>
+  </div>
+</div>
+
+<!-- Win / Game Over Modal -->
+<div class="modal-overlay hidden" id="endModal">
+  <div class="modal-card">
+    <div class="modal-title" id="endTitle">NEXUS SECURED</div>
+    <div class="modal-sub" id="endSub">ALL 10 HOSTILE WAVES ANNIHILATED</div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="v" id="endWaves">10 / 10</div>
+        <div class="l">Waves Cleared</div>
+      </div>
+      <div class="stat-box">
+        <div class="v" id="endKills">0</div>
+        <div class="l">Hostiles Destroyed</div>
+      </div>
+      <div class="stat-box">
+        <div class="v" id="endScore">0</div>
+        <div class="l">Final Score</div>
+      </div>
+      <div class="stat-box">
+        <div class="v" id="endBest">0</div>
+        <div class="l">High Score</div>
+      </div>
+    </div>
+
+    <button class="btn-launch" id="restartBtn">PLAY AGAIN [R]</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // =========================================================================
+  // 1. PROCEDURAL WEBAUDIO SYNTHESIZER
+  // =========================================================================
+  var audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  function playSfx(type) {
+    if (!audioCtx) return;
+    var now = audioCtx.currentTime;
+    try {
+      if (type === "gatling") {
+        var o = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(520, now);
+        o.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+        g.gain.setValueAtTime(0.09, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(now); o.stop(now + 0.06);
+      } else if (type === "cryo") {
+        var oc = audioCtx.createOscillator();
+        var gc = audioCtx.createGain();
+        oc.type = "sine";
+        oc.frequency.setValueAtTime(980, now);
+        oc.frequency.exponentialRampToValueAtTime(340, now + 0.14);
+        gc.gain.setValueAtTime(0.11, now);
+        gc.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        oc.connect(gc); gc.connect(audioCtx.destination);
+        oc.start(now); oc.stop(now + 0.14);
+      } else if (type === "mortar") {
+        var om = audioCtx.createOscillator();
+        var gm = audioCtx.createGain();
+        om.type = "triangle";
+        om.frequency.setValueAtTime(220, now);
+        om.frequency.exponentialRampToValueAtTime(55, now + 0.28);
+        gm.gain.setValueAtTime(0.22, now);
+        gm.gain.exponentialRampToValueAtTime(0.002, now + 0.28);
+        om.connect(gm); gm.connect(audioCtx.destination);
+        om.start(now); om.stop(now + 0.28);
+      } else if (type === "tesla") {
+        var ot = audioCtx.createOscillator();
+        var gt = audioCtx.createGain();
+        ot.type = "square";
+        ot.frequency.setValueAtTime(1400, now);
+        ot.frequency.setValueAtTime(720, now + 0.04);
+        ot.frequency.exponentialRampToValueAtTime(280, now + 0.12);
+        gt.gain.setValueAtTime(0.12, now);
+        gt.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        ot.connect(gt); gt.connect(audioCtx.destination);
+        ot.start(now); ot.stop(now + 0.12);
+      } else if (type === "build" || type === "upgrade") {
+        var ob = audioCtx.createOscillator();
+        var gb = audioCtx.createGain();
+        ob.type = "triangle";
+        ob.frequency.setValueAtTime(type === "upgrade" ? 440 : 330, now);
+        ob.frequency.setValueAtTime(type === "upgrade" ? 880 : 660, now + 0.07);
+        gb.gain.setValueAtTime(0.16, now);
+        gb.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        ob.connect(gb); gb.connect(audioCtx.destination);
+        ob.start(now); ob.stop(now + 0.18);
+      } else if (type === "sell") {
+        var os = audioCtx.createOscillator();
+        var gs = audioCtx.createGain();
+        os.type = "sine";
+        os.frequency.setValueAtTime(620, now);
+        os.frequency.exponentialRampToValueAtTime(260, now + 0.15);
+        gs.gain.setValueAtTime(0.15, now);
+        gs.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        os.connect(gs); gs.connect(audioCtx.destination);
+        os.start(now); os.stop(now + 0.15);
+      } else if (type === "emp") {
+        var oe = audioCtx.createOscillator();
+        var ge = audioCtx.createGain();
+        oe.type = "sawtooth";
+        oe.frequency.setValueAtTime(920, now);
+        oe.frequency.exponentialRampToValueAtTime(42, now + 0.65);
+        ge.gain.setValueAtTime(0.32, now);
+        ge.gain.exponentialRampToValueAtTime(0.002, now + 0.65);
+        oe.connect(ge); ge.connect(audioCtx.destination);
+        oe.start(now); oe.stop(now + 0.65);
+      } else if (type === "leak") {
+        var ol = audioCtx.createOscillator();
+        var gl = audioCtx.createGain();
+        ol.type = "sawtooth";
+        ol.frequency.setValueAtTime(180, now);
+        ol.frequency.linearRampToValueAtTime(75, now + 0.35);
+        gl.gain.setValueAtTime(0.28, now);
+        gl.gain.exponentialRampToValueAtTime(0.002, now + 0.35);
+        ol.connect(gl); gl.connect(audioCtx.destination);
+        ol.start(now); ol.stop(now + 0.35);
+      }
+    } catch (e) {}
+  }
+
+  // =========================================================================
+  // 2. CONSTANTS, MAP & TURRET BLUEPRINTS
+  // =========================================================================
+  var COLS = 16;
+  var ROWS = 10;
+  var TILE_PAD = 0;
+  var TILE_PATH = 1;
+  var TILE_WALL = 2;
+  var TILE_NODE = 3; // Overcharge Node: +20% Range & +20% Fire Rate
+
+  var STORAGE_KEY = "aegis_nexus_td_highscore_v1";
+  var highScore = 0;
+  try {
+    highScore = parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10) || 0;
+  } catch (e) {}
+
+  var TURRET_SPECS = [
+    {
+      id: "gatling",
+      name: "PULSE GATLING",
+      cost: 60,
+      color: "#00e5ff",
+      damage: 15,
+      range: 3.25,
+      fireRate: 4.5,
+      projSpeed: 13.0,
+      splash: 0,
+      desc: "Rapid Dual-Barrel Kinetic"
+    },
+    {
+      id: "cryo",
+      name: "CRYO EMITTER",
+      cost: 85,
+      color: "#40c4ff",
+      damage: 18,
+      range: 2.9,
+      fireRate: 1.6,
+      projSpeed: 9.5,
+      splash: 1.35,
+      slowFactor: 0.55,
+      slowDur: 2.5,
+      desc: "AoE Frost 45% Slow"
+    },
+    {
+      id: "mortar",
+      name: "PLASMA MORTAR",
+      cost: 120,
+      color: "#ff9100",
+      damage: 58,
+      range: 4.8,
+      fireRate: 0.72,
+      projSpeed: 6.2,
+      splash: 1.85,
+      shredArmor: 2,
+      desc: "Heavy AoE + Armor Shred"
+    },
+    {
+      id: "tesla",
+      name: "TESLA SPIRE",
+      cost: 150,
+      color: "#b388ff",
+      damage: 42,
+      range: 3.45,
+      fireRate: 1.25,
+      chainCount: 4,
+      chainRange: 2.6,
+      desc: "4-Target Chain Lightning"
+    }
+  ];
+
+  var TARGET_MODES = ["FIRST", "STRONGEST", "WEAKEST", "CLOSEST"];
+
+  var ENEMY_SPECS = {
+    scout:   { name: "Recon Striker", hp: 58,  shield: 0,   armor: 0, speed: 2.35, bounty: 12, score: 35,  radius: 0.24, color: "#00e5ff" },
+    strider: { name: "Siege Strider", hp: 165, shield: 0,   armor: 4, speed: 1.22, bounty: 22, score: 65,  radius: 0.31, color: "#ff9100" },
+    swarm:   { name: "Swarm Drone",   hp: 36,  shield: 0,   armor: 0, speed: 2.75, bounty: 8,  score: 22,  radius: 0.19, color: "#e040fb" },
+    pylon:   { name: "Shield Pylon",  hp: 95,  shield: 85,  armor: 1, speed: 1.55, bounty: 24, score: 75,  radius: 0.28, color: "#448aff" },
+    boss:    { name: "Apex Behemoth", hp: 920, shield: 320, armor: 6, speed: 0.88, bounty: 120,score: 500, radius: 0.42, color: "#ff2a5f" }
+  };
+
+  // 10 Escalating Waves (designed for 1.5 - 3 minutes of action)
+  var WAVE_DEFS = [
+    { groups: [{ type: "scout", count: 7, interval: 0.85 }] },
+    { groups: [{ type: "scout", count: 6, interval: 0.75 }, { type: "strider", count: 3, interval: 1.35 }] },
+    { groups: [{ type: "swarm", count: 12, interval: 0.38 }, { type: "strider", count: 3, interval: 1.25 }] },
+    { groups: [{ type: "pylon", count: 5, interval: 1.15 }, { type: "scout", count: 8, interval: 0.6 }] },
+    { boss: true, groups: [{ type: "strider", count: 4, interval: 1.1 }, { type: "boss", count: 1, interval: 2.0 }, { type: "swarm", count: 10, interval: 0.35 }] },
+    { groups: [{ type: "pylon", count: 6, interval: 0.95 }, { type: "strider", count: 6, interval: 1.0 }] },
+    { groups: [{ type: "swarm", count: 18, interval: 0.28 }, { type: "pylon", count: 5, interval: 0.9 }] },
+    { groups: [{ type: "strider", count: 8, interval: 0.85 }, { type: "scout", count: 12, interval: 0.45 }] },
+    { groups: [{ type: "pylon", count: 8, interval: 0.75 }, { type: "swarm", count: 16, interval: 0.26 }, { type: "strider", count: 6, interval: 0.8 }] },
+    { boss: true, groups: [{ type: "pylon", count: 6, interval: 0.75 }, { type: "boss", count: 2, interval: 3.2 }, { type: "strider", count: 6, interval: 0.75 }, { type: "swarm", count: 16, interval: 0.25 }] }
+  ];
+
+  // Waypoints across the 16x10 grid
+  var WAYPOINTS = [
+    { x: 0,  y: 2 },
+    { x: 4,  y: 2 },
+    { x: 4,  y: 7 },
+    { x: 8,  y: 7 },
+    { x: 8,  y: 2 },
+    { x: 12, y: 2 },
+    { x: 12, y: 7 },
+    { x: 15, y: 7 }
+  ];
+
+  var OVERCHARGE_NODES = [
+    { x: 3,  y: 4 },
+    { x: 6,  y: 6 },
+    { x: 9,  y: 3 },
+    { x: 13, y: 5 }
+  ];
+
+  var CANYON_WALLS = [
+    { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 6, y: 0 }, { x: 10, y: 0 }, { x: 14, y: 0 },
+    { x: 1, y: 9 }, { x: 5, y: 9 }, { x: 10, y: 9 }, { x: 14, y: 9 }
+  ];
+
+  // =========================================================================
+  // 3. GAME STATE & METRICS
+  // =========================================================================
+  var canvas = document.getElementById("gameCanvas");
+  var ctx = canvas.getContext("2d");
+  var view = { tileSize: 54, ox: 0, oy: 0 };
+
+  var grid = [];
+  var turrets = [];
+  var enemies = [];
+  var projectiles = [];
+  var lightningArcs = [];
+  var empRings = [];
+  var particles = [];
+  var floatTexts = [];
+
+  var gameState = "START"; // START, PLAYING, PAUSED, ENDED
+  var gameSpeed = 1;
+  var gold = 180;
+  var coreHp = 20;
+  var maxCoreHp = 20;
+  var score = 0;
+  var totalKills = 0;
+
+  var currentWave = 0; // 0 = pre-wave 1, 1..10
+  var waveCountdown = 4.5;
+  var spawnQueue = [];
+  var spawnTimer = 0;
+
+  var selectedShopIdx = 0; // 0..3 or -1
+  var selectedTurret = null;
+  var hoveredTile = { x: -1, y: -1 };
+
+  var empCooldown = 0;
+  var empMaxCooldown = 30.0;
+  var shakeMag = 0;
+  var bannerTimer = 0;
+
+  function resizeCanvas() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var availW = w - 48;
+    var availH = h - 190;
+    var ts = Math.floor(Math.min(availW / COLS, availH / ROWS));
+    ts = Math.max(32, Math.min(72, ts));
+    view.tileSize = ts;
+    view.ox = Math.floor((w - COLS * ts) * 0.5);
+    view.oy = Math.floor((h - ROWS * ts) * 0.5) - 4;
+  }
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  function buildGrid() {
+    grid = [];
+    for (var y = 0; y < ROWS; y++) {
+      var row = [];
+      for (var x = 0; x < COLS; x++) {
+        row.push(TILE_PAD);
+      }
+      grid.push(row);
+    }
+
+    // Carve Path segments
+    for (var i = 0; i < WAYPOINTS.length - 1; i++) {
+      var a = WAYPOINTS[i];
+      var b = WAYPOINTS[i + 1];
+      var cx = a.x, cy = a.y;
+      grid[cy][cx] = TILE_PATH;
+      while (cx !== b.x || cy !== b.y) {
+        if (cx < b.x) cx++;
+        else if (cx > b.x) cx--;
+        else if (cy < b.y) cy++;
+        else if (cy > b.y) cy--;
+        grid[cy][cx] = TILE_PATH;
+      }
+    }
+
+    // Place Overcharge Nodes
+    for (var n = 0; n < OVERCHARGE_NODES.length; n++) {
+      var nd = OVERCHARGE_NODES[n];
+      grid[nd.y][nd.x] = TILE_NODE;
+    }
+
+    // Place Canyon Walls
+    for (var w = 0; w < CANYON_WALLS.length; w++) {
+      var wl = CANYON_WALLS[w];
+      if (grid[wl.y][wl.x] === TILE_PAD) {
+        grid[wl.y][wl.x] = TILE_WALL;
+      }
+    }
+  }
+
+  function inBounds(gx, gy) {
+    return gx >= 0 && gx < COLS && gy >= 0 && gy < ROWS;
+  }
+
+  function getTurretAt(gx, gy) {
+    for (var i = 0; i < turrets.length; i++) {
+      if (turrets[i].gx === gx && turrets[i].gy === gy) return turrets[i];
+    }
+    return null;
+  }
+
+  function canBuildAt(gx, gy) {
+    if (!inBounds(gx, gy)) return false;
+    var t = grid[gy][gx];
+    if (t !== TILE_PAD && t !== TILE_NODE) return false;
+    if (getTurretAt(gx, gy)) return false;
+    return true;
+  }
+
+  // =========================================================================
+  // 4. FLOATING TEXT & PARTICLES
+  // =========================================================================
+  function addFloatText(gx, gy, text, color, scale) {
+    floatTexts.push({
+      gx: gx,
+      gy: gy,
+      text: text,
+      color: color || "#ffffff",
+      scale: scale || 1.0,
+      life: 1.1,
+      maxLife: 1.1
+    });
+  }
+
+  function spawnParticles(gx, gy, color, count, speed) {
+    for (var i = 0; i < count; i++) {
+      var ang = Math.random() * Math.PI * 2;
+      var spd = (0.4 + Math.random() * 1.6) * (speed || 1.5);
+      particles.push({
+        gx: gx,
+        gy: gy,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        color: color,
+        size: 2 + Math.random() * 3.5,
+        life: 0.35 + Math.random() * 0.35,
+        maxLife: 0.7
+      });
+    }
+  }
+
+  // =========================================================================
+  // 5. TURRET CONSTRUCTION, UPGRADES, TARGETING & SELLING
+  // =========================================================================
+  function computeTurretEffectiveStats(t) {
+    var spec = TURRET_SPECS[t.typeIdx];
+    var lvlMult = t.level === 1 ? 1.0 : (t.level === 2 ? 1.48 : 2.15);
+    var rofMult = t.level === 1 ? 1.0 : (t.level === 2 ? 1.15 : 1.32);
+    var rngAdd  = t.level === 1 ? 0.0 : (t.level === 2 ? 0.35 : 0.75);
+
+    var nodeBonus = t.overcharged ? 1.2 : 1.0;
+    t.damage = Math.round(spec.damage * lvlMult);
+    t.range = +( (spec.range + rngAdd) * nodeBonus ).toFixed(2);
+    t.fireRate = +( spec.fireRate * rofMult * nodeBonus ).toFixed(2);
+    t.upgCost = t.level === 1 ? Math.round(spec.cost * 1.25) : Math.round(spec.cost * 1.9);
+  }
+
+  function buildTurret(gx, gy, typeIdx) {
+    var spec = TURRET_SPECS[typeIdx];
+    if (gold < spec.cost || !canBuildAt(gx, gy)) return;
+    gold -= spec.cost;
+    var isNode = grid[gy][gx] === TILE_NODE;
+    var t = {
+      gx: gx,
+      gy: gy,
+      typeIdx: typeIdx,
+      id: spec.id,
+      name: spec.name,
+      color: spec.color,
+      level: 1,
+      invested: spec.cost,
+      overcharged: isNode,
+      angle: 0,
+      cooldown: 0,
+      recoil: 0,
+      barrelToggle: 0,
+      targetModeIdx: 0,
+      kills: 0
+    };
+    computeTurretEffectiveStats(t);
+    turrets.push(t);
+    selectedTurret = t;
+    playSfx("build");
+    spawnParticles(gx + 0.5, gy + 0.5, spec.color, 14, 1.6);
+    addFloatText(gx + 0.5, gy + 0.2, isNode ? "OVERCHARGED!" : "DEPLOYED", spec.color, 0.95);
+    updateHUD();
+  }
+
+  function upgradeSelectedTurret() {
+    if (!selectedTurret || selectedTurret.level >= 3) return;
+    var cost = selectedTurret.upgCost;
+    if (gold < cost) return;
+    gold -= cost;
+    selectedTurret.invested += cost;
+    selectedTurret.level++;
+    computeTurretEffectiveStats(selectedTurret);
+    playSfx("upgrade");
+    spawnParticles(selectedTurret.gx + 0.5, selectedTurret.gy + 0.5, "#ffd54f", 18, 2.0);
+    addFloatText(selectedTurret.gx + 0.5, selectedTurret.gy + 0.2, "LVL " + selectedTurret.level + " UPGRADE!", "#ffd54f", 1.05);
+    updateHUD();
+  }
+
+  function cycleSelectedTurretTargetMode() {
+    if (!selectedTurret) return;
+    selectedTurret.targetModeIdx = (selectedTurret.targetModeIdx + 1) % TARGET_MODES.length;
+    updateHUD();
+  }
+
+  function sellSelectedTurret() {
+    if (!selectedTurret) return;
+    var refund = Math.round(selectedTurret.invested * 0.75);
+    gold += refund;
+    playSfx("sell");
+    spawnParticles(selectedTurret.gx + 0.5, selectedTurret.gy + 0.5, "#ffd54f", 14, 1.5);
+    addFloatText(selectedTurret.gx + 0.5, selectedTurret.gy + 0.3, "+" + refund + "g REFUND", "#ffd54f", 1.0);
+    var idx = turrets.indexOf(selectedTurret);
+    if (idx !== -1) turrets.splice(idx, 1);
+    selectedTurret = null;
+    updateHUD();
+  }
+
+  // =========================================================================
+  // 6. WAVES, ENEMY SPAWNING & ORBITAL EMP STRIKE
+  // =========================================================================
+  function createEnemy(typeKey, waveIdx) {
+    var base = ENEMY_SPECS[typeKey];
+    // Smooth HP scaling over waves 1..10
+    var hpScale = 1 + (waveIdx - 1) * 0.24;
+    var hp = Math.round(base.hp * hpScale);
+    var shield = Math.round(base.shield * hpScale);
+    var start = WAYPOINTS[0];
+    return {
+      type: typeKey,
+      name: base.name,
+      gx: start.x + 0.5,
+      gy: start.y + 0.5,
+      wpIdx: 1,
+      distTraveled: 0,
+      hp: hp,
+      maxHp: hp,
+      shield: shield,
+      maxShield: shield,
+      shieldDelay: 0,
+      armor: base.armor,
+      speed: base.speed,
+      bounty: base.bounty,
+      scoreVal: base.score,
+      radius: base.radius,
+      color: base.color,
+      slowTimer: 0,
+      slowFactor: 1.0,
+      stunTimer: 0
+    };
+  }
+
+  function startNextWave(isEarlyCall) {
+    if (currentWave >= WAVE_DEFS.length) return;
+    if (isEarlyCall && currentWave > 0 && (waveCountdown > 0 || enemies.length > 0)) {
+      var bonusGold = 15 + currentWave * 3;
+      var bonusScore = 50 + currentWave * 10;
+      gold += bonusGold;
+      score += bonusScore;
+      addFloatText(COLS * 0.5, 1.2, "EARLY WAVE BONUS +" + bonusGold + "g +" + bonusScore + " PTS!", "#ffd54f", 1.15);
+    }
+
+    currentWave++;
+    waveCountdown = 0;
+    var wDef = WAVE_DEFS[currentWave - 1];
+    for (var g = 0; g < wDef.groups.length; g++) {
+      var grp = wDef.groups[g];
+      for (var c = 0; c < grp.count; c++) {
+        spawnQueue.push({
+          type: grp.type,
+          wave: currentWave,
+          delay: c === 0 && g > 0 ? 1.1 : grp.interval
+        });
+      }
+    }
+    spawnTimer = 0.1;
+
+    if (wDef.boss) {
+      bannerTimer = 4.0;
+      document.getElementById("alertBanner").style.display = "block";
+    }
+    updateHUD();
+  }
+
+  function triggerOrbitalEmp() {
+    if (gameState !== "PLAYING" || empCooldown > 0) return;
+    empCooldown = empMaxCooldown;
+    playSfx("emp");
+    shakeMag = 14;
+    empRings.push({ gx: COLS * 0.5, gy: ROWS * 0.5, r: 0.5, maxR: 12.0, alpha: 1.0 });
+    addFloatText(COLS * 0.5, ROWS * 0.5 - 1.0, "ORBITAL EMP SHOCKWAVE // ALL HOSTILES STUNNED!", "#00e5ff", 1.25);
+
+    var empDmg = 85 + Math.max(1, currentWave) * 24;
+    for (var i = enemies.length - 1; i >= 0; i--) {
+      var e = enemies[i];
+      e.stunTimer = Math.max(e.stunTimer, 2.5);
+      e.shield = 0;
+      damageEnemy(e, empDmg, true, null);
+      spawnParticles(e.gx, e.gy, "#00e5ff", 10, 2.0);
+    }
+    updateHUD();
+  }
+
+  function damageEnemy(e, rawDmg, ignoreArmor, sourceTurret) {
+    if (e.hp <= 0) return;
+    e.shieldDelay = 2.6;
+
+    var remaining = rawDmg;
+    if (e.shield > 0) {
+      var absorbed = Math.min(e.shield, remaining);
+      e.shield -= absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) {
+      var effDmg = ignoreArmor ? remaining : Math.max(2, remaining - e.armor);
+      e.hp -= effDmg;
+    }
+
+    if (e.hp <= 0) {
+      e.hp = 0;
+      gold += e.bounty;
+      score += e.scoreVal;
+      totalKills++;
+      if (sourceTurret) sourceTurret.kills++;
+      if (score > highScore) {
+        highScore = score;
+        try { localStorage.setItem(STORAGE_KEY, String(highScore)); } catch (err) {}
+      }
+      spawnParticles(e.gx, e.gy, e.color, e.type === "boss" ? 36 : 14, e.type === "boss" ? 2.8 : 1.7);
+      addFloatText(e.gx, e.gy - 0.25, "+" + e.bounty + "g", "#ffd54f", e.type === "boss" ? 1.25 : 0.9);
+      var idx = enemies.indexOf(e);
+      if (idx !== -1) enemies.splice(idx, 1);
+      updateHUD();
+    }
+  }
+
+  // =========================================================================
+  // 7. SIMULATION UPDATE LOOP
+  // =========================================================================
+  function selectTargetForTurret(t) {
+    var tx = t.gx + 0.5;
+    var ty = t.gy + 0.5;
+    var candidates = [];
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      var d = Math.hypot(e.gx - tx, e.gy - ty);
+      if (d <= t.range) {
+        candidates.push({ e: e, d: d });
+      }
+    }
+    if (candidates.length === 0) return null;
+
+    var mode = TARGET_MODES[t.targetModeIdx];
+    if (mode === "FIRST") {
+      candidates.sort(function(a, b) { return b.e.distTraveled - a.e.distTraveled; });
+    } else if (mode === "STRONGEST") {
+      candidates.sort(function(a, b) { return (b.e.hp + b.e.shield) - (a.e.hp + a.e.shield); });
+    } else if (mode === "WEAKEST") {
+      candidates.sort(function(a, b) { return (a.e.hp + a.e.shield) - (b.e.hp + b.e.shield); });
+    } else if (mode === "CLOSEST") {
+      candidates.sort(function(a, b) { return a.d - b.d; });
+    }
+    return candidates[0].e;
+  }
+
+  function fireTurret(t, target) {
+    var spec = TURRET_SPECS[t.typeIdx];
+    var sx = t.gx + 0.5;
+    var sy = t.gy + 0.5;
+    t.recoil = 1.0;
+    t.barrelToggle = 1 - t.barrelToggle;
+
+    if (t.id === "tesla") {
+      playSfx("tesla");
+      // Instant Chain Lightning across up to 4 targets
+      var hitSet = [target];
+      var cur = target;
+      var maxChains = spec.chainCount + (t.level === 3 ? 1 : 0);
+
+      lightningArcs.push({ x0: sx, y0: sy, x1: cur.gx, y1: cur.gy, life: 0.16, maxLife: 0.16 });
+
+      while (hitSet.length < maxChains) {
+        var bestNext = null;
+        var bestDist = spec.chainRange;
+        for (var i = 0; i < enemies.length; i++) {
+          var cand = enemies[i];
+          if (hitSet.indexOf(cand) !== -1) continue;
+          var d = Math.hypot(cand.gx - cur.gx, cand.gy - cur.gy);
+          if (d <= bestDist) {
+            bestDist = d;
+            bestNext = cand;
+          }
+        }
+        if (!bestNext) break;
+        lightningArcs.push({ x0: cur.gx, y0: cur.gy, x1: bestNext.gx, y1: bestNext.gy, life: 0.16, maxLife: 0.16 });
+        hitSet.push(bestNext);
+        cur = bestNext;
+      }
+
+      for (var h = 0; h < hitSet.length; h++) {
+        var en = hitSet[h];
+        var falloff = Math.pow(0.84, h);
+        // Bonus +50% damage against shielded or armored enemies
+        var bonus = (en.shield > 0 || en.armor > 0) ? 1.5 : 1.0;
+        var dmg = Math.round(t.damage * falloff * bonus);
+        spawnParticles(en.gx, en.gy, "#b388ff", 5, 1.4);
+        damageEnemy(en, dmg, true, t);
+      }
+      return;
+    }
+
+    // Projectile-based Turrets: Gatling, Cryo, Mortar
+    playSfx(t.id);
+    projectiles.push({
+      turret: t,
+      typeId: t.id,
+      x: sx,
+      y: sy,
+      startX: sx,
+      startY: sy,
+      tx: target.gx,
+      ty: target.gy,
+      targetRef: t.id === "mortar" ? null : target,
+      speed: spec.projSpeed,
+      damage: t.damage,
+      splash: spec.splash || 0,
+      slowFactor: spec.slowFactor || 1.0,
+      slowDur: spec.slowDur || 0,
+      shredArmor: spec.shredArmor || 0,
+      color: t.color,
+      progress: 0,
+      totalDist: Math.max(0.2, Math.hypot(target.gx - sx, target.gy - sy))
+    });
+  }
+
+  function updateSimulation(dt) {
+    if (bannerTimer > 0) {
+      bannerTimer -= dt;
+      if (bannerTimer <= 0) {
+        document.getElementById("alertBanner").style.display = "none";
+      }
+    }
+
+    if (empCooldown > 0) {
+      empCooldown = Math.max(0, empCooldown - dt);
+    }
+
+    // 1. Wave Spawner & Inter-wave Countdown
+    if (spawnQueue.length > 0) {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
+        var nextItem = spawnQueue.shift();
+        enemies.push(createEnemy(nextItem.type, nextItem.wave));
+        if (spawnQueue.length > 0) {
+          spawnTimer = spawnQueue[0].delay;
+        }
+      }
+    } else if (enemies.length === 0) {
+      if (currentWave >= WAVE_DEFS.length) {
+        // Victory!
+        score += coreHp * 50 + Math.round(gold * 2);
+        if (score > highScore) {
+          highScore = score;
+          try { localStorage.setItem(STORAGE_KEY, String(highScore)); } catch (err) {}
+        }
+        endMatch(true);
+        return;
+      } else {
+        waveCountdown -= dt;
+        if (waveCountdown <= 0) {
+          startNextWave(false);
+        }
+      }
+    }
+
+    // 2. Update Enemies
+    for (var i = enemies.length - 1; i >= 0; i--) {
+      var e = enemies[i];
+
+      // Shield regeneration for Shield Pylons & Bosses
+      if (e.maxShield > 0 && e.shield < e.maxShield) {
+        if (e.shieldDelay > 0) {
+          e.shieldDelay -= dt;
+        } else {
+          e.shield = Math.min(e.maxShield, e.shield + e.maxShield * 0.15 * dt);
+        }
+      }
+
+      if (e.slowTimer > 0) {
+        e.slowTimer -= dt;
+        if (e.slowTimer <= 0) e.slowFactor = 1.0;
+      }
+
+      if (e.stunTimer > 0) {
+        e.stunTimer -= dt;
+        continue;
+      }
+
+      var wp = WAYPOINTS[e.wpIdx];
+      var dx = wp.x + 0.5 - e.gx;
+      var dy = wp.y + 0.5 - e.gy;
+      var dist = Math.hypot(dx, dy);
+      var moveStep = e.speed * e.slowFactor * dt;
+
+      if (dist <= moveStep) {
+        e.gx = wp.x + 0.5;
+        e.gy = wp.y + 0.5;
+        e.distTraveled += dist;
+        e.wpIdx++;
+        if (e.wpIdx >= WAYPOINTS.length) {
+          // Enemy breached the Nexus Core!
+          var leakDmg = e.type === "boss" ? 5 : 1;
+          coreHp = Math.max(0, coreHp - leakDmg);
+          playSfx("leak");
+          shakeMag = 11;
+          spawnParticles(e.gx, e.gy, "#ff2a5f", 20, 2.2);
+          addFloatText(e.gx - 0.5, e.gy - 0.3, "-" + leakDmg + " CORE HP!", "#ff2a5f", 1.2);
+          enemies.splice(i, 1);
+          updateHUD();
+          if (coreHp <= 0) {
+            endMatch(false);
+            return;
+          }
+        }
+      } else {
+        e.gx += (dx / dist) * moveStep;
+        e.gy += (dy / dist) * moveStep;
+        e.distTraveled += moveStep;
+      }
+    }
+
+    // 3. Update Turrets
+    for (var ti = 0; ti < turrets.length; ti++) {
+      var t = turrets[ti];
+      if (t.recoil > 0) t.recoil = Math.max(0, t.recoil - dt * 5.5);
+      if (t.cooldown > 0) t.cooldown -= dt;
+
+      var target = selectTargetForTurret(t);
+      if (target) {
+        var desiredAngle = Math.atan2(target.gy - (t.gy + 0.5), target.gx - (t.gx + 0.5));
+        t.angle = desiredAngle;
+        if (t.cooldown <= 0) {
+          t.cooldown = 1.0 / t.fireRate;
+          fireTurret(t, target);
+        }
+      }
+    }
+
+    // 4. Update Projectiles
+    for (var pi = projectiles.length - 1; pi >= 0; pi--) {
+      var p = projectiles[pi];
+      if (p.targetRef && p.targetRef.hp > 0) {
+        p.tx = p.targetRef.gx;
+        p.ty = p.targetRef.gy;
+      }
+
+      var pdx = p.tx - p.x;
+      var pdy = p.ty - p.y;
+      var pdist = Math.hypot(pdx, pdy);
+      var step = p.speed * dt;
+
+      if (pdist <= step) {
+        // Impact!
+        if (p.splash > 0) {
+          spawnParticles(p.tx, p.ty, p.color, p.typeId === "mortar" ? 20 : 12, p.typeId === "mortar" ? 2.2 : 1.4);
+          if (p.typeId === "mortar") shakeMag = Math.max(shakeMag, 4.5);
+
+          for (var ei = enemies.length - 1; ei >= 0; ei--) {
+            var en = enemies[ei];
+            if (Math.hypot(en.gx - p.tx, en.gy - p.ty) <= p.splash) {
+              if (p.slowDur > 0) {
+                en.slowTimer = Math.max(en.slowTimer, p.slowDur);
+                en.slowFactor = Math.min(en.slowFactor, p.slowFactor);
+              }
+              if (p.shredArmor > 0 && en.armor > 0) {
+                en.armor = Math.max(0, en.armor - p.shredArmor);
+              }
+              damageEnemy(en, p.damage, false, p.turret);
+            }
+          }
+        } else if (p.targetRef && p.targetRef.hp > 0) {
+          spawnParticles(p.tx, p.ty, p.color, 5, 1.2);
+          damageEnemy(p.targetRef, p.damage, false, p.turret);
+        }
+        projectiles.splice(pi, 1);
+      } else {
+        p.x += (pdx / pdist) * step;
+        p.y += (pdy / pdist) * step;
+        p.progress = Math.min(1, 1 - pdist / p.totalDist);
+      }
+    }
+  }
+
+  // =========================================================================
+  // 8. CANVAS 2D VECTOR RENDERER
+  // =========================================================================
+  function render(nowSec, realDt) {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    ctx.fillStyle = "#050912";
+    ctx.fillRect(0, 0, w, h);
+
+    if (shakeMag > 0) {
+      shakeMag = Math.max(0, shakeMag - realDt * 26);
+    }
+    var sx = (Math.random() - 0.5) * shakeMag;
+    var sy = (Math.random() - 0.5) * shakeMag;
+
+    var ts = view.tileSize;
+    var ox = view.ox + sx;
+    var oy = view.oy + sy;
+
+    // 1. Draw Tactical Grid
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        var px = ox + x * ts;
+        var py = oy + y * ts;
+        var tile = grid[y][x];
+
+        if (tile === TILE_PATH) {
+          ctx.fillStyle = "#0b1424";
+          ctx.fillRect(px, py, ts, ts);
+          ctx.strokeStyle = "rgba(0, 229, 255, 0.08)";
+          ctx.strokeRect(px, py, ts, ts);
+        } else if (tile === TILE_WALL) {
+          ctx.fillStyle = "#162438";
+          ctx.fillRect(px + 2, py + 2, ts - 4, ts - 4);
+          ctx.strokeStyle = "rgba(120, 160, 210, 0.3)";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(px + 4, py + 4, ts - 8, ts - 8);
+          ctx.beginPath();
+          ctx.moveTo(px + 7, py + 7);
+          ctx.lineTo(px + ts - 7, py + ts - 7);
+          ctx.strokeStyle = "rgba(0, 229, 255, 0.14)";
+          ctx.stroke();
+        } else if (tile === TILE_NODE) {
+          ctx.fillStyle = "#0d1f33";
+          ctx.fillRect(px, py, ts, ts);
+          var pulse = 0.55 + Math.sin(nowSec * 4) * 0.25;
+          ctx.strokeStyle = "rgba(255, 213, 79, " + pulse.toFixed(2) + ")";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(px + 3, py + 3, ts - 6, ts - 6);
+          ctx.beginPath();
+          ctx.arc(px + ts * 0.5, py + ts * 0.5, ts * 0.22, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0, 229, 255, 0.2)";
+          ctx.fill();
+        } else {
+          // Buildable Pad
+          var isAlt = ((x + y) & 1) === 0;
+          ctx.fillStyle = isAlt ? "#0c1729" : "#091322";
+          ctx.fillRect(px, py, ts, ts);
+          ctx.strokeStyle = "rgba(0, 229, 255, 0.11)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px, py, ts, ts);
+          // Corner bracket accents
+          ctx.fillStyle = "rgba(0, 229, 255, 0.18)";
+          ctx.fillRect(px + 3, py + 3, 2, 2);
+          ctx.fillRect(px + ts - 5, py + ts - 5, 2, 2);
+        }
+      }
+    }
+
+    // 2. Draw Energy Flow Chevrons along Path
+    ctx.save();
+    ctx.beginPath();
+    for (var wIdx = 0; wIdx < WAYPOINTS.length; wIdx++) {
+      var wp = WAYPOINTS[wIdx];
+      var wx = ox + (wp.x + 0.5) * ts;
+      var wy = oy + (wp.y + 0.5) * ts;
+      if (wIdx === 0) ctx.moveTo(wx, wy);
+      else ctx.lineTo(wx, wy);
+    }
+    ctx.strokeStyle = "rgba(0, 229, 255, 0.2)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 12]);
+    ctx.lineDashOffset = -nowSec * 28;
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Draw Spawn Portal & Nexus Core
+    var sp = WAYPOINTS[0];
+    var spX = ox + (sp.x + 0.5) * ts;
+    var spY = oy + (sp.y + 0.5) * ts;
+    ctx.save();
+    ctx.translate(spX, spY);
+    ctx.rotate(nowSec * 1.8);
+    ctx.strokeStyle = "#ff2a5f";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(-ts * 0.34, -ts * 0.34, ts * 0.68, ts * 0.68);
+    ctx.restore();
+    ctx.fillStyle = "#ff4d79";
+    ctx.font = "900 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GATE", spX, spY + 3);
+
+    var nx = WAYPOINTS[WAYPOINTS.length - 1];
+    var nxX = ox + (nx.x + 0.5) * ts;
+    var nxY = oy + (nx.y + 0.5) * ts;
+    ctx.save();
+    ctx.translate(nxX, nxY);
+    ctx.beginPath();
+    ctx.arc(0, 0, ts * 0.38, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0, 230, 118, 0.2)";
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = coreHp > 6 ? "#00e676" : "#ff2a5f";
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, ts * 0.18 + Math.sin(nowSec * 5) * 2, 0, Math.PI * 2);
+    ctx.fillStyle = coreHp > 6 ? "#00e5ff" : "#ff2a5f";
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("NEXUS", nxX, nxY - ts * 0.43);
+
+    // 4. Draw Hovered Placement Preview or Selected Turret Range
+    if (gameState === "PLAYING" && inBounds(hoveredTile.x, hoveredTile.y) && selectedShopIdx >= 0 && !selectedTurret) {
+      var hx = hoveredTile.x, hy = hoveredTile.y;
+      var valid = canBuildAt(hx, hy);
+      var spec = TURRET_SPECS[selectedShopIdx];
+      var isNodeHover = valid && grid[hy][hx] === TILE_NODE;
+      var previewRange = spec.range * (isNodeHover ? 1.2 : 1.0);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ox + (hx + 0.5) * ts, oy + (hy + 0.5) * ts, previewRange * ts, 0, Math.PI * 2);
+      ctx.fillStyle = valid ? "rgba(0, 229, 255, 0.09)" : "rgba(255, 42, 95, 0.12)";
+      ctx.fill();
+      ctx.strokeStyle = valid ? spec.color : "#ff2a5f";
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = valid ? "rgba(0, 229, 255, 0.25)" : "rgba(255, 42, 95, 0.35)";
+      ctx.fillRect(ox + hx * ts + 2, oy + hy * ts + 2, ts - 4, ts - 4);
+    }
+
+    if (selectedTurret) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ox + (selectedTurret.gx + 0.5) * ts, oy + (selectedTurret.gy + 0.5) * ts, selectedTurret.range * ts, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 213, 79, 0.08)";
+      ctx.fill();
+      ctx.strokeStyle = "#ffd54f";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([7, 5]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 5. Draw Turrets
+    for (var ti = 0; ti < turrets.length; ti++) {
+      var t = turrets[ti];
+      var tx = ox + (t.gx + 0.5) * ts;
+      var ty = oy + (t.gy + 0.5) * ts;
+
+      ctx.save();
+      ctx.translate(tx, ty);
+
+      // Base Pedestal
+      ctx.fillStyle = "#101e33";
+      ctx.strokeStyle = selectedTurret === t ? "#ffd54f" : t.color;
+      ctx.lineWidth = selectedTurret === t ? 2.5 : 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Level chevrons on pedestal
+      for (var lv = 0; lv < t.level; lv++) {
+        ctx.fillStyle = "#ffd54f";
+        ctx.fillRect(-ts * 0.22 + lv * 7, ts * 0.24, 5, 3);
+      }
+
+      // Rotating Head & Recoil
+      ctx.rotate(t.angle);
+      var recOffset = -t.recoil * 5;
+
+      if (t.id === "gatling") {
+        ctx.fillStyle = t.color;
+        ctx.fillRect(recOffset + 2, -6, ts * 0.34, 4);
+        ctx.fillRect(recOffset + 2, 2, ts * 0.34, 4);
+        ctx.beginPath();
+        ctx.arc(0, 0, ts * 0.2, 0, Math.PI * 2);
+        ctx.fillStyle = "#1b3352";
+        ctx.fill();
+        ctx.strokeStyle = t.color;
+        ctx.stroke();
+      } else if (t.id === "cryo") {
+        ctx.fillStyle = "#40c4ff";
+        ctx.beginPath();
+        ctx.moveTo(ts * 0.34 + recOffset, 0);
+        ctx.lineTo(-ts * 0.16, -ts * 0.22);
+        ctx.lineTo(-ts * 0.16, ts * 0.22);
+        ctx.closePath();
+        ctx.fill();
+      } else if (t.id === "mortar") {
+        ctx.fillStyle = "#ff9100";
+        ctx.fillRect(recOffset - 4, -8, ts * 0.36, 16);
+        ctx.strokeStyle = "#ffe082";
+        ctx.strokeRect(recOffset - 4, -8, ts * 0.36, 16);
+      } else if (t.id === "tesla") {
+        ctx.rotate(nowSec * 2.5);
+        ctx.strokeStyle = "#b388ff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-ts * 0.2, -ts * 0.2, ts * 0.4, ts * 0.4);
+        ctx.beginPath();
+        ctx.arc(0, 0, ts * 0.13, 0, Math.PI * 2);
+        ctx.fillStyle = "#e040fb";
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 6. Draw Enemies
+    for (var ei = 0; ei < enemies.length; ei++) {
+      var e = enemies[ei];
+      var ex = ox + e.gx * ts;
+      var ey = oy + e.gy * ts;
+      var rad = e.radius * ts;
+
+      ctx.save();
+      ctx.translate(ex, ey);
+
+      // Slow / Stun Aura
+      if (e.stunTimer > 0) {
+        ctx.beginPath();
+        ctx.arc(0, 0, rad + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "#00e5ff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (e.slowTimer > 0) {
+        ctx.beginPath();
+        ctx.arc(0, 0, rad + 4, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(64, 196, 255, 0.28)";
+        ctx.fill();
+      }
+
+      // Enemy Hull
+      ctx.beginPath();
+      if (e.type === "strider" || e.type === "boss") {
+        for (var s = 0; s < 6; s++) {
+          var a = (s * Math.PI) / 3;
+          var rx = Math.cos(a) * rad;
+          var ry = Math.sin(a) * rad;
+          if (s === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+      } else if (e.type === "swarm") {
+        ctx.moveTo(0, -rad); ctx.lineTo(rad, 0); ctx.lineTo(0, rad); ctx.lineTo(-rad, 0);
+        ctx.closePath();
+      } else {
+        ctx.arc(0, 0, rad, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = "#121828";
+      ctx.fill();
+      ctx.lineWidth = e.type === "boss" ? 3.5 : 2.2;
+      ctx.strokeStyle = e.color;
+      ctx.stroke();
+
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(0, 0, rad * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = e.color;
+      ctx.fill();
+      ctx.restore();
+
+      // Health & Shield Bars
+      var bw = Math.max(24, rad * 2.1);
+      var bx = ex - bw * 0.5;
+      var by = ey - rad - 10;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      ctx.fillRect(bx, by, bw, 4);
+      ctx.fillStyle = e.color;
+      ctx.fillRect(bx, by, bw * Math.max(0, e.hp / e.maxHp), 4);
+
+      if (e.maxShield > 0 && e.shield > 0) {
+        ctx.fillStyle = "#00e5ff";
+        ctx.fillRect(bx, by - 4, bw * Math.max(0, e.shield / e.maxShield), 3);
+      }
+    }
+
+    // 7. Draw Projectiles
+    for (var pi = 0; pi < projectiles.length; pi++) {
+      var p = projectiles[pi];
+      var pxProj = ox + p.x * ts;
+      var pyProj = oy + p.y * ts;
+
+      if (p.typeId === "mortar") {
+        // Parabolic arc height
+        var arcLift = Math.sin(p.progress * Math.PI) * 28;
+        ctx.beginPath();
+        ctx.arc(pxProj, pyProj - arcLift, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff9100";
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(pxProj, pyProj, 4, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      }
+    }
+
+    // 8. Draw Tesla Chain Lightning Arcs
+    for (var li = lightningArcs.length - 1; li >= 0; li--) {
+      var arc = lightningArcs[li];
+      arc.life -= realDt;
+      if (arc.life <= 0) {
+        lightningArcs.splice(li, 1);
+        continue;
+      }
+      var x0 = ox + arc.x0 * ts, y0 = oy + arc.y0 * ts;
+      var x1 = ox + arc.x1 * ts, y1 = oy + arc.y1 * ts;
+      var mx = (x0 + x1) * 0.5 + (Math.random() - 0.5) * 14;
+      var my = (y0 + y1) * 0.5 + (Math.random() - 0.5) * 14;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(mx, my);
+      ctx.lineTo(x1, y1);
+      ctx.strokeStyle = "#e040fb";
+      ctx.lineWidth = 2.8;
+      ctx.shadowColor = "#b388ff";
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 9. Draw Orbital EMP Shockwave Rings
+    for (var ri = empRings.length - 1; ri >= 0; ri--) {
+      var ring = empRings[ri];
+      ring.r += realDt * 18.0;
+      ring.alpha -= realDt * 1.4;
+      if (ring.alpha <= 0) {
+        empRings.splice(ri, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ox + ring.gx * ts, oy + ring.gy * ts, ring.r * ts, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(0, 229, 255, " + ring.alpha.toFixed(2) + ")";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 10. Draw Particles & Floating Combat Text
+    for (var pti = particles.length - 1; pti >= 0; pti--) {
+      var pt = particles[pti];
+      pt.life -= realDt;
+      if (pt.life <= 0) {
+        particles.splice(pti, 1);
+        continue;
+      }
+      pt.gx += pt.vx * realDt;
+      pt.gy += pt.vy * realDt;
+      ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(ox + pt.gx * ts, oy + pt.gy * ts, pt.size, pt.size);
+      ctx.globalAlpha = 1.0;
+    }
+
+    for (var fti = floatTexts.length - 1; fti >= 0; fti--) {
+      var ft = floatTexts[fti];
+      ft.life -= realDt;
+      if (ft.life <= 0) {
+        floatTexts.splice(fti, 1);
+        continue;
+      }
+      ft.gy -= realDt * 0.55;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (ft.life / ft.maxLife) * 1.4);
+      ctx.font = "900 " + Math.round(12 * ft.scale) + "px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#000000";
+      ctx.fillText(ft.text, ox + ft.gx * ts + 1.5, oy + ft.gy * ts + 1.5);
+      ctx.fillStyle = ft.color;
+      ctx.fillText(ft.text, ox + ft.gx * ts, oy + ft.gy * ts);
+      ctx.restore();
+    }
+  }
+
+  // =========================================================================
+  // 9. HUD & INPUT CONTROLLERS
+  // =========================================================================
+  function updateHUD() {
+    var coreEl = document.getElementById("coreHpDisplay");
+    coreEl.textContent = coreHp + " / " + maxCoreHp;
+    coreEl.className = "stat-val core" + (coreHp <= 6 ? " low" : "");
+
+    document.getElementById("goldDisplay").textContent = gold + "g";
+    document.getElementById("waveDisplay").textContent = Math.max(1, currentWave) + " / " + WAVE_DEFS.length;
+    document.getElementById("scoreDisplay").innerHTML =
+      score + ' <span style="font-size:13px;color:#7ea6cc;">// ' + highScore + '</span>';
+
+    // Shop buttons
+    for (var i = 0; i < 4; i++) {
+      var btn = document.getElementById("shopBtn" + i);
+      var spec = TURRET_SPECS[i];
+      var cls = "turret-btn";
+      if (selectedShopIdx === i && !selectedTurret) cls += " active";
+      if (gold < spec.cost) cls += " cant-afford";
+      btn.className = cls;
+    }
+
+    // Call Wave & EMP buttons
+    var wBtn = document.getElementById("btnCallWave");
+    if (currentWave >= WAVE_DEFS.length) {
+      wBtn.textContent = "FINAL WAVE ACTIVE";
+      wBtn.disabled = true;
+    } else {
+      var canCall = spawnQueue.length === 0;
+      wBtn.disabled = !canCall;
+      if (enemies.length === 0 && currentWave > 0 && waveCountdown > 0) {
+        wBtn.textContent = "[SPACE] CALL WAVE " + (currentWave + 1) + " (" + Math.ceil(waveCountdown) + "s)";
+      } else {
+        wBtn.textContent = "[SPACE] CALL WAVE " + (currentWave + 1) + (currentWave > 0 ? " (+BONUS)" : "");
+      }
+    }
+
+    var empBtn = document.getElementById("btnEmp");
+    if (empCooldown > 0) {
+      empBtn.disabled = true;
+      empBtn.textContent = "[E] EMP COOLDOWN: " + Math.ceil(empCooldown) + "s";
+    } else {
+      empBtn.disabled = false;
+      empBtn.textContent = "[E] ORBITAL EMP: READY";
+    }
+
+    var spdBtn = document.getElementById("btnSpeed");
+    spdBtn.textContent = "[F] SPEED: " + gameSpeed + "x";
+    spdBtn.className = "ctrl-btn" + (gameSpeed === 2 ? " speed-active" : "");
+
+    // Selected Turret Inspector
+    var insp = document.getElementById("inspectorPanel");
+    if (selectedTurret) {
+      insp.style.display = "block";
+      document.getElementById("inspTitle").textContent =
+        selectedTurret.name + " // LVL " + selectedTurret.level;
+      var badge = document.getElementById("inspNodeBadge");
+      if (selectedTurret.overcharged) badge.classList.remove("hidden");
+      else badge.classList.add("hidden");
+
+      document.getElementById("inspStats").innerHTML =
+        "<span>DMG: <strong>" + selectedTurret.damage + "</strong></span>" +
+        "<span>RNG: <strong>" + selectedTurret.range + "</strong></span>" +
+        "<span>ROF: <strong>" + selectedTurret.fireRate + "/s</strong></span>" +
+        "<span>KILLS: <strong>" + selectedTurret.kills + "</strong></span>";
+
+      var upgBtn = document.getElementById("btnUpgrade");
+      if (selectedTurret.level >= 3) {
+        upgBtn.textContent = "MAX LEVEL (LVL 3)";
+        upgBtn.disabled = true;
+      } else {
+        upgBtn.textContent = "[U] UPGRADE (" + selectedTurret.upgCost + "g)";
+        upgBtn.disabled = gold < selectedTurret.upgCost;
+      }
+
+      document.getElementById("btnTargetMode").textContent =
+        "[T] TARGET: " + TARGET_MODES[selectedTurret.targetModeIdx];
+
+      var refund = Math.round(selectedTurret.invested * 0.75);
+      document.getElementById("btnSell").textContent = "[X] SELL (+" + refund + "g)";
+    } else {
+      insp.style.display = "none";
+    }
+  }
+
+  function resetMatch() {
+    buildGrid();
+    turrets = [];
+    enemies = [];
+    projectiles = [];
+    lightningArcs = [];
+    empRings = [];
+    particles = [];
+    floatTexts = [];
+
+    gold = 180;
+    coreHp = 20;
+    score = 0;
+    totalKills = 0;
+    currentWave = 0;
+    waveCountdown = 3.5;
+    spawnQueue = [];
+    spawnTimer = 0;
+    empCooldown = 0;
+    selectedShopIdx = 0;
+    selectedTurret = null;
+    bannerTimer = 0;
+    document.getElementById("alertBanner").style.display = "none";
+
+    gameState = "PLAYING";
+    startNextWave(false);
+    updateHUD();
+  }
+
+  function endMatch(victory) {
+    gameState = "ENDED";
+    var modal = document.getElementById("endModal");
+    var title = document.getElementById("endTitle");
+    var sub = document.getElementById("endSub");
+    title.textContent = victory ? "NEXUS SECURED" : "NEXUS BREACHED";
+    title.style.color = victory ? "#00e676" : "#ff2a5f";
+    sub.textContent = victory
+      ? "ALL 10 CYBERNETIC WAVES REPELLED // DEFENSE RATING: S-RANK"
+      : "CRITICAL CORE FAILURE // SECTOR OVERRUN ON WAVE " + currentWave;
+
+    document.getElementById("endWaves").textContent = (victory ? 10 : Math.max(0, currentWave - 1)) + " / 10";
+    document.getElementById("endKills").textContent = totalKills;
+    document.getElementById("endScore").textContent = score;
+    document.getElementById("endBest").textContent = highScore;
+    modal.classList.remove("hidden");
+  }
+
+  // Shop Button Clicks
+  for (var sIdx = 0; sIdx < 4; sIdx++) {
+    (function(idx) {
+      document.getElementById("shopBtn" + idx).addEventListener("click", function() {
+        initAudio();
+        selectedShopIdx = idx;
+        selectedTurret = null;
+        updateHUD();
+      });
+    })(sIdx);
+  }
+
+  document.getElementById("btnUpgrade").addEventListener("click", upgradeSelectedTurret);
+  document.getElementById("btnTargetMode").addEventListener("click", cycleSelectedTurretTargetMode);
+  document.getElementById("btnSell").addEventListener("click", sellSelectedTurret);
+
+  document.getElementById("btnEmp").addEventListener("click", function() {
+    initAudio();
+    triggerOrbitalEmp();
+  });
+
+  document.getElementById("btnCallWave").addEventListener("click", function() {
+    initAudio();
+    if (gameState === "PLAYING" && spawnQueue.length === 0 && currentWave < WAVE_DEFS.length) {
+      startNextWave(true);
+    }
+  });
+
+  document.getElementById("btnSpeed").addEventListener("click", function() {
+    gameSpeed = gameSpeed === 1 ? 2 : 1;
+    updateHUD();
+  });
+
+  document.getElementById("startBtn").addEventListener("click", function() {
+    initAudio();
+    document.getElementById("startModal").classList.add("hidden");
+    if (gameState === "START") resetMatch();
+    else if (gameState === "PAUSED") gameState = "PLAYING";
+    updateHUD();
+  });
+
+  document.getElementById("restartBtn").addEventListener("click", function() {
+    initAudio();
+    document.getElementById("endModal").classList.add("hidden");
+    resetMatch();
+  });
+
+  // Canvas Mouse Input
+  canvas.addEventListener("mousemove", function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+    var gx = Math.floor((mx - view.ox) / view.tileSize);
+    var gy = Math.floor((my - view.oy) / view.tileSize);
+    if (inBounds(gx, gy)) {
+      hoveredTile.x = gx;
+      hoveredTile.y = gy;
+    } else {
+      hoveredTile.x = -1;
+      hoveredTile.y = -1;
+    }
+  });
+
+  canvas.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+    selectedTurret = null;
+    updateHUD();
+  });
+
+  canvas.addEventListener("mousedown", function(e) {
+    if (gameState !== "PLAYING") return;
+    initAudio();
+    if (e.button === 2) {
+      selectedTurret = null;
+      updateHUD();
+      return;
+    }
+    if (e.button !== 0) return;
+
+    var gx = hoveredTile.x;
+    var gy = hoveredTile.y;
+    if (!inBounds(gx, gy)) return;
+
+    var existing = getTurretAt(gx, gy);
+    if (existing) {
+      selectedTurret = existing;
+      updateHUD();
+      return;
+    }
+
+    if (selectedTurret) {
+      selectedTurret = null;
+      updateHUD();
+    } else if (selectedShopIdx >= 0 && canBuildAt(gx, gy)) {
+      buildTurret(gx, gy, selectedShopIdx);
+    }
+  });
+
+  // Keyboard Shortcuts
+  window.addEventListener("keydown", function(e) {
+    if (["Space", "Tab", "Backspace", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) !== -1) {
+      e.preventDefault();
+    }
+    if (e.code === "KeyR" && (gameState === "PLAYING" || gameState === "ENDED")) {
+      document.getElementById("endModal").classList.add("hidden");
+      resetMatch();
+      return;
+    }
+    if (gameState !== "PLAYING") return;
+
+    if (e.code === "Digit1") { selectedShopIdx = 0; selectedTurret = null; updateHUD(); }
+    else if (e.code === "Digit2") { selectedShopIdx = 1; selectedTurret = null; updateHUD(); }
+    else if (e.code === "Digit3") { selectedShopIdx = 2; selectedTurret = null; updateHUD(); }
+    else if (e.code === "Digit4") { selectedShopIdx = 3; selectedTurret = null; updateHUD(); }
+    else if (e.code === "KeyU") upgradeSelectedTurret();
+    else if (e.code === "KeyT") cycleSelectedTurretTargetMode();
+    else if (e.code === "KeyX" || e.code === "Backspace") sellSelectedTurret();
+    else if (e.code === "KeyE") triggerOrbitalEmp();
+    else if (e.code === "KeyF") document.getElementById("btnSpeed").click();
+    else if (e.code === "Space") document.getElementById("btnCallWave").click();
+    else if (e.code === "Escape") { selectedTurret = null; updateHUD(); }
+  });
+
+  function handlePause() {
+    if (gameState === "PLAYING") {
+      gameState = "PAUSED";
+      document.getElementById("startModalSub").textContent = "DEFENSE GRID PAUSED // CLICK TO RESUME";
+      document.getElementById("startBtn").textContent = "RESUME MISSION";
+      document.getElementById("startModal").classList.remove("hidden");
+    }
+  }
+  window.addEventListener("blur", handlePause);
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden) handlePause();
+  });
+
+  // =========================================================================
+  // 10. MAIN ANIMATION LOOP
+  // =========================================================================
+  buildGrid();
+  updateHUD();
+
+  var lastNow = performance.now();
+  var hudTick = 0;
+  function loop(now) {
+    var realDt = Math.min(0.05, Math.max(0.001, (now - lastNow) / 1000));
+    lastNow = now;
+
+    if (gameState === "PLAYING") {
+      updateSimulation(realDt * gameSpeed);
+      hudTick += realDt;
+      if (hudTick >= 0.2) {
+        hudTick = 0;
+        updateHUD();
+      }
+    }
+    render(now * 0.001, realDt);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

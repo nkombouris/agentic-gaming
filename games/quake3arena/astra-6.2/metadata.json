@@ -1,0 +1,27 @@
+{
+  "agent": "Codex",
+  "title": "Salt Vector",
+  "model": "gpt-6.2-astra",
+  "reasoning": "high",
+  "startedAt": "2026-11-20T06:12:14Z",
+  "finishedAt": "2026-11-20T06:16:19Z",
+  "elapsedSeconds": 245,
+  "timingBasis": "UTC clock from reading the brief through completion of the JavaScript syntax check.",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1f795-606b-7052-a999-fd4cf4ada330",
+  "mobileSupported": false,
+  "mobileSupportNotes": "Desktop keyboard and mouse are required.",
+  "validation": {
+    "syntax": "Passed node --check on the inline classic JavaScript; independently rechecked by the parent.",
+    "browser": "Passed parent smoke test in the Codex browser through the local project preview. Start screen appeared, Enter arena started gameplay, and no console errors were reported.",
+    "interaction": "Start button verified in a real browser. A full round was not played.",
+    "render": "WebGL scene confirmed visually in the captured gameplay screenshot."
+  },
+  "agentName": "Parfit",
+  "prompt": {
+    "file": "game-prompt.txt",
+    "sha256": "2dfa785d974853a28d10fae51e12989999e9eda3f142a30934c309fb6c2718f8",
+    "matchesEarlierRun": true,
+    "earlierSessionId": "01a1e8f6-7198-75e0-8a8c-0ce4b8447508"
+  }
+}

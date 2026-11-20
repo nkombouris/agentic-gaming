@@ -1,0 +1,25 @@
+{
+  "agent": "Claude",
+  "agentName": null,
+  "title": "Blackline Tactics",
+  "model": "claude-opus-5.5",
+  "reasoning": "high",
+  "startedAt": null,
+  "finishedAt": null,
+  "elapsedSeconds": null,
+  "timingBasis": null,
+  "configurationSource": "User-provided model label (Anthropic Opus 5.5) and reasoning effort (high). The model label is normalized as claude-opus-5.5. The actual runtime configuration was not independently available.",
+  "sessionId": null,
+  "sourceFile": "blackline-tactics/index.html",
+  "sourceSha256": "7f507b733884278912967a93696f1c0475bbdea6d965a3114bd5b3c32434a63f",
+  "validation": {
+    "syntax": "Passed node --check on the single inline classic JavaScript.",
+    "structure": "Found one title, 1 canvas, 1 inline stylesheet, and one inline classic script. No external assets found in HTML resource attributes or inline CSS.",
+    "lineCount": 730,
+    "browser": "Passed a smoke test in the Codex browser through a local preview. The DEPLOY screen appeared, gameplay started, and no console errors were reported.",
+    "render": "Canvas tactical board and HUD confirmed visually in a gameplay screenshot.",
+    "interactions": "Verified End Turn, enemy attacks, return to the player turn, and R resetting the run to wave 1, turn 1 and full health."
+  },
+  "mobileSupported": false,
+  "mobileSupportNotes": "The five fixed-width action buttons extend beyond narrow phone viewports. The source also omits a mobile viewport meta tag. Physical phone gameplay was not tested."
+}

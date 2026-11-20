@@ -1,0 +1,20 @@
+{
+  "agent": "Codex",
+  "agentName": "Turing",
+  "title": "Blackout Relay",
+  "model": "gpt-6.1-sol",
+  "reasoning": "max",
+  "startedAt": "2026-11-17T11:16:00Z",
+  "finishedAt": "2026-11-17T11:25:51Z",
+  "elapsedSeconds": 591,
+  "timingBasis": "Subagent UTC clock from reading the game brief through completion of game checks",
+  "configurationSource": "Codex build turn_context",
+  "sessionId": "01a1e938-6e7e-7233-bf00-668e60562a54",
+  "validation": {
+    "syntax": "Passed node --check on inline JavaScript",
+    "browser": "Headless Chrome aborted during launch, before loading the page.",
+    "interactions": "Node simulation passed first Canvas draw, deployment, wall-blocked and clear shots, and one complete enemy turn."
+  },
+  "mobileSupported": true,
+  "mobileSupportNotes": "The layout stacks on narrow screens. A phone-width simulation passed board taps without hover and verified the on-screen deploy, end turn, link, and restart controls."
+}

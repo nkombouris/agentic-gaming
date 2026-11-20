@@ -1,0 +1,137 @@
+[
+  {
+    "id": "void-frag-3d",
+    "directory": "gemini-argon",
+    "title": "Void Frag 3D",
+    "model": "gemini-argon",
+    "reasoning": "high",
+    "en": {
+      "description": "Race for 25 frags in a neon arena with jump pads, three weapons, and a two-minute clock.",
+      "instructions": "Move with WASD or the arrow keys, aim with the mouse, and click to fire. Jump with Space, dash with Shift, and switch weapons with 1–3. You can also aim with Q and E and fire with F."
+    },
+    "de": {
+      "description": "Sammle 25 Frags in einer Neon-Arena mit Sprungfeldern, drei Waffen und einem Zeitlimit von zwei Minuten.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Ziele mit der Maus und feuere per Klick. Springe mit der Leertaste, sprinte mit Umschalt und wechsle mit 1–3 die Waffe. Alternativ zielst du mit Q und E und feuerst mit F."
+    }
+  },
+  {
+    "id": "void-arena",
+    "directory": "gemini-hydrogen",
+    "title": "Void Arena",
+    "model": "gemini-hydrogen",
+    "reasoning": "medium",
+    "en": {
+      "description": "Survive two minutes against waves of arena drones, using jump pads to reach higher platforms.",
+      "instructions": "Move with WASD or the arrow keys, aim with the mouse, and click to fire. Press Space to jump, 1–3 to switch weapons, and R to restart."
+    },
+    "de": {
+      "description": "Überlebe zwei Minuten gegen immer neue Drohnenwellen. Nutze Sprungfelder, um höhere Plattformen zu erreichen.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten. Ziele mit der Maus und feuere per Klick. Springe mit der Leertaste, wechsle mit 1–3 die Waffe und starte mit R neu."
+    }
+  },
+  {
+    "id": "volt-pit",
+    "directory": "astra",
+    "title": "VOLT PIT — Arena Survival",
+    "model": "gpt-6-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Survive 90 seconds against defense drones in a reactor arena.",
+      "instructions": "Move with WASD, aim with the mouse, and click to fire. Jump with Space, dash with Shift, and pause with Esc."
+    },
+    "de": {
+      "description": "Überlebe 90 Sekunden gegen Verteidigungsdrohnen in einer Reaktorarena.",
+      "instructions": "Bewege dich mit WASD, ziele mit der Maus und feuere per Klick. Springe mit der Leertaste, hechte mit Umschalt und pausiere mit Esc."
+    }
+  },
+  {
+    "id": "rift-kiln",
+    "directory": "sol",
+    "title": "Rift Kiln",
+    "model": "gpt-6.1-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Hold Kiln Station against five waves of drones and collect repair cells to keep your suit intact.",
+      "instructions": "Move with WASD, aim with the mouse or arrow keys, and jump with Space. Left-click for the pulse rifle or right-click for an arc burst. Pause with Esc or P."
+    },
+    "de": {
+      "description": "Verteidige die Station gegen fünf Drohnenwellen und sammle Reparaturzellen für deinen Anzug.",
+      "instructions": "Bewege dich mit WASD, ziele mit der Maus oder den Pfeiltasten und springe mit der Leertaste. Feuere das Pulsgewehr mit der linken Maustaste oder löse mit der rechten eine Bogenentladung aus. Pausiere mit Esc oder P."
+    }
+  },
+  {
+    "id": "rift-circuit",
+    "directory": "luna",
+    "title": "Rift Circuit",
+    "model": "gpt-6-luna",
+    "reasoning": "medium",
+    "en": {
+      "description": "Clear 20 drones from the arena before the 90-second clock expires.",
+      "instructions": "Press W to step clear of the starting pillar. Move with WASD, aim with the mouse, and click to fire. Hold Shift to sprint, press Esc to pause, or press R to restart."
+    },
+    "de": {
+      "description": "Schalte innerhalb von 90 Sekunden 20 Drohnen in der Arena aus.",
+      "instructions": "Geh mit W vorwärts, um die Säule am Start zu verlassen. Bewege dich mit WASD, ziele mit der Maus und feuere per Klick. Halte Umschalt zum Sprinten, pausiere mit Esc oder starte mit R neu."
+    }
+  },
+  {
+    "id": "salt-vector-astra-6-2",
+    "directory": "astra-6.2",
+    "title": "Salt Vector",
+    "model": "gpt-6.2-astra",
+    "reasoning": "high",
+    "en": {
+      "description": "Fight airborne interceptors beneath the dishes of a desert radio observatory. Jump pads launch you above cover, and repair kits restore suit integrity.",
+      "instructions": "Click Enter arena. Move with WASD, aim with the mouse and hold left click to fire. Right click releases a shock burst within 10 metres and clears nearby incoming shots. Press Space to jump or run across a marked lift pad. Destroy 18 interceptors in 110 seconds. Press R after a round to restart."
+    },
+    "de": {
+      "description": "Bekämpfe fliegende Abfangdrohnen zwischen den Antennen eines Wüstenobservatoriums. Sprungfelder katapultieren dich über Deckungen, und Reparatursets stellen deinen Schutzanzug wieder her.",
+      "instructions": "Klicke auf „Enter arena“. Bewege dich mit WASD, ziele mit der Maus und halte die linke Maustaste zum Feuern gedrückt. Die rechte Maustaste löst einen Schockimpuls aus, der Drohnen im Umkreis von zehn Metern trifft und anfliegende Geschosse abfängt. Springe mit der Leertaste oder laufe über ein markiertes Sprungfeld. Zerstöre 18 Drohnen in 110 Sekunden. Drücke nach der Runde R für einen Neustart."
+    }
+  },
+  {
+    "id": "afterlight-relay-sol-6-2",
+    "directory": "sol-6.2",
+    "title": "Afterlight Relay",
+    "model": "gpt-6.2-sol",
+    "reasoning": "max",
+    "en": {
+      "description": "Hold an orbital relay chamber for 90 seconds as waves of hostile drones close in.",
+      "instructions": "Click Enter arena. Move with WASD, aim with the mouse, and jump with Space. Left click to fire and right click for an area-damage pulse. Mint pads launch you over cover and green repair cells restore integrity. Press Esc to pause or R to restart."
+    },
+    "de": {
+      "description": "Verteidige eine orbitale Relaisstation 90 Sekunden lang gegen anrückende Drohnenwellen.",
+      "instructions": "Klicke auf Enter arena. Bewege dich mit WASD, ziele mit der Maus und springe mit der Leertaste. Feuere mit der linken Maustaste und löse mit der rechten einen Flächenimpuls aus. Mintgrüne Sprungfelder befördern dich über Deckungen. Grüne Reparaturzellen stellen Integrität wieder her. Drücke Esc zum Pausieren oder R für einen Neustart."
+    }
+  },
+  {
+    "id": "voltcore-arena",
+    "directory": "claude-opus-5.5",
+    "title": "Voltcore Arena",
+    "model": "claude-opus-5.5",
+    "reasoning": "high",
+    "en": {
+      "description": "Fight rogue machines in a neon arena with escalating spawns, jump pads, and multiple weapons.",
+      "instructions": "Move with WASD or the arrow keys, aim with the mouse, and hold left click to fire. Press Space to jump, use 1–3 to select a weapon, and press R to restart."
+    },
+    "de": {
+      "description": "Bekämpfe feindliche Maschinen in einer Neon-Arena mit immer stärkeren Gegnerwellen, Sprungfeldern und mehreren Waffen.",
+      "instructions": "Bewege dich mit WASD oder den Pfeiltasten, ziele mit der Maus und halte die linke Maustaste zum Feuern gedrückt. Die Leertaste springt, 1–3 wechseln die Waffe und R startet neu."
+    }
+  },
+  {
+    "id": "neon-rift-arena",
+    "directory": "claude-fable-5.2",
+    "title": "Neon Rift Arena",
+    "model": "claude-fable-5.2",
+    "reasoning": "medium",
+    "en": {
+      "description": "Score 20 frags against rift drones within three minutes while surviving with five lives.",
+      "instructions": "Move with WASD, aim with the mouse, and hold left click to fire. Press Space to jump, use 1–3 or the mouse wheel to switch weapons, and press R to restart."
+    },
+    "de": {
+      "description": "Erziele innerhalb von drei Minuten 20 Frags gegen Rift-Drohnen. Du hast fünf Leben.",
+      "instructions": "Bewege dich mit WASD, ziele mit der Maus und halte die linke Maustaste zum Feuern gedrückt. Springe mit der Leertaste, wechsle Waffen mit 1–3 oder dem Mausrad und starte mit R neu."
+    }
+  }
+]
