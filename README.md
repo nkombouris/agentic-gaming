@@ -8,8 +8,6 @@ So the idea is simple: **if the games are blocked, generate your own.** Small ga
 
 This repository collects those games and the experiment behind them: **what happens when different models, model generations, and reasoning settings tackle the same kind of game?**
 
-Compare the different game builds at [agenticgames.qiovra.de](https://agenticgames.qiovra.de/).
-
 ## One genre, different models
 
 ![Six real top-down RPG gameplay screenshots, labeled with their model and reasoning setting: GPT-6.2 Astra high, GPT-6.2 Sol max, GPT-6 Luna medium, Gemini Argon high, Gemini Hydrogen medium, and Claude Opus 5.5 high.](docs/images/rpg-model-comparison.jpg)
@@ -55,18 +53,6 @@ For example, open [`games/solitaire/luna/index.html`](games/solitaire/luna/index
 The 40 comparison builds are self-contained HTML files with inline CSS and JavaScript. Keep the entire folder for Signal Match and Gem Circuit: those samples also use the supplied `game.js` and `styles.css` files. Their editable source is included as well.
 
 Most builds target keyboard and mouse. Check each game's `metadata.json` for `mobileSupported` and the notes explaining its touch controls or limitations. A responsive canvas alone does not mean the game supports mobile play.
-
-## Play through GitHub Pages
-
-GitHub's repository file viewer displays HTML source. **GitHub Pages** serves it as an actual web page, so the same files become playable links without changing the games.
-
-To publish this collection, open [repository Settings → Pages](https://github.com/nkombouris/agentic-gaming/settings/pages), choose **Deploy from a branch**, select **main** and **/(root)**, then save. After the first deployment, an individual game will be available at a URL such as:
-
-```text
-https://nkombouris.github.io/agentic-gaming/games/solitaire/luna/
-```
-
-The existing `games/` directory structure stays intact. See [GitHub's publishing-source instructions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) for the setup.
 
 ## How the experiment works
 
@@ -177,30 +163,4 @@ HANDOFF:
 
 This is the desktop template. For touch-only play, use the [mobile tower-defense variant](games/tower-defense/astra-6.2/game-prompt.txt), which replaces the desktop-only input requirements and adds a check of the touch controls.
 
-## Files and metadata
-
-```text
-games/
-├── top-down-rpg/
-│   ├── catalog.json
-│   ├── astra/
-│   │   ├── index.html
-│   │   └── metadata.json
-│   ├── astra-6.2/
-│   │   ├── index.html
-│   │   ├── metadata.json
-│   │   └── game-prompt.txt
-│   └── ...
-├── quake3arena/
-├── xcom-tactics/
-├── tower-defense/
-├── solitaire/
-├── minesweeper/
-├── signal-match/
-├── gem-circuit/
-└── shared/
-```
-
-Each game's metadata records its title, agent, model, reasoning setting, generation timing, mobile support, and validation where known. Some entries also include source hashes, prompt hashes, or revision history. Unknown values remain `null` or are omitted rather than guessed.
-
-The goal is a small, inspectable game you can actually play—and a useful record of how different agents got there.
+Compare the different game builds at [agenticgames.qiovra.de](https://agenticgames.qiovra.de/).
