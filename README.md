@@ -8,6 +8,8 @@ So the idea is simple: **if the games are blocked, generate your own.** Small ga
 
 This repository collects those games and the experiment behind them: **what happens when different models, model generations, and reasoning settings tackle the same kind of game?**
 
+Compare the different game builds at [agenticgames.qiovra.de](https://agenticgames.qiovra.de/).
+
 ## One genre, different models
 
 ![Six real top-down RPG gameplay screenshots, labeled with their model and reasoning setting: GPT-6.2 Astra high, GPT-6.2 Sol max, GPT-6 Luna medium, Gemini Argon high, Gemini Hydrogen medium, and Claude Opus 5.5 high.](docs/images/rpg-model-comparison.jpg)
