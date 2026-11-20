@@ -10,9 +10,22 @@ This repository collects those games and the experiment behind them: **what happ
 
 ## One genre, different models
 
-![Six real top-down RPG gameplay screenshots, labeled with their model and reasoning setting: GPT-6.2 Astra high, GPT-6.2 Sol max, GPT-6 Luna medium, Gemini Argon high, Gemini Hydrogen medium, and Claude Opus 5.5 high.](docs/images/rpg-model-comparison.jpg)
+| GPT-6.2 Astra · high | GPT-6.2 Sol · max |
+| --- | --- |
+| [![The Bell Fen gameplay](docs/images/rpg-astra-6.2.jpg)](https://agenticgames.qiovra.de/en/games/the-bell-fen-astra-6-2/) | [![Bellward gameplay](docs/images/rpg-sol-6.2.jpg)](https://agenticgames.qiovra.de/en/games/bellward-sol-6-2/) |
+| [The Bell Fen](https://agenticgames.qiovra.de/en/games/the-bell-fen-astra-6-2/) | [Bellward](https://agenticgames.qiovra.de/en/games/bellward-sol-6-2/) |
 
-*Actual browser captures of six top-down RPGs. Click the image to inspect it at full size. These are examples of the results, not a ranking.*
+| GPT-6 Luna · medium | Gemini Argon · high |
+| --- | --- |
+| [![Ashen Vale gameplay](docs/images/rpg-luna.jpg)](https://agenticgames.qiovra.de/en/games/ashen-vale/) | [![Aethelgard: Echoes of the Mana Seal gameplay](docs/images/rpg-gemini-argon.jpg)](https://agenticgames.qiovra.de/en/games/aethelgard/) |
+| [Ashen Vale](https://agenticgames.qiovra.de/en/games/ashen-vale/) | [Aethelgard: Echoes of the Mana Seal](https://agenticgames.qiovra.de/en/games/aethelgard/) |
+
+| Gemini Hydrogen · medium | Claude Opus 5.5 · high |
+| --- | --- |
+| [![Aetherblade: Shrine of Echoes gameplay](docs/images/rpg-gemini-hydrogen.jpg)](https://agenticgames.qiovra.de/en/games/aetherblade/) | [![Sunshard Vale gameplay](docs/images/rpg-claude-opus-5.5.jpg)](https://agenticgames.qiovra.de/en/games/sunshard-vale/) |
+| [Aetherblade: Shrine of Echoes](https://agenticgames.qiovra.de/en/games/aetherblade/) | [Sunshard Vale](https://agenticgames.qiovra.de/en/games/sunshard-vale/) |
+
+*Actual browser captures of six top-down RPGs. Click any screenshot or game title to open that game's playable page. These are examples of the results, not a ranking.*
 
 ## What is here?
 
@@ -67,7 +80,7 @@ This is an evolving collection, not a controlled benchmark. Some games were impo
 
 ## Generate your own game
 
-Choose a model and reasoning level in your coding agent, replace `{GENRE}` with a genre such as `Solitaire`, `Minesweeper`, `top-down RPG`, or `first-person arena shooter`, and paste the complete prompt below. For comparisons, use the same filled-in prompt across runs and record the model and reasoning setting separately.
+Choose a model and reasoning level in your coding agent, replace `{GENRE}` with the genre you want, and paste the complete prompt below. For comparisons, use the same filled-in prompt across runs and record the model and reasoning setting separately.
 
 ```text
 Build a small, immediately playable single-player browser game.
@@ -160,7 +173,5 @@ HANDOFF:
 - note that the file is in a temporary location and may be removed by
   session/system cleanup
 ```
-
-This is the desktop template. For touch-only play, use the [mobile tower-defense variant](games/tower-defense/astra-6.2/game-prompt.txt), which replaces the desktop-only input requirements and adds a check of the touch controls.
 
 Compare the different game builds at [agenticgames.qiovra.de](https://agenticgames.qiovra.de/).
